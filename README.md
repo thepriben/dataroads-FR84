@@ -2,7 +2,7 @@
 
 Site statique de démonstration pour visualiser le réseau routier départemental du Vaucluse.
 
-## Données GeoJSON
+## Donnees statiques
 
 Les donnees OSM utilisees par la carte sont servies en GeoJSON statique dans `data/osm/*.geojson`. Le site ne requete pas Overpass au runtime. Le seul usage d'Overpass est l'outil inclus de rafraichissement:
 
@@ -16,21 +16,27 @@ Le script envoie un `User-Agent` explicite a Overpass:
 demo-inforoute-084/0.1.0 (https://github.com/thepriben/demo-inforoute-084)
 ```
 
-Le site reste compatible GitHub Pages: le navigateur lit uniquement les GeoJSON statiques.
+Les donnees qui ne changent pas au fil de la journee sont aussi lues en GeoJSON local:
 
-## Données externes
+- `data/static/accidents-vaucluse.geojson`: accidentologie fournie pour le Vaucluse
+- `data/demo/traffic-counting-demo.geojson`: fallback de demonstration si la source de comptage manque
 
-Les autres donnees runtime sont aussi servies en local dans `data/external/`:
+Le site reste compatible GitHub Pages: le navigateur lit ces donnees depuis les fichiers versionnes.
+
+## Donnees rafraichies
+
+Les donnees externes qui peuvent evoluer sont materialisees en GeoJSON dans `data/external/` par GitHub Actions:
 
 - `traffic-counting.geojson`: comptages permanents CD84 depuis data.gouv.fr
 - `road-events.geojson`: evenements Info Routiere quand la source est disponible
-- `weather-avignon.json`: instantane meteo Open-Meteo pour Avignon
 
 Le rafraichissement se fait avec:
 
 ```bash
 python3 scripts/update_external_data.py
 ```
+
+La meteo est la seule donnee appelee directement par le navigateur: elle est demandee a Open-Meteo au chargement de la page, puis toutes les 10 minutes.
 
 ## Publication GitHub Pages
 
@@ -39,7 +45,7 @@ python3 scripts/update_external_data.py
 3. Dans GitHub, activer Pages avec la source `GitHub Actions`.
 4. L'action `Deploy GitHub Pages` publie automatiquement le site.
 5. L'action `Update OSM GeoJSON` peut etre lancee manuellement et tourne aussi chaque lundi.
-6. L'action `Update External Data` actualise les donnees externes toutes les 3 heures.
+6. L'action `Update External Data` actualise les GeoJSON externes toutes les 3 heures.
 
 ## Lancement local
 

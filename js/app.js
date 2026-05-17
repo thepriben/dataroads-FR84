@@ -1907,10 +1907,15 @@
         setTimeout(loadDepartmentalRoads, 1000);
 
         // ========== MÉTÉO ==========
+
+        function formatWeatherTime(value) {
+            const match = String(value || '').match(/T(\d{2}:\d{2})/);
+            return match ? match[1] : null;
+        }
         
         async function loadWeather() {
             try {
-                const data = await window.InforouteApi.fetchAppJson('weather');
+                const data = await window.InforouteApi.fetchLiveJson('weather');
                 
                 if (data.current) {
                     const temp = Math.round(data.current.temperature_2m);
@@ -1973,10 +1978,12 @@
                     
                     const icon = weatherIcons[weatherCode] || '🌡️';
                     const desc = weatherDescriptions[weatherCode] || 'Variable';
+                    const updatedAt = formatWeatherTime(data.current.time);
+                    const details = ['Avignon', updatedAt].filter(Boolean).join(' • ');
                     
                     document.getElementById('weatherIcon').textContent = icon;
                     document.getElementById('weatherTemp').textContent = `${temp}°C`;
-                    document.getElementById('weatherDesc').textContent = `${desc} • Avignon`;
+                    document.getElementById('weatherDesc').textContent = `${desc} • ${details}`;
                 }
             } catch (error) {
                 console.error('Erreur météo:', error);
@@ -1988,6 +1995,10 @@
         
         // Charger la météo au démarrage
         loadWeather();
+        window.setInterval(
+            loadWeather,
+            window.InforouteApi.getLiveSource('weather').refreshMs || (10 * 60 * 1000)
+        );
 
         // ========== WAZE TRAFFIC ==========
         // (fonction définie globalement en haut du script)
@@ -2012,21 +2023,11 @@
                 console.error('❌ AUCUN GEOJSON DE COMPTAGE DISPONIBLE');
                 console.warn('⚠️ Utilisation de données de démonstration (local)');
 
-                if (window.COMPTAGES_GEOJSON && window.COMPTAGES_GEOJSON.features) {
-                    geojsonData = window.COMPTAGES_GEOJSON;
-                    sourceUsed = 'Données de démonstration (local préchargé)';
-                } else {
-                    try {
-                        const localResponse = await fetch('csv/comptages_demo.geojson');
-                        if (localResponse.ok) {
-                            geojsonData = await localResponse.json();
-                            sourceUsed = 'Données de démonstration (local)';
-                        } else {
-                            console.error(`❌ Échec du chargement des données locales: HTTP ${localResponse.status}`);
-                        }
-                    } catch (error) {
-                        console.error('❌ Échec du chargement des données locales:', error);
-                    }
+                try {
+                    geojsonData = await window.InforouteApi.fetchGeoJson('traffic-counting-demo');
+                    sourceUsed = 'Données de démonstration (GeoJSON local)';
+                } catch (error) {
+                    console.error('❌ Échec du chargement des données de démonstration:', error);
                 }
                 
                 if (geojsonData && geojsonData.features) {
@@ -2194,25 +2195,12 @@
             console.log('Stations de comptage:', trafficCounts);
         }
 
-        // Charger les données d'accidentologie depuis csv/accidents_vaucluse.geojson
+        // Charger les données d'accidentologie depuis le GeoJSON statique local
         async function loadAccidentData() {
             try {
                 console.log('📊 Chargement des données d\'accidentologie...');
 
-                const accidentsGeoJSON = window.ACCIDENTS_GEOJSON;
-                let dataToUse = accidentsGeoJSON;
-                if (!dataToUse) {
-                    const response = await fetch('csv/accidents_vaucluse.geojson');
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    dataToUse = await response.json();
-                }
-
-                if (!dataToUse || !dataToUse.features) {
-                    throw new Error('Données d\'accidentologie invalides');
-                }
-
+                const dataToUse = await window.InforouteApi.fetchGeoJson('accidents');
                 const stats = dataToUse.metadata?.statistiques || {};
                 const features = dataToUse.features;
                 

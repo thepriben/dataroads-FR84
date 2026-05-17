@@ -25,12 +25,6 @@ TRAFFIC_COUNTING_URL = (
     "a43b0841-856b-44f5-b4a7-74c5275b13a0"
 )
 ROAD_EVENTS_URL = "https://diffusion-numerique.info-routiere.gouv.fr/api/v2/events.geojson"
-WEATHER_URL = (
-    "https://api.open-meteo.com/v1/forecast"
-    "?latitude=43.9493&longitude=4.8055"
-    "&current=temperature_2m,weather_code"
-    "&timezone=Europe/Paris"
-)
 
 
 def fetch_json(url: str, timeout: int = 60) -> dict[str, Any]:
@@ -99,21 +93,6 @@ def update_geojson(name: str, source_name: str, source_url: str, allow_empty: bo
     return changed
 
 
-def update_weather() -> bool:
-    data = fetch_json(WEATHER_URL, timeout=30)
-    data["_cache"] = metadata("Open-Meteo Avignon current weather", WEATHER_URL)
-
-    output_path = DATA_DIR / "weather-avignon.json"
-    changed = write_json_if_changed(output_path, data)
-    state = "updated" if changed else "unchanged"
-    current = data.get("current") or {}
-    print(
-        f"{output_path.relative_to(ROOT)}: {state}, "
-        f"{current.get('temperature_2m', 'n/a')} degC"
-    )
-    return changed
-
-
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -128,7 +107,6 @@ def main() -> int:
         ROAD_EVENTS_URL,
         allow_empty=True,
     )
-    update_weather()
 
     return 0
 

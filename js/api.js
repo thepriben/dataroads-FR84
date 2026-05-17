@@ -3,7 +3,7 @@
 
     const config = window.APP_CONFIG || {};
     const geojsonConfig = config.data?.geojson || {};
-    const jsonConfig = config.data?.json || {};
+    const liveConfig = config.live || {};
     const responseCache = new Map();
 
     function createTimeout(timeoutMs) {
@@ -57,20 +57,19 @@
         return data;
     }
 
-    async function fetchAppJson(cacheName) {
-        const cachePath = jsonConfig[cacheName];
+    function getLiveSource(sourceName) {
+        const source = liveConfig[sourceName];
 
-        if (!cachePath) {
-            throw new Error(`JSON inconnu: ${cacheName}`);
+        if (!source?.url) {
+            throw new Error(`Source dynamique inconnue: ${sourceName}`);
         }
 
-        if (responseCache.has(cachePath)) {
-            return responseCache.get(cachePath);
-        }
+        return source;
+    }
 
-        const data = await fetchJson(cachePath, { cache: 'no-cache' }, { timeoutMs: 10000 });
-        responseCache.set(cachePath, data);
-        return data;
+    async function fetchLiveJson(sourceName) {
+        const source = getLiveSource(sourceName);
+        return fetchJson(source.url, { cache: 'no-store' }, { timeoutMs: source.timeoutMs || 10000 });
     }
 
     function normalizeCommuneName(value) {
@@ -92,8 +91,9 @@
 
     window.InforouteApi = Object.freeze({
         fetchJson,
-        fetchAppJson,
         fetchGeoJson,
+        fetchLiveJson,
+        getLiveSource,
         fetchCommuneBoundary
     });
 })(window);
