@@ -2,7 +2,7 @@
     'use strict';
 
     const config = window.APP_CONFIG || {};
-    const overpassConfig = config.overpass || {};
+    const geojsonConfig = config.data?.geojson || {};
     const responseCache = new Map();
 
     function createTimeout(timeoutMs) {
@@ -36,7 +36,7 @@
     }
 
     async function fetchGeoJson(cacheName) {
-        const cachePath = overpassConfig.cache?.[cacheName];
+        const cachePath = geojsonConfig[cacheName];
 
         if (!cachePath) {
             throw new Error(`GeoJSON inconnu: ${cacheName}`);
@@ -76,7 +76,6 @@
     window.InforouteApi = Object.freeze({
         fetchJson,
         fetchGeoJson,
-        fetchCommuneBoundary,
-        getOverpassUserAgent: () => overpassConfig.userAgent
+        fetchCommuneBoundary
     });
 })(window);

@@ -1,4 +1,4 @@
-name: Refresh Overpass Cache
+name: Update OSM GeoJSON
 
 on:
   workflow_dispatch:
@@ -9,20 +9,20 @@ permissions:
   contents: write
 
 jobs:
-  refresh:
+  update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Refresh cache
-        run: python3 scripts/refresh_overpass_cache.py
+      - name: Update GeoJSON
+        run: python3 scripts/update_osm_geojson.py
       - name: Commit changes
         run: |
           if git diff --quiet -- data/osm; then
-            echo "No cache changes."
+            echo "No GeoJSON changes."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/osm
-          git commit -m "Refresh Overpass cache"
+          git commit -m "Update OSM GeoJSON"
           git push
