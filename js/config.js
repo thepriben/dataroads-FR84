@@ -11,6 +11,7 @@
             geojson: {
                 'departmental-roads': 'data/osm/departmental-roads.geojson',
                 'construction-roads': 'data/osm/construction-roads.geojson',
+                'vaucluse-boundary': 'data/static/vaucluse-boundary.geojson',
                 communes: 'data/osm/communes-vaucluse.geojson',
                 accidents: 'data/static/accidents-vaucluse.geojson',
                 'traffic-counting': 'data/external/traffic-counting.geojson',

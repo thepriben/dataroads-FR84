@@ -18,6 +18,7 @@ demo-inforoute-084/0.1.0 (https://github.com/thepriben/demo-inforoute-084)
 
 Les donnees qui ne changent pas au fil de la journee sont aussi lues en GeoJSON local:
 
+- `data/static/vaucluse-boundary.geojson`: limite departementale du Vaucluse
 - `data/static/accidents-vaucluse.geojson`: accidentologie fournie pour le Vaucluse
 - `data/demo/traffic-counting-demo.geojson`: fallback de demonstration si la source de comptage manque
 
