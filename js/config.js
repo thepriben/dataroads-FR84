@@ -8,6 +8,7 @@
         version: '0.1.0',
         repository,
         data: {
+            externalRefreshHours: 3,
             geojson: {
                 'departmental-roads': 'data/osm/departmental-roads.geojson',
                 'construction-roads': 'data/osm/construction-roads.geojson',

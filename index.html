@@ -207,27 +207,37 @@
                     
                     <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
                         <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Routes Départementales</div>
-                        <div style="font-size: 0.75rem; color: #666;">OpenStreetMap (GeoJSON local)</div>
+                        <div id="osmDataFreshness" style="font-size: 0.75rem; color: #666;">OpenStreetMap (GeoJSON local)</div>
                     </div>
                     
                     <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
                         <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Limite Départementale</div>
-                        <div style="font-size: 0.75rem; color: #666;">OpenStreetMap (GeoJSON local)</div>
+                        <div id="boundaryDataFreshness" style="font-size: 0.75rem; color: #666;">OpenStreetMap (GeoJSON local)</div>
                     </div>
                     
                     <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
                         <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Stations de Comptage</div>
-                        <div style="font-size: 0.75rem; color: #666;">data.gouv.fr / CD84 (GeoJSON local)</div>
+                        <div id="trafficDataFreshness" style="font-size: 0.75rem; color: #666;">data.gouv.fr / CD84 (chargement...)</div>
+                    </div>
+
+                    <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
+                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Événements Routiers</div>
+                        <div id="roadEventsFreshness" style="font-size: 0.75rem; color: #666;">Info Routière (chargement...)</div>
                     </div>
                     
                     <div class="legend-item" style="display: block; padding: 6px 0;">
                         <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Accidentologie</div>
-                        <div style="font-size: 0.75rem; color: #666;">ONISR / BAAC (GeoJSON local)</div>
+                        <div id="accidentDataFreshness" style="font-size: 0.75rem; color: #666;">ONISR / BAAC (GeoJSON local)</div>
                     </div>
 
                     <div class="legend-item" style="display: block; padding: 6px 0;">
                         <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Météo</div>
-                        <div style="font-size: 0.75rem; color: #666;">Open-Meteo (requête directe)</div>
+                        <div style="font-size: 0.75rem; color: #666;">Open-Meteo (direct, toutes les 10 min)</div>
+                    </div>
+
+                    <div id="externalRefreshStatus" style="margin-top: 10px; padding: 9px; background: #eef6ff; border-radius: 6px; font-size: 0.7rem; color: #2C3E50; text-align: center; line-height: 1.4;">
+                        Données externes : cache local rafraîchi toutes les 3 h<br>
+                        Dernier cache : chargement...
                     </div>
                     
                     <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 0.7rem; color: #666; text-align: center; line-height: 1.4;">

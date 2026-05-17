@@ -78,6 +78,7 @@
         let convoiMode = false;
         let constructionPolylines = [];
         let constructionVisible = false;
+        const dataRefreshState = {};
         
         // État de visibilité par hiérarchie
         let hierarchyVisibility = {
@@ -85,6 +86,72 @@
             territorial: true,
             local: true
         };
+
+        function setSourceText(elementId, value) {
+            const element = document.getElementById(elementId);
+            if (element) element.textContent = value;
+        }
+
+        function formatParisDateTime(value) {
+            if (!value) return 'date inconnue';
+
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return 'date inconnue';
+
+            return `${new Intl.DateTimeFormat('fr-FR', {
+                timeZone: 'Europe/Paris',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date)} (Paris)`;
+        }
+
+        function collectYears(features, propertyNames) {
+            const years = new Set();
+            const yearPattern = /\b(19|20)\d{2}\b/g;
+
+            (features || []).forEach(feature => {
+                const props = feature.properties || {};
+                propertyNames.forEach(propertyName => {
+                    const value = props[propertyName];
+                    if (value === undefined || value === null) return;
+
+                    String(value).match(yearPattern)?.forEach(year => years.add(Number(year)));
+                });
+            });
+
+            return [...years].filter(Number.isFinite).sort((a, b) => a - b);
+        }
+
+        function formatYearRange(years) {
+            if (!years.length) return 'millésime inconnu';
+            if (years.length === 1) return `${years[0]}`;
+            return `${years[0]}-${years[years.length - 1]}`;
+        }
+
+        function updateExternalRefreshStatus(sourceName, cache = {}) {
+            dataRefreshState[sourceName] = {
+                generatedAt: cache.generated_at || null,
+                error: cache.error || null
+            };
+
+            const statusElement = document.getElementById('externalRefreshStatus');
+            if (!statusElement) return;
+
+            const refreshHours = window.APP_CONFIG?.data?.externalRefreshHours || 3;
+            const lines = Object.entries(dataRefreshState).map(([name, state]) => {
+                const dateLabel = formatParisDateTime(state.generatedAt);
+                const errorLabel = state.error ? ' - source indisponible, cache conservé' : '';
+                return `${name}: ${dateLabel}${errorLabel}`;
+            });
+
+            statusElement.innerHTML = [
+                `Données externes : cache local rafraîchi toutes les ${refreshHours} h`,
+                ...lines
+            ].join('<br>');
+        }
 
         // ========== ROUTES EN CONSTRUCTION ==========
         
@@ -124,7 +191,7 @@
                                     Chargement en cours...
                                 </div>
                                 <div style="margin-top: 10px; color: #666; font-size: 0.9rem;">
-                                    Interrogation OpenStreetMap
+                                    Lecture du GeoJSON local
                                 </div>
                                 <div id="loadingTimer" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; color: white; font-weight: 700; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                                     <span id="timerSeconds">0</span>s
@@ -688,6 +755,7 @@
         async function loadVaucluseBoundary() {
             try {
                 const geojsonData = await window.InforouteApi.fetchGeoJson('vaucluse-boundary');
+                setSourceText('boundaryDataFreshness', 'OpenStreetMap (limite 84, GeoJSON local)');
                 
                 // Ajouter la limite départementale avec Leaflet
                 const boundaryLayer = L.geoJSON(geojsonData, {
@@ -731,7 +799,7 @@
         // Message de chargement des routes
         const routesLoadingPopup = L.popup()
             .setLatLng([43.95, 5.1])
-            .setContent('<div style="text-align: center; padding: 10px;"><strong>Chargement des routes départementales...</strong><br><small>Récupération des tracés réels depuis OpenStreetMap</small></div>')
+            .setContent('<div style="text-align: center; padding: 10px;"><strong>Chargement des routes départementales...</strong><br><small>Lecture du GeoJSON local issu d’OpenStreetMap</small></div>')
             .openOn(window.map);
 
         // Fonction pour charger les routes par catégorie hiérarchique
@@ -745,6 +813,9 @@
         async function loadDepartmentalRoads() {
             try {
                 const data = await window.InforouteApi.fetchGeoJson('departmental-roads');
+                const osmGeneratedAt = data._cache?.generated_at;
+                const osmDate = osmGeneratedAt ? formatParisDateTime(osmGeneratedAt) : 'GeoJSON local';
+                setSourceText('osmDataFreshness', `OpenStreetMap (cache ${osmDate})`);
                 routesLoadingPopup.remove();
 
                 if (data.features && data.features.length > 0) {
@@ -1043,7 +1114,7 @@
                 
                 L.popup()
                     .setLatLng([43.95, 5.1])
-                    .setContent('<div style="padding: 10px;"><strong>⚠️ Routes non disponibles</strong><br><small>Impossible de charger depuis OpenStreetMap.<br>Vérifiez votre connexion.</small></div>')
+                    .setContent('<div style="padding: 10px;"><strong>⚠️ Routes non disponibles</strong><br><small>Impossible de charger le GeoJSON local des routes.</small></div>')
                     .openOn(window.map);
                 
                 setTimeout(() => window.map.closePopup(), 4000);
@@ -2008,6 +2079,7 @@
             try {
                 geojsonData = await window.InforouteApi.fetchGeoJson('traffic-counting');
                 sourceUsed = geojsonData._cache?.source_name || 'data.gouv.fr / CD84 (GeoJSON local)';
+                updateExternalRefreshStatus('Comptages CD84', geojsonData._cache);
                 console.log(`✓ Données chargées depuis ${sourceUsed}`);
                 console.log(`   Features: ${geojsonData.features.length}`);
             } catch (error) {
@@ -2021,6 +2093,7 @@
                 try {
                     geojsonData = await window.InforouteApi.fetchGeoJson('traffic-counting-demo');
                     sourceUsed = 'Données de démonstration (GeoJSON local)';
+                    setSourceText('trafficDataFreshness', 'Démonstration locale (5 stations 2024)');
                 } catch (error) {
                     console.error('❌ Échec du chargement des données de démonstration:', error);
                 }
@@ -2048,9 +2121,9 @@
             geojsonData.features.forEach(feature => {
                 const props = feature.properties;
                 const stationId = props.section_compteur ?? props.section_co ?? props.identifian ?? props.id_station ?? props.id;
-                const year = parseInt(props.annee);
+                const year = Number.parseInt(props.annee ?? props.year ?? props.an, 10);
 
-                if (!stationId) return;
+                if (!stationId || !Number.isFinite(year)) return;
                 
                 if (!latestDataByStation[stationId] || year > latestDataByStation[stationId].year) {
                     latestDataByStation[stationId] = {
@@ -2160,8 +2233,13 @@
 
             // Mettre à jour les statistiques
             const totalStations = trafficCounts.high + trafficCounts.medium + trafficCounts.low;
-            const years = Object.values(latestDataByStation).map(d => d.year);
+            const years = Object.values(latestDataByStation).map(d => d.year).filter(Number.isFinite);
             const latestYear = years.length ? Math.max(...years) : 'N/A';
+            const sourceYears = formatYearRange(collectYears(geojsonData.features, ['annee', 'year', 'an']));
+            const cacheDate = geojsonData._cache?.generated_at
+                ? `, cache ${formatParisDateTime(geojsonData._cache.generated_at)}`
+                : '';
+            setSourceText('trafficDataFreshness', `data.gouv.fr / CD84 (${sourceYears}${cacheDate})`);
             
             console.log(`✓ Total stations affichées: ${totalStations}`);
             console.log(`✓ Année la plus récente: ${latestYear}`);
@@ -2198,6 +2276,8 @@
                 const dataToUse = await window.InforouteApi.fetchGeoJson('accidents');
                 const stats = dataToUse.metadata?.statistiques || {};
                 const features = dataToUse.features;
+                const accidentYears = formatYearRange(collectYears(features, ['date']));
+                setSourceText('accidentDataFreshness', `ONISR / BAAC ${accidentYears} (${features.length} accidents)`);
                 
                 console.log(`✓ ${features.length} accidents chargés pour le Vaucluse`);
                 console.log('Statistiques:', stats);
@@ -2598,6 +2678,13 @@
                 console.log('🚗 Chargement des données Bison Futé / Info Routière...');
                 
                 const data = await window.InforouteApi.fetchGeoJson('road-events');
+                updateExternalRefreshStatus('Info Routière', data._cache);
+
+                const roadEventsDate = data._cache?.generated_at
+                    ? `cache ${formatParisDateTime(data._cache.generated_at)}`
+                    : 'GeoJSON local';
+                const roadEventsError = data._cache?.error ? ', source indisponible' : '';
+                setSourceText('roadEventsFreshness', `Info Routière (${data.features?.length || 0} événement(s), ${roadEventsDate}${roadEventsError})`);
                 
                 if (!data.features || data.features.length === 0) {
                     console.log('ℹ️ Aucun événement Info Routière dans le GeoJSON local');
