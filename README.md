@@ -2,8 +2,6 @@
 
 Prototype de carte web pour explorer le réseau routier départemental du Vaucluse. L'objectif est de montrer, de façon concrète, ce qu'un outil léger pourrait apporter à un service routes du Conseil départemental de Vaucluse : lecture rapide du réseau, croisement avec l'accidentologie, repérage des points de comptage et première vérification de la qualité des données OpenStreetMap.
 
-Ce n'est pas un outil métier officiel. C'est une base de discussion fonctionnelle, publiable sur GitHub Pages, qui permet de tester des usages sans déployer d'infrastructure serveur.
-
 ## Ce que montre la carte
 
 - Le réseau départemental du Vaucluse, avec une hiérarchie simple : réseau régional, territorial et local.
@@ -24,8 +22,6 @@ Le prototype sert surtout à rendre les données routières lisibles dans une in
 - Quelles communes sont concernées par une route ou un axe ?
 - Quels tronçons OSM sont bien documentés, et lesquels méritent une correction ?
 - Est-ce qu'un fichier publié sur data.gouv.fr ou une extraction OSM peut être exploité sans appeler des API à chaque visite ?
-
-La valeur du proto est donc moins dans le fond cartographique que dans la méthode : consolider des sources ouvertes, les figer en GeoJSON lisibles par le navigateur, puis afficher une carte compréhensible pour discuter des besoins réels.
 
 ## Fraîcheur des données
 
@@ -51,8 +47,6 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le princ
 | Événements routiers | Info Routière | cache toutes les 3 h | Le cache actuel contient 0 événement ; la source était indisponible au dernier rafraîchissement local. |
 | Météo | Open-Meteo | temps courant | Appel direct, non versionné. |
 
-Ces millésimes ne sont pas contradictoires : ils ne mesurent pas la même chose. Les comptages sont une série historique, l'accidentologie est un millésime fourni, OSM est une photographie du réseau au moment de l'extraction, et la météo est volontairement dynamique.
-
 ## Lancer la démo en local
 
 ```bash
@@ -65,18 +59,7 @@ Puis ouvrir :
 http://localhost:8080/
 ```
 
-## Publication GitHub Pages
-
-1. Créer le dépôt `thepriben/demo-inforoute-084`.
-2. Pousser la branche `main`.
-3. Dans GitHub, activer Pages avec la source `GitHub Actions`.
-4. Le workflow `Deploy GitHub Pages` publie automatiquement le site.
-5. Le workflow `Update OSM GeoJSON` peut être lancé manuellement et tourne aussi chaque lundi.
-6. Le workflow `Update External Data` actualise les GeoJSON externes toutes les 3 heures.
-
 ## Topo technique
-
-Le site est volontairement statique : `index.html`, `css/styles.css`, `js/config.js`, `js/api.js` et `js/app.js`. Il peut être servi tel quel par GitHub Pages.
 
 L'architecture des données est séparée par usage :
 
