@@ -1,0 +1,28 @@
+name: Refresh Overpass Cache
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refresh cache
+        run: python3 scripts/refresh_overpass_cache.py
+      - name: Commit changes
+        run: |
+          if git diff --quiet -- data/osm; then
+            echo "No cache changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/osm
+          git commit -m "Refresh Overpass cache"
+          git push

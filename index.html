@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Réseau Routier Départemental - Vaucluse (84)</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="dept-code">84</div>
+            <div style="flex: 1;">
+                <h1>Réseau Routier Départemental</h1>
+                <div class="subtitle">Département de Vaucluse • Outils Numériques Routiers</div>
+            </div>
+            <div id="weather" style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.1); padding: 12px 20px; border-radius: 12px; backdrop-filter: blur(10px);">
+                <div style="font-size: 2rem;" id="weatherIcon">⏳</div>
+                <div>
+                    <div style="font-size: 1.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;" id="weatherTemp">--°C</div>
+                    <div style="font-size: 0.75rem; opacity: 0.9;" id="weatherDesc">Chargement...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="legend-section">
+                    <div class="legend-title">Territoire</div>
+                    
+                    <div class="legend-item" style="pointer-events: none;">
+                        <div class="legend-color" style="background: transparent; border: 2px dashed #2C3E50; height: 0px; width: 40px;"></div>
+                        <div class="legend-label">Limite du Vaucluse (84)</div>
+                        <div class="legend-count"></div>
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="toggleAccidents()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Accidentologie</span>
+                        <span id="accidentToggleIcon" style="font-size: 1.2rem; transition: transform 0.3s;">👁️</span>
+                    </div>
+                    
+                    <div class="legend-item" data-accident="mortel" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: #000000; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff;"></div>
+                        <div class="legend-label">Accident mortel</div>
+                        <div class="legend-count" id="count-fatal">-</div>
+                    </div>
+                    
+                    <div class="legend-item" data-accident="grave" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: #E74C3C; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>
+                        <div class="legend-label">Blessés hospitalisés</div>
+                        <div class="legend-count" id="count-hospitalized">-</div>
+                    </div>
+                    
+                    <div class="legend-item" data-accident="leger" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: #F39C12; width: 8px; height: 8px; border-radius: 50%; border: 2px solid #fff;"></div>
+                        <div class="legend-label">Blessés légers</div>
+                        <div class="legend-count" id="count-light">-</div>
+                    </div>
+                    
+                    <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; font-size: 0.75rem; color: #666; text-align: center;">
+                        💡 Cliquez sur le titre pour afficher/masquer
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="console.log('CLIC DÉTECTÉ sur Routes en Construction'); window.toggleConstruction && window.toggleConstruction();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Routes en Construction</span>
+                        <span id="constructionToggleIcon" style="font-size: 1.2rem; transition: transform 0.3s;">👁️‍🗨️</span>
+                    </div>
+                    
+                    <div class="legend-item" data-construction="highway" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: none; border: 3px dashed #F39C12; height: 0px; width: 40px;"></div>
+                        <div class="legend-label">Routes en construction</div>
+                        <div class="legend-count" id="count-construction">-</div>
+                    </div>
+                    
+                    <div class="legend-item" data-construction="proposed" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: none; border: 2px dotted #9B59B6; height: 0px; width: 40px;"></div>
+                        <div class="legend-label">Projets de routes</div>
+                        <div class="legend-count" id="count-proposed">-</div>
+                    </div>
+                    
+                    <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; font-size: 0.75rem; color: #666; text-align: center;">
+                        💡 Cliquez sur le titre pour afficher/masquer
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title">Stations de Comptage</div>
+                    
+                    <div class="legend-item" data-traffic="high">
+                        <div class="legend-color" style="background: #E74C3C; width: 12px; height: 12px; border-radius: 50%;"></div>
+                        <div class="legend-label">Trafic élevé (&gt;20k véh/j)</div>
+                        <div class="legend-count" id="count-high">-</div>
+                    </div>
+                    
+                    <div class="legend-item" data-traffic="medium">
+                        <div class="legend-color" style="background: #F39C12; width: 10px; height: 10px; border-radius: 50%;"></div>
+                        <div class="legend-label">Trafic moyen (5k-20k)</div>
+                        <div class="legend-count" id="count-medium">-</div>
+                    </div>
+                    
+                    <div class="legend-item" data-traffic="low">
+                        <div class="legend-color" style="background: #3498DB; width: 8px; height: 8px; border-radius: 50%;"></div>
+                        <div class="legend-label">Trafic faible (&lt;5k véh/j)</div>
+                        <div class="legend-count" id="count-low">-</div>
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="toggleAllHierarchy()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Hiérarchie du Réseau</span>
+                        <span id="hierarchyToggleIcon" style="font-size: 1.2rem; transition: transform 0.3s;">👁️</span>
+                    </div>
+                    
+                    <div class="legend-item" data-hierarchy="regional" onclick="toggleHierarchy('regional')" style="cursor: pointer; transition: all 0.3s;">
+                        <div class="legend-color" style="background: #E74C3C; height: 6px;"></div>
+                        <div class="legend-label">Réseau d'intérêt régional</div>
+                        <div class="legend-count">...</div>
+                    </div>
+                    
+                    <div class="legend-item" data-hierarchy="territorial" onclick="toggleHierarchy('territorial')" style="cursor: pointer; transition: all 0.3s;">
+                        <div class="legend-color" style="background: #F39C12; height: 5px;"></div>
+                        <div class="legend-label">Réseau de développement territorial</div>
+                        <div class="legend-count">...</div>
+                    </div>
+                    
+                    <div class="legend-item" data-hierarchy="local" onclick="toggleHierarchy('local')" style="cursor: pointer; transition: all 0.3s;">
+                        <div class="legend-color" style="background: #3498DB; height: 4px;"></div>
+                        <div class="legend-label">Réseau d'intérêt local</div>
+                        <div class="legend-count">...</div>
+                    </div>
+                    
+                    <div class="legend-item" data-hierarchy="veloroute" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: #27AE60; height: 3px; border: 2px dashed #27AE60; background: transparent;"></div>
+                        <div class="legend-label">Véloroutes départementales</div>
+                        <div class="legend-count">2 axes</div>
+                    </div>
+                    
+                    <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; font-size: 0.75rem; color: #666; text-align: center;">
+                        💡 Cliquez sur le titre ou sur chaque niveau
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title">Rechercher une Route</div>
+                    
+                    <input type="text" id="road-search" placeholder="Ex: D900, D4..." 
+                           style="width: 100%; padding: 8px; border: 1px solid #dfe6e9; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; margin-bottom: 10px;">
+                    
+                    <div id="road-list" style="max-height: 300px; overflow-y: auto; background: white; border-radius: 6px; border: 1px solid #dfe6e9;">
+                        <div style="padding: 20px; text-align: center; color: #999; font-size: 0.85rem;">
+                            Chargement des routes...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="legend-section" id="road-info-section" style="display: none;">
+                    <div class="legend-title">Informations Route</div>
+                    <div id="road-info-panel" style="background: white; border-radius: 8px; border: 1px solid #dfe6e9; padding: 15px;">
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title">Informations Réseau</div>
+                    <div class="info-box">
+                        <h3>Statistiques du réseau</h3>
+                        <div class="stat">
+                            <span>Longueur totale</span>
+                            <span class="stat-value">2 342 km</span>
+                        </div>
+                        <div class="stat">
+                            <span>Trafic min/max</span>
+                            <span class="stat-value">200 - 75k véh/j</span>
+                        </div>
+                        <div class="stat">
+                            <span>Agences routières</span>
+                            <span class="stat-value">4 unités</span>
+                        </div>
+                        <div class="stat">
+                            <span>Centres routiers</span>
+                            <span class="stat-value">11 unités</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="legend-section" style="margin-top: 25px;">
+                    <div class="legend-title">Usage de la Carte</div>
+                    <div style="font-size: 0.85rem; color: var(--text-light); line-height: 1.6;">
+                        <p style="margin-bottom: 10px;">
+                            <strong>Cliquez sur une route</strong> pour afficher ses informations détaillées.
+                        </p>
+                        <p style="margin-bottom: 10px;">
+                            Cette carte vous permettra d'intégrer les données d'<strong>accidentologie</strong> et de <strong>comptage</strong> par voie.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="legend-section" style="margin-top: auto; padding-top: 20px; border-top: 2px solid #dfe6e9;">
+                    <div class="legend-title">Sources des Données</div>
+                    
+                    <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
+                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Routes Départementales</div>
+                        <div style="font-size: 0.75rem; color: #666;">OpenStreetMap (Overpass API)</div>
+                    </div>
+                    
+                    <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
+                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Limite Départementale</div>
+                        <div style="font-size: 0.75rem; color: #666;">IGN / OpenStreetMap (2023)</div>
+                    </div>
+                    
+                    <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
+                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Stations de Comptage</div>
+                        <div style="font-size: 0.75rem; color: #666;">Datasud / CD84</div>
+                    </div>
+                    
+                    <div class="legend-item" style="display: block; padding: 6px 0;">
+                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Accidentologie</div>
+                        <div style="font-size: 0.75rem; color: #666;">ONISR / BAAC (fichier fourni)</div>
+                    </div>
+                    
+                    <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 0.7rem; color: #666; text-align: center; line-height: 1.4;">
+                        Carte interactive - Prise de poste<br>
+                        <strong>Département du Vaucluse (84)</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div style="position: relative;">
+                <!-- Bouton qualité des données -->
+                <button class="quality-toggle" onclick="toggleQualityPanel()" style="top: 20px; right: 20px;">
+                    Qualité OSM
+                </button>
+
+                <!-- Bouton Waze Traffic -->
+                <button class="quality-toggle" onclick="toggleWazeTraffic()" style="top: 20px; right: 180px; background: white; border-color: #00D4FF; color: #00D4FF;" id="wazeBtn" title="Afficher les conditions de circulation en temps réel">
+                    Trafic temps réel
+                </button>
+
+                <!-- Bouton Convois Exceptionnels -->
+                <button class="quality-toggle" onclick="toggleConvoisExceptionnels()" style="top: 80px; right: 20px; background: white; border-color: #9B59B6; color: #9B59B6;" id="convoiBtn" title="Afficher les itinéraires pour convois exceptionnels">
+                    Convois Except.
+                </button>
+
+                <!-- Panneau de qualité des données -->
+                <div class="quality-panel" id="qualityPanel">
+                    <div class="quality-header">
+                        <h3>📊 Qualité des Données OSM</h3>
+                        <button class="quality-close" onclick="toggleQualityPanel()">×</button>
+                    </div>
+                    <div class="quality-content" id="qualityContent">
+                        <p style="text-align: center; color: #999; padding: 20px;">
+                            Chargement des métriques...
+                        </p>
+                    </div>
+                </div>
+
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    
+    <script src="csv/accidents_vaucluse.js"></script>
+    <script src="csv/comptages_demo.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
