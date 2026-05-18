@@ -76,7 +76,7 @@ L'architecture des données est séparée par usage :
 - `data/external/` : GeoJSON rafraîchis automatiquement depuis des sources externes.
 - `data/demo/` : données de secours pour garder une carte exploitable si une source manque.
 
-`js/config.js` centralise les chemins de fichiers et les sources dynamiques. `js/api.js` fournit un chargeur JSON/GeoJSON avec cache navigateur. `js/app.js` ne contient plus de gros blocs GeoJSON embarqués : il lit les fichiers déclarés dans la configuration.
+`js/config.js` centralise les chemins de fichiers et les sources dynamiques. `js/api.js` fournit un chargeur JSON/GeoJSON avec cache navigateur. `js/app.js` lit les fichiers déclarés dans la configuration.
 
 Deux scripts Python maintiennent les données :
 
