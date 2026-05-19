@@ -4,8 +4,6 @@
 
 <img width="1600" alt="image" src="https://github.com/user-attachments/assets/e6869b00-8e30-4ec1-8b15-789ae8b39dbb" />
 
-<img width="1600" alt="image" src="https://github.com/user-attachments/assets/a0abcb01-5bd8-48db-afe9-19465384e6df" />
-
 ---
 
 # Démo Inforoute 084
