@@ -33,7 +33,7 @@ Le prototype sert surtout à rendre les données routières lisibles dans une in
 
 ## Fraîcheur des données
 
-La page indique les données externes rafraîchies toutes les 3 heures. Le principe est volontairement simple : le navigateur lit des fichiers GeoJSON locaux, et les scripts de mise à jour régénèrent ces fichiers.
+La page indique les données externes rafraîchies toutes les 3 heures. Le navigateur lit des fichiers GeoJSON locaux, et les scripts de mise à jour régénèrent ces fichiers.
 
 - Données statiques : routes, limite départementale, communes, accidentologie et fallback de démonstration.
 - Données rafraîchies toutes les 3 h : comptages CD84 depuis data.gouv.fr et événements Info Routière.
@@ -52,7 +52,7 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le princ
 | Limite du Vaucluse | OpenStreetMap | GeoJSON local | Limite départementale 84, figée dans `data/static/`. |
 | Accidentologie | Fichier fourni / BAAC | 2024 | 113 accidents, tous datés de 2024. |
 | Comptages CD84 | data.gouv.fr | 1996-2025 | 3 098 observations ; la carte affiche la dernière année disponible par station. |
-| Événements routiers | Info Routière | cache toutes les 3 h | Le cache actuel contient 0 événement ; la source était indisponible au dernier rafraîchissement local. |
+| Événements routiers | Info Routière | cache toutes les 3 h | |
 | Météo | Open-Meteo | temps courant | Appel direct, non versionné. |
 
 ## Lancer la démo en local
@@ -91,4 +91,4 @@ python3 scripts/update_external_data.py
 demo-inforoute-084/0.1.0 (https://github.com/thepriben/demo-inforoute-084)
 ```
 
-`scripts/update_external_data.py` matérialise les données data.gouv.fr et Info Routière dans `data/external/`. Si Info Routière est indisponible, le script conserve un GeoJSON vide avec l'erreur dans `_cache`, ce qui évite de casser la page.
+`scripts/update_external_data.py` matérialise les données data.gouv.fr et Info Routière dans `data/external/`. Si Info Routière est indisponible, le script conserve un GeoJSON vide avec l'erreur dans `_cache`.
