@@ -271,23 +271,27 @@
 
                 <div class="legend-section">
                     <div class="legend-title">Informations Réseau</div>
-                    <div class="info-box">
-                        <h3>Statistiques du réseau</h3>
+                    <div class="info-box" id="networkStatsBox">
+                        <h3>Statistiques calculées</h3>
                         <div class="stat">
-                            <span>Longueur totale</span>
-                            <span class="stat-value">2 342 km</span>
+                            <span>Routes uniques (réf.)</span>
+                            <span class="stat-value" id="networkStat-refs">…</span>
                         </div>
                         <div class="stat">
-                            <span>Trafic min/max</span>
-                            <span class="stat-value">200 - 75k véh/j</span>
+                            <span>Tronçons OSM</span>
+                            <span class="stat-value" id="networkStat-segments">…</span>
                         </div>
                         <div class="stat">
-                            <span>Agences routières</span>
-                            <span class="stat-value">4 unités</span>
+                            <span>Longueur cumulée</span>
+                            <span class="stat-value" id="networkStat-length">…</span>
                         </div>
                         <div class="stat">
-                            <span>Centres routiers</span>
-                            <span class="stat-value">11 unités</span>
+                            <span>Trafic MJA min / max</span>
+                            <span class="stat-value" id="networkStat-traffic">…</span>
+                        </div>
+                        <div class="stat">
+                            <span>Ponts &amp; tunnels</span>
+                            <span class="stat-value" id="networkStat-structures">…</span>
                         </div>
                     </div>
                 </div>

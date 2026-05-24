@@ -746,35 +746,19 @@
                 
                 // Filtrer et mettre en évidence les routes adaptées
                 filterRoutesForConvois();
-                
-                // Message d'information
-                L.popup()
+
+                // Petit toast discret (~2,5 s) : la légende complète est dans l'aide sidebar
+                L.popup({ closeButton: false, autoClose: true, closeOnClick: true })
                     .setLatLng(window.map.getCenter())
                     .setContent(`
-                        <div style="padding: 15px; text-align: center;">
-                            <strong style="font-size: 1.2rem;">🚛 Mode Convois Exceptionnels</strong>
-                            <div style="margin: 15px 0; padding: 12px; background: #f0f0f0; border-radius: 8px; text-align: left;">
-                                <div style="font-size: 0.9rem; line-height: 1.6;">
-                                    <strong>Routes prioritaires affichées :</strong>
-                                    <ul style="margin: 10px 0; padding-left: 20px;">
-                                        <li>🔴 <strong>Réseau régional</strong> (axes principaux)</li>
-                                        <li>🟠 <strong>Réseau territorial</strong> (connexions)</li>
-                                    </ul>
-                                    <div style="margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 0.85rem;">
-                                        ⚠️ <strong>Important :</strong> Routes de largeur ≥ 6m privilégiées<br>
-                                        Les routes locales étroites sont masquées
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="font-size: 0.8rem; color: #666; margin-top: 10px;">
-                                💡 Consultez la DDE pour les autorisations spécifiques et restrictions ponctuelles
-                            </div>
+                        <div style="padding: 10px 14px; text-align: center; font-size: 0.85rem;">
+                            <strong>🚛 Mode Convois Exceptionnels</strong><br>
+                            <small style="color:#5b6770;">Réseau régional + territorial mis en évidence,<br>réseau local atténué.</small>
                         </div>
                     `)
                     .openOn(window.map);
-                
-                setTimeout(() => window.map.closePopup(), 8000);
-                
+                setTimeout(() => window.map.closePopup(), 2500);
+
             } else {
                 console.log('✗ Mode Convois Exceptionnels désactivé');
                 
@@ -1159,29 +1143,6 @@
                         stationCount++;
                     }
                 });
-                
-                // Afficher un message informatif
-                L.popup()
-                    .setLatLng(window.map.getCenter())
-                    .setContent(`
-                        <div style="padding: 15px; text-align: center;">
-                            <strong style="font-size: 1.2rem;">📊 Données de Trafic CD84</strong>
-                            <div style="margin: 15px 0; padding: 12px; background: #f0f0f0; border-radius: 8px;">
-                                <div style="font-size: 2rem; font-weight: 700; color: #3498DB;">${stationCount}</div>
-                                <div style="font-size: 0.85rem; color: #666;">stations de comptage permanent</div>
-                            </div>
-                            <div style="font-size: 0.85rem; line-height: 1.6; text-align: left;">
-                                <strong>Les cercles animés</strong> représentent les stations de comptage du Département du Vaucluse avec :
-                                <ul style="margin: 10px 0; padding-left: 20px;">
-                                    <li>🔴 Trafic élevé (≥20k véh/j)</li>
-                                    <li>🟠 Trafic moyen (5-20k véh/j)</li>
-                                    <li>🔵 Trafic faible (<5k véh/j)</li>
-                                </ul>
-                                <strong>Cliquez sur une station</strong> pour voir les détails (MJA, taux PL, débit).
-                            </div>
-                        </div>
-                    `)
-                    .openOn(window.map);
                 
                 // Zoomer pour voir toutes les stations
                 const stationBounds = [];
@@ -1856,7 +1817,81 @@
             console.log('Métriques calculées:', qualityMetrics);
             displayQualityMetrics();
             updateWikidataSummary();
+            updateNetworkStats();
         }
+
+        // Calcul live des statistiques "Informations Réseau" depuis les polylines chargées.
+        function haversineKm(a, b) {
+            const R = 6371;
+            const toRad = d => d * Math.PI / 180;
+            const dLat = toRad(b.lat - a.lat);
+            const dLon = toRad(b.lng - a.lng);
+            const lat1 = toRad(a.lat);
+            const lat2 = toRad(b.lat);
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(h));
+        }
+
+        function polylineLengthKm(polyline) {
+            const pts = polyline.getLatLngs();
+            let total = 0;
+            for (let i = 1; i < pts.length; i++) total += haversineKm(pts[i - 1], pts[i]);
+            return total;
+        }
+
+        function updateNetworkStats() {
+            const refsEl = document.getElementById('networkStat-refs');
+            const segmentsEl = document.getElementById('networkStat-segments');
+            const lengthEl = document.getElementById('networkStat-length');
+            const trafficEl = document.getElementById('networkStat-traffic');
+            const structuresEl = document.getElementById('networkStat-structures');
+            if (!refsEl) return;
+
+            const refs = Object.keys(window.routePolylines || {});
+            let totalSegments = 0;
+            let totalKm = 0;
+            let bridgeCount = 0;
+            let tunnelCount = 0;
+            refs.forEach(ref => {
+                window.routePolylines[ref].forEach(polyline => {
+                    totalSegments++;
+                    totalKm += polylineLengthKm(polyline);
+                    const tags = polyline.options.wayTags || {};
+                    if (tags.bridge && tags.bridge !== 'no') bridgeCount++;
+                    if (tags.tunnel === 'yes') tunnelCount++;
+                });
+            });
+
+            refsEl.textContent = refs.length.toLocaleString('fr-FR');
+            segmentsEl.textContent = totalSegments.toLocaleString('fr-FR');
+            lengthEl.textContent = totalKm >= 1
+                ? `${Math.round(totalKm).toLocaleString('fr-FR')} km`
+                : '— km';
+            structuresEl.textContent = `${bridgeCount} pont${bridgeCount > 1 ? 's' : ''} · ${tunnelCount} tunnel${tunnelCount > 1 ? 's' : ''}`;
+
+            // Trafic MJA depuis les marqueurs de comptage chargés
+            const mjaValues = [];
+            (typeof trafficMarkers !== 'undefined' ? trafficMarkers : []).forEach(marker => {
+                const popup = marker.getPopup && marker.getPopup();
+                if (!popup) return;
+                const html = popup.getContent ? popup.getContent() : '';
+                const match = String(html).match(/MJA[^:]*:[^>]*?([\d\u00a0,. ]+)\s*v[ée]h\/jour/i);
+                if (match) {
+                    const num = Number.parseInt(match[1].replace(/[^0-9]/g, ''), 10);
+                    if (Number.isFinite(num) && num > 0) mjaValues.push(num);
+                }
+            });
+            if (mjaValues.length) {
+                const min = Math.min(...mjaValues);
+                const max = Math.max(...mjaValues);
+                const fmt = v => v >= 1000 ? `${Math.round(v / 1000)}k` : String(v);
+                trafficEl.textContent = `${fmt(min)} – ${fmt(max)} véh/j`;
+            } else {
+                trafficEl.textContent = '— véh/j';
+            }
+        }
+
+        window.updateNetworkStats = updateNetworkStats;
 
         function displayQualityMetrics() {
             const content = document.getElementById('qualityContent');
@@ -2051,16 +2086,7 @@
                 return false;
             });
             
-            console.log(`✓ ${matchingRoutes.length} routes mises en évidence`);
-            console.log('Routes:', matchingRoutes.join(', '));
-            
-            // Afficher un message temporaire
-            L.popup()
-                .setLatLng(map.getCenter())
-                .setContent(`<div style="padding: 10px; text-align: center;"><strong>${matchingRoutes.length} routes ${hasWikidata ? 'avec' : 'sans'} Wikidata</strong><br><small>${hasWikidata ? 'En vert' : 'En rouge'}</small></div>`)
-                .openOn(window.map);
-            
-            setTimeout(() => window.map.closePopup(), 2000);
+            console.log(`✓ ${matchingRoutes.length} routes mises en évidence (Wikidata : ${hasWikidata ? 'avec' : 'sans'})`);
         }
         
         window.highlightRoutesByRelation = function(hasRelation) {
@@ -2107,14 +2133,7 @@
                 return false;
             });
             
-            console.log(`✓ ${matchingRoutes.length} routes mises en évidence`);
-            
-            L.popup()
-                .setLatLng(map.getCenter())
-                .setContent(`<div style="padding: 10px; text-align: center;"><strong>${matchingRoutes.length} routes ${hasRelation ? 'avec' : 'sans'} Relation</strong><br><small>${hasRelation ? 'En vert' : 'En rouge'}</small></div>`)
-                .openOn(window.map);
-            
-            setTimeout(() => window.map.closePopup(), 2000);
+            console.log(`✓ ${matchingRoutes.length} routes mises en évidence (Relation : ${hasRelation ? 'avec' : 'sans'})`);
         }
         
         window.clearHighlight = function() {
@@ -2875,31 +2894,11 @@
                 errorMsg: geojsonData._cache?.error
             });
             
-            console.log(`✓ Total stations affichées: ${totalStations}`);
-            console.log(`✓ Année la plus récente: ${latestYear}`);
+            console.log(`✓ Total stations affichées: ${totalStations} (année max ${latestYear})`);
             console.log('🚦 === FIN CHARGEMENT STATIONS DE COMPTAGE ===');
-            
-            document.querySelector('.info-box').innerHTML = `
-                <h3>Statistiques du réseau</h3>
-                <div class="stat">
-                    <span>Longueur totale</span>
-                    <span class="stat-value">2 342 km</span>
-                </div>
-                <div class="stat">
-                    <span>Stations de comptage</span>
-                    <span class="stat-value">${totalStations}</span>
-                </div>
-                <div class="stat">
-                    <span>Année des données</span>
-                    <span class="stat-value">${latestYear}</span>
-                </div>
-                <div class="stat">
-                    <span>Source</span>
-                    <span class="stat-value">${sourceUsed}</span>
-                </div>
-            `;
 
-            console.log('Stations de comptage:', trafficCounts);
+            // Rafraîchir les statistiques "Informations Réseau" maintenant que les MJA sont connus.
+            if (typeof updateNetworkStats === 'function') updateNetworkStats();
         }
 
         // Charger les données d'accidentologie depuis le GeoJSON statique local
