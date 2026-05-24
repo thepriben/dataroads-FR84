@@ -3387,22 +3387,6 @@
                 
                 if (totalEvents > 0) {
                     console.log(`✓ Événements Bison Futé affichés:`, eventsCount);
-                    
-                    // Message d'information
-                    L.popup()
-                        .setLatLng([44.0, 5.1])
-                        .setContent(`
-                            <div style="padding: 12px; text-align: center;">
-                                <strong>🚗 Bison Futé chargé</strong><br>
-                                <small>${totalEvents} événement(s) dans la zone:<br>
-                                🚧 ${eventsCount.travaux} travaux | 
-                                🚗 ${eventsCount.bouchons} bouchons | 
-                                ⚠️ ${eventsCount.accidents} accidents</small>
-                            </div>
-                        `)
-                        .openOn(window.map);
-                    
-                    setTimeout(() => window.map.closePopup(), 4000);
                 } else {
                     console.log('ℹ️ Aucun événement Bison Futé dans la zone du Vaucluse actuellement');
                 }
