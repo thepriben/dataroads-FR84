@@ -31,6 +31,7 @@
             <div class="sidebar">
                 <div class="legend-section">
                     <div class="legend-title">Territoire</div>
+                    <span class="freshness-badge" id="freshness-boundary" data-schedule-key="static"></span>
                     
                     <div class="legend-item" style="pointer-events: none;">
                         <div class="legend-color" style="background: transparent; border: 2px dashed #2C3E50; height: 0px; width: 40px;"></div>
@@ -44,6 +45,7 @@
                         <span>Accidentologie</span>
                         <span id="accidentToggleIcon" class="toggle-icon is-hidden" title="Couche masquée — cliquer pour afficher" aria-label="Couche masquée (cliquer pour afficher)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg></span>
                     </div>
+                    <span class="freshness-badge" id="freshness-accidents" data-schedule-key="static"></span>
                     
                     <div class="legend-item" data-accident="mortel" style="pointer-events: none; opacity: 0.5;">
                         <div class="legend-color" style="background: #000000; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff;"></div>
@@ -73,6 +75,7 @@
                         <span>Routes en Construction</span>
                         <span id="constructionToggleIcon" class="toggle-icon is-hidden" title="Couche masquée — cliquer pour afficher" aria-label="Couche masquée (cliquer pour afficher)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg></span>
                     </div>
+                    <span class="freshness-badge" id="freshness-construction" data-schedule-key="osm"></span>
                     
                     <div class="legend-item" data-construction="highway" style="pointer-events: none; opacity: 0.5;">
                         <div class="legend-color" style="background: none; border: 3px dashed #F39C12; height: 0px; width: 40px;"></div>
@@ -96,6 +99,7 @@
                         <span>Stations de Comptage</span>
                         <span id="trafficToggleIcon" class="toggle-icon" title="Couche visible — cliquer pour masquer" aria-label="Couche visible (cliquer pour masquer)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></span>
                     </div>
+                    <span class="freshness-badge" id="freshness-traffic" data-schedule-key="external"></span>
                     
                     <div class="legend-item" data-traffic="high">
                         <div class="legend-color" style="background: #E74C3C; width: 12px; height: 12px; border-radius: 50%;"></div>
@@ -121,6 +125,7 @@
                         <span>Événements Routiers</span>
                         <span id="bisonFuteToggleIcon" class="toggle-icon" title="Couche visible — cliquer pour masquer" aria-label="Couche visible (cliquer pour masquer)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></span>
                     </div>
+                    <span class="freshness-badge" id="freshness-bison-fute" data-schedule-key="external"></span>
 
                     <div class="legend-item" data-bison-fute="travaux" style="pointer-events: none;">
                         <div class="legend-color" style="background: transparent; width: 18px; height: 18px; text-align: center; line-height: 18px;">🚧</div>
@@ -163,6 +168,7 @@
                         <span>Hiérarchie du Réseau</span>
                         <span id="hierarchyToggleIcon" class="toggle-icon" title="Couche visible — cliquer pour masquer" aria-label="Couche visible (cliquer pour masquer)"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></span>
                     </div>
+                    <span class="freshness-badge" id="freshness-hierarchy" data-schedule-key="osm"></span>
                     
                     <div class="legend-item" data-hierarchy="regional" onclick="toggleHierarchy('regional')" style="cursor: pointer; transition: all 0.3s;">
                         <div class="legend-color" style="background: #E74C3C; height: 6px;"></div>
@@ -190,6 +196,14 @@
                     
                     <div style="margin-top: 10px; padding: 8px; background: #f8f9fa; border-radius: 6px; font-size: 0.75rem; color: #666; text-align: center;">
                         💡 Cliquez sur le titre ou sur chaque niveau
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title">Qualité OSM / Wikidata</div>
+                    <span class="freshness-badge" id="freshness-wikidata" data-schedule-key="osm"></span>
+                    <div id="wikidataSummary" style="background:white;border-radius:8px;border:1px solid #dfe6e9;padding:10px;">
+                        <div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>
                     </div>
                 </div>
 
@@ -248,43 +262,50 @@
                 </div>
 
                 <div class="legend-section" style="margin-top: auto; padding-top: 20px; border-top: 2px solid #dfe6e9;">
-                    <div class="legend-title">Sources des Données</div>
-                    
-                    <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Routes Départementales</div>
-                        <div id="osmDataFreshness" style="font-size: 0.75rem; color: #666;">OpenStreetMap (GeoJSON local)</div>
-                    </div>
-                    
-                    <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Limite Départementale</div>
-                        <div id="boundaryDataFreshness" style="font-size: 0.75rem; color: #666;">OpenStreetMap (GeoJSON local)</div>
-                    </div>
-                    
-                    <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Stations de Comptage</div>
-                        <div id="trafficDataFreshness" style="font-size: 0.75rem; color: #666;">data.gouv.fr / CD84 (chargement...)</div>
+                    <div class="legend-title">Formule de rafraîchissement</div>
+
+                    <div class="refresh-formula">
+                        <div class="refresh-formula-row" data-schedule-key="osm">
+                            <div>
+                                <div class="refresh-formula-label">OSM (routes, communes, constructions)</div>
+                                <div style="font-size:0.7rem;color:#7f8c8d;">Source : Overpass → workflow GitHub Actions</div>
+                            </div>
+                            <div class="refresh-formula-meta" id="refreshMetaOsm">
+                                Hebdo · lun. 03:17 UTC<br>—
+                            </div>
+                        </div>
+
+                        <div class="refresh-formula-row" data-schedule-key="external">
+                            <div>
+                                <div class="refresh-formula-label">Externe (comptages, événements)</div>
+                                <div style="font-size:0.7rem;color:#7f8c8d;">data.gouv.fr · Bison Futé DATEX II</div>
+                            </div>
+                            <div class="refresh-formula-meta" id="refreshMetaExternal">
+                                Toutes les 3 h · xx:23 UTC<br>—
+                            </div>
+                        </div>
+
+                        <div class="refresh-formula-row" data-schedule-key="live">
+                            <div>
+                                <div class="refresh-formula-label">Météo Open-Meteo</div>
+                                <div style="font-size:0.7rem;color:#7f8c8d;">Live navigateur</div>
+                            </div>
+                            <div class="refresh-formula-meta">Toutes les 10 min</div>
+                        </div>
+
+                        <div class="refresh-formula-row" data-schedule-key="static">
+                            <div>
+                                <div class="refresh-formula-label">Statique (limite 84, accidents)</div>
+                                <div style="font-size:0.7rem;color:#7f8c8d;">Snapshot versionné dans le dépôt</div>
+                            </div>
+                            <div class="refresh-formula-meta">Figé · mise à jour manuelle</div>
+                        </div>
                     </div>
 
-                    <div class="legend-item" style="display: block; padding: 6px 0; border-bottom: 1px solid #f0f0f0;">
-                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Événements Routiers</div>
-                        <div id="roadEventsFreshness" style="font-size: 0.75rem; color: #666;">Info Routière (chargement...)</div>
-                    </div>
-                    
-                    <div class="legend-item" style="display: block; padding: 6px 0;">
-                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Accidentologie</div>
-                        <div id="accidentDataFreshness" style="font-size: 0.75rem; color: #666;">ONISR / BAAC (GeoJSON local)</div>
+                    <div id="externalRefreshStatus" style="margin-top: 12px; padding: 9px; background: #eef6ff; border-radius: 6px; font-size: 0.7rem; color: #2C3E50; text-align: center; line-height: 1.4;">
+                        Chargement de l'état des sources…
                     </div>
 
-                    <div class="legend-item" style="display: block; padding: 6px 0;">
-                        <div style="font-weight: 600; color: #2C3E50; font-size: 0.85rem; margin-bottom: 3px;">Météo</div>
-                        <div style="font-size: 0.75rem; color: #666;">Open-Meteo (direct, toutes les 10 min)</div>
-                    </div>
-
-                    <div id="externalRefreshStatus" style="margin-top: 10px; padding: 9px; background: #eef6ff; border-radius: 6px; font-size: 0.7rem; color: #2C3E50; text-align: center; line-height: 1.4;">
-                        Données externes : cache local rafraîchi toutes les 3 h<br>
-                        Dernier cache : chargement...
-                    </div>
-                    
                     <div style="margin-top: 12px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 0.7rem; color: #666; text-align: center; line-height: 1.4;">
                         Carte interactive - Prise de poste<br>
                         <strong>Département du Vaucluse (84)</strong>

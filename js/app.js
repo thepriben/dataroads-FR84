@@ -12,6 +12,210 @@
             iconElement.setAttribute('title', visible ? 'Couche visible — cliquer pour masquer' : 'Couche masquée — cliquer pour afficher');
         }
 
+        // ========== FRESHNESS BADGES (date d'intégration + prochain rafraîchissement) ==========
+
+        const FRESHNESS_SCHEDULES = {
+            osm: {
+                label: 'Hebdomadaire — lundi 03:17 UTC',
+                source: 'OpenStreetMap via Overpass',
+                cron: '17 3 * * 1',
+                intervalMs: 7 * 24 * 60 * 60 * 1000
+            },
+            external: {
+                label: 'Toutes les 3 h — à xx:23 UTC',
+                source: 'data.gouv.fr & Bison Futé',
+                cron: '23 */3 * * *',
+                intervalMs: 3 * 60 * 60 * 1000
+            },
+            static: {
+                label: 'Figé dans le dépôt — mise à jour manuelle',
+                source: 'Snapshot versionné (BAAC / OSM)'
+            },
+            live: {
+                label: 'Toutes les 10 min — directement dans le navigateur',
+                source: 'Open-Meteo (live)',
+                intervalMs: 10 * 60 * 1000
+            }
+        };
+
+        function parseCronField(field, min, max) {
+            if (field === '*') {
+                const out = [];
+                for (let i = min; i <= max; i++) out.push(i);
+                return out;
+            }
+            if (field.startsWith('*/')) {
+                const step = Number.parseInt(field.slice(2), 10) || 1;
+                const out = [];
+                for (let i = min; i <= max; i += step) out.push(i);
+                return out;
+            }
+            return field
+                .split(',')
+                .map(value => Number.parseInt(value, 10))
+                .filter(Number.isFinite);
+        }
+
+        // Compute the next UTC occurrence matching a 5-field cron expression.
+        // Only supports the patterns we use (`23 */3 * * *`, `17 3 * * 1`).
+        function nextCronUtc(cronExpr, from = new Date()) {
+            const parts = cronExpr.trim().split(/\s+/);
+            if (parts.length !== 5) return null;
+            const minutes = parseCronField(parts[0], 0, 59);
+            const hours = parseCronField(parts[1], 0, 23);
+            const doms = parseCronField(parts[2], 1, 31);
+            const months = parseCronField(parts[3], 1, 12);
+            const dows = parseCronField(parts[4], 0, 6);
+
+            const candidate = new Date(from.getTime() + 60000);
+            candidate.setUTCSeconds(0, 0);
+
+            for (let i = 0; i < 366 * 24 * 60; i++) {
+                if (
+                    minutes.includes(candidate.getUTCMinutes()) &&
+                    hours.includes(candidate.getUTCHours()) &&
+                    doms.includes(candidate.getUTCDate()) &&
+                    months.includes(candidate.getUTCMonth() + 1) &&
+                    dows.includes(candidate.getUTCDay())
+                ) {
+                    return candidate;
+                }
+                candidate.setUTCMinutes(candidate.getUTCMinutes() + 1);
+            }
+            return null;
+        }
+
+        function formatRelativeDuration(ms, opts = {}) {
+            const future = !!opts.future;
+            const abs = Math.abs(ms);
+            const prefix = future ? 'dans ' : 'il y a ';
+            if (abs < 60000) return future ? 'imminent' : "à l'instant";
+            const minutes = Math.round(abs / 60000);
+            if (minutes < 60) return `${prefix}${minutes} min`;
+            const hours = Math.floor(minutes / 60);
+            const remMin = minutes % 60;
+            if (hours < 24) return `${prefix}${hours}h${remMin > 0 ? String(remMin).padStart(2, '0') : ''}`;
+            const days = Math.floor(hours / 24);
+            const remH = hours % 24;
+            return `${prefix}${days}j${remH > 0 ? ` ${remH}h` : ''}`;
+        }
+
+        function freshnessState(generatedAtMs, scheduleConfig) {
+            if (!scheduleConfig.intervalMs) {
+                return { color: '#7f8c8d', tone: '#7f8c8d22', label: 'figé', dotLabel: 'static' };
+            }
+            if (!generatedAtMs) {
+                return { color: '#95A5A6', tone: '#95A5A622', label: 'inconnu', dotLabel: 'unknown' };
+            }
+            const ageMs = Date.now() - generatedAtMs;
+            const interval = scheduleConfig.intervalMs;
+            if (ageMs <= interval * 1.15) return { color: '#27AE60', tone: '#27AE6022', label: 'à jour', dotLabel: 'fresh' };
+            if (ageMs <= interval * 2) return { color: '#F39C12', tone: '#F39C1222', label: 'en retard', dotLabel: 'late' };
+            return { color: '#E74C3C', tone: '#E74C3C22', label: 'obsolète', dotLabel: 'stale' };
+        }
+
+        const latestCacheByGroup = {};
+
+        function updateRefreshFormulaCell(scheduleKey) {
+            const config = FRESHNESS_SCHEDULES[scheduleKey];
+            if (!config) return;
+            const cellId = 'refreshMeta' + scheduleKey.charAt(0).toUpperCase() + scheduleKey.slice(1);
+            const cell = document.getElementById(cellId);
+            if (!cell) return;
+
+            const generatedAt = latestCacheByGroup[scheduleKey];
+            const lines = [];
+
+            if (scheduleKey === 'osm') lines.push('Hebdo · lun. 03:17 UTC');
+            else if (scheduleKey === 'external') lines.push('Toutes les 3 h · xx:23 UTC');
+
+            if (config.cron) {
+                const next = nextCronUtc(config.cron);
+                if (generatedAt) {
+                    const age = formatRelativeDuration(Date.now() - new Date(generatedAt).getTime());
+                    const nextLabel = next
+                        ? `prochain ${formatRelativeDuration(next.getTime() - Date.now(), { future: true })}`
+                        : '';
+                    lines.push(`${age} · ${nextLabel}`);
+                } else if (next) {
+                    lines.push(`prochain ${formatRelativeDuration(next.getTime() - Date.now(), { future: true })}`);
+                }
+            }
+
+            cell.innerHTML = lines.join('<br>');
+        }
+
+        function renderFreshnessBadge(element, { generatedAt, scheduleKey, errorMsg } = {}) {
+            if (!element) return;
+            const config = FRESHNESS_SCHEDULES[scheduleKey] || {};
+            const generatedAtMs = generatedAt ? new Date(generatedAt).getTime() : null;
+            const state = freshnessState(generatedAtMs, config);
+
+            if (generatedAt && config.cron) {
+                const current = latestCacheByGroup[scheduleKey];
+                if (!current || new Date(generatedAt).getTime() > new Date(current).getTime()) {
+                    latestCacheByGroup[scheduleKey] = generatedAt;
+                    updateRefreshFormulaCell(scheduleKey);
+                }
+            }
+
+            const ageText = generatedAtMs
+                ? formatRelativeDuration(Date.now() - generatedAtMs)
+                : (scheduleKey === 'static' ? 'snapshot' : '—');
+
+            let nextText = '';
+            if (config.cron) {
+                const next = nextCronUtc(config.cron);
+                if (next) {
+                    nextText = ` • prochain ${formatRelativeDuration(next.getTime() - Date.now(), { future: true })}`;
+                }
+            } else if (config.intervalMs && generatedAtMs) {
+                const nextMs = generatedAtMs + config.intervalMs;
+                if (nextMs > Date.now()) {
+                    nextText = ` • prochain ${formatRelativeDuration(nextMs - Date.now(), { future: true })}`;
+                }
+            }
+
+            element.classList.add('freshness-badge');
+            element.dataset.scheduleKey = scheduleKey || '';
+            if (generatedAt) element.dataset.generatedAt = generatedAt;
+            if (errorMsg) element.dataset.errorMsg = errorMsg; else delete element.dataset.errorMsg;
+
+            const tooltipLines = [
+                config.label || '',
+                config.source ? `Source : ${config.source}` : '',
+                generatedAt ? `Intégré le ${formatParisDateTime(generatedAt)}` : '',
+                errorMsg ? `Erreur : ${errorMsg}` : ''
+            ].filter(Boolean);
+            element.title = tooltipLines.join('\n');
+
+            const errorIcon = errorMsg ? '<span style="margin-left:4px;">⚠</span>' : '';
+            element.innerHTML = `<span class="freshness-pill" style="background:${state.tone};color:${state.color};"><span class="freshness-dot" style="background:${state.color};"></span>${ageText}${nextText}${errorIcon}</span>`;
+        }
+
+        function refreshAllBadges() {
+            document.querySelectorAll('.freshness-badge').forEach(el => {
+                const scheduleKey = el.dataset.scheduleKey;
+                const generatedAt = el.dataset.generatedAt;
+                const errorMsg = el.dataset.errorMsg;
+                if (scheduleKey) {
+                    renderFreshnessBadge(el, { generatedAt, scheduleKey, errorMsg });
+                }
+            });
+            Object.keys(FRESHNESS_SCHEDULES).forEach(updateRefreshFormulaCell);
+        }
+
+        window.setInterval(refreshAllBadges, 60000);
+
+        // Initial render so the bottom panel shows the cron formulas right away.
+        document.addEventListener('DOMContentLoaded', () => {
+            Object.keys(FRESHNESS_SCHEDULES).forEach(updateRefreshFormulaCell);
+            document.querySelectorAll('.freshness-badge').forEach(el => {
+                const scheduleKey = el.dataset.scheduleKey;
+                if (scheduleKey) renderFreshnessBadge(el, { scheduleKey });
+            });
+        });
+
         const hierarchyColors = {
             regional: '#E74C3C',
             territorial: '#F39C12',
@@ -856,7 +1060,10 @@
         async function loadVaucluseBoundary() {
             try {
                 const geojsonData = await window.InforouteApi.fetchGeoJson('vaucluse-boundary');
-                setSourceText('boundaryDataFreshness', 'OpenStreetMap (limite 84, GeoJSON local)');
+                renderFreshnessBadge(document.getElementById('freshness-boundary'), {
+                    generatedAt: geojsonData._cache?.generated_at,
+                    scheduleKey: 'static'
+                });
                 
                 // Ajouter la limite départementale avec Leaflet
                 const boundaryLayer = L.geoJSON(geojsonData, {
@@ -915,8 +1122,14 @@
             try {
                 const data = await window.InforouteApi.fetchGeoJson('departmental-roads');
                 const osmGeneratedAt = data._cache?.generated_at;
-                const osmDate = osmGeneratedAt ? formatParisDateTime(osmGeneratedAt) : 'GeoJSON local';
-                setSourceText('osmDataFreshness', `OpenStreetMap (cache ${osmDate})`);
+                renderFreshnessBadge(document.getElementById('freshness-hierarchy'), {
+                    generatedAt: osmGeneratedAt,
+                    scheduleKey: 'osm'
+                });
+                renderFreshnessBadge(document.getElementById('freshness-wikidata'), {
+                    generatedAt: osmGeneratedAt,
+                    scheduleKey: 'osm'
+                });
                 routesLoadingPopup.remove();
 
                 if (data.features && data.features.length > 0) {
@@ -1134,16 +1347,34 @@
                                         `}
                                         
                                         <div class="detail" style="margin-top: 12px; padding-top: 12px; border-top: 2px solid #e0e0e0;">
-                                            ${way.id ? `
-                                                <a href="https://www.openstreetmap.org/way/${way.id}" target="_blank" style="color: #3498DB; font-weight: 600; text-decoration: none; display: inline-block; margin-right: 15px; margin-bottom: 8px;">
-                                                    🗺️ Tronçon OSM →
-                                                </a>
-                                            ` : ''}
-                                            ${way.hasRelation ? `
-                                                <a href="https://www.openstreetmap.org/relation/${way.relationId}" target="_blank" style="color: #27AE60; font-weight: 600; text-decoration: none; display: inline-block; margin-bottom: 8px;">
-                                                    📋 Relation →
-                                                </a>
-                                            ` : ''}
+                                            <div style="font-size: 0.7rem; font-weight: 700; color: #7f8c8d; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Contribuer / Qualifier</div>
+                                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                                ${way.id ? `
+                                                    <a href="https://www.openstreetmap.org/way/${way.id}" target="_blank" style="color: #3498DB; font-weight: 600; text-decoration: none; padding: 4px 8px; border: 1px solid #3498DB; border-radius: 4px; font-size: 0.78rem;">
+                                                        🗺️ Voir tronçon OSM
+                                                    </a>
+                                                    <a href="https://www.openstreetmap.org/edit?editor=id&way=${way.id}" target="_blank" title="Éditer ce tronçon dans iD" style="color: #2C3E50; font-weight: 600; text-decoration: none; padding: 4px 8px; border: 1px solid #2C3E50; border-radius: 4px; font-size: 0.78rem;">
+                                                        ✏️ Éditer dans iD
+                                                    </a>
+                                                ` : ''}
+                                                ${way.hasRelation ? `
+                                                    <a href="https://www.openstreetmap.org/relation/${way.relationId}" target="_blank" style="color: #27AE60; font-weight: 600; text-decoration: none; padding: 4px 8px; border: 1px solid #27AE60; border-radius: 4px; font-size: 0.78rem;">
+                                                        📋 Voir relation
+                                                    </a>
+                                                    <a href="https://www.openstreetmap.org/edit?editor=id&relation=${way.relationId}" target="_blank" title="Éditer la relation dans iD" style="color: #16a085; font-weight: 600; text-decoration: none; padding: 4px 8px; border: 1px solid #16a085; border-radius: 4px; font-size: 0.78rem;">
+                                                        ✏️ Éditer relation
+                                                    </a>
+                                                ` : ''}
+                                                ${(way.relationTags?.wikidata || way.tags.wikidata) ? `
+                                                    <a href="https://www.wikidata.org/wiki/${way.relationTags?.wikidata || way.tags.wikidata}#identifiers" target="_blank" style="color: #9B59B6; font-weight: 600; text-decoration: none; padding: 4px 8px; border: 1px solid #9B59B6; border-radius: 4px; font-size: 0.78rem;">
+                                                        📚 Compléter Wikidata
+                                                    </a>
+                                                ` : `
+                                                    <a href="https://www.wikidata.org/wiki/Special:NewItem" target="_blank" title="Créer un nouvel item Wikidata pour cette route" style="color: #E74C3C; font-weight: 600; text-decoration: none; padding: 4px 8px; border: 1px solid #E74C3C; border-radius: 4px; font-size: 0.78rem;">
+                                                        ➕ Créer item Wikidata
+                                                    </a>
+                                                `}
+                                            </div>
                                         </div>
                                     </div>
                                 `;
@@ -1208,6 +1439,10 @@
                     
                     // Créer la liste des routes
                     createRoadList();
+
+                    // Calculer les métriques de qualité OSM/Wikidata et alimenter le résumé sidebar
+                    calculateQualityMetrics();
+                    updateWikidataSummary();
                 }
             } catch (error) {
                 routesLoadingPopup.remove();
@@ -1285,6 +1520,48 @@
             totalSegments: 0
         };
 
+        // Met à jour la mini-carte Wikidata visible en permanence dans la sidebar
+        function updateWikidataSummary() {
+            const container = document.getElementById('wikidataSummary');
+            if (!container) return;
+            const total = qualityMetrics.totalRoutes || 0;
+            if (total === 0) {
+                container.innerHTML = '<div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>';
+                return;
+            }
+            const withWd = qualityMetrics.withWikidata || 0;
+            const without = total - withWd;
+            const pct = Math.round((withWd / total) * 100);
+            const withRel = qualityMetrics.withRelation || 0;
+            const withoutRel = total - withRel;
+
+            container.innerHTML = `
+                <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
+                    <span style="font-family:'JetBrains Mono', monospace;font-size:1.4rem;font-weight:700;color:#27AE60;">${withWd}</span>
+                    <span style="font-size:0.8rem;color:#7f8c8d;">/ ${total} routes liées Wikidata</span>
+                    <span style="margin-left:auto;font-family:'JetBrains Mono', monospace;font-weight:700;color:#2C3E50;">${pct}%</span>
+                </div>
+                <div style="height:6px;border-radius:3px;background:#ecf0f1;overflow:hidden;display:flex;margin-bottom:8px;">
+                    <div style="width:${pct}%;background:linear-gradient(90deg,#27AE60,#2ECC71);"></div>
+                    <div style="width:${100 - pct}%;background:linear-gradient(90deg,#E74C3C,#C0392B);"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;margin-bottom:8px;">
+                    <div style="padding:6px 8px;background:#fdecea;border-radius:4px;color:#922b21;">
+                        <strong>${without}</strong> routes <em>sans Wikidata</em>
+                    </div>
+                    <div style="padding:6px 8px;background:#fef5e7;border-radius:4px;color:#8a5a00;">
+                        <strong>${withoutRel}</strong> routes <em>sans relation</em>
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button onclick="highlightRoutesByWikidata(false)" style="flex:1;border:1px solid #E74C3C;background:white;color:#E74C3C;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">Voir les routes sans Wikidata</button>
+                    <button onclick="toggleQualityPanel()" title="Ouvrir le panneau Qualité OSM" style="border:1px solid #3498DB;background:white;color:#3498DB;border-radius:5px;padding:6px 10px;font-size:0.7rem;font-weight:600;cursor:pointer;">Détails →</button>
+                </div>
+            `;
+        }
+
+        window.updateWikidataSummary = updateWikidataSummary;
+
         window.calculateQualityMetrics = function() {
             console.log('📊 Calcul des métriques de qualité OSM...');
             
@@ -1331,6 +1608,7 @@
 
             console.log('Métriques calculées:', qualityMetrics);
             displayQualityMetrics();
+            updateWikidataSummary();
         }
 
         function displayQualityMetrics() {
@@ -2194,7 +2472,11 @@
                 try {
                     geojsonData = await window.InforouteApi.fetchGeoJson('traffic-counting-demo');
                     sourceUsed = 'Données de démonstration (GeoJSON local)';
-                    setSourceText('trafficDataFreshness', 'Démonstration locale (5 stations 2024)');
+                    renderFreshnessBadge(document.getElementById('freshness-traffic'), {
+                        generatedAt: geojsonData._cache?.generated_at,
+                        scheduleKey: 'external',
+                        errorMsg: 'Source réelle indisponible, démo affichée'
+                    });
                 } catch (error) {
                     console.error('❌ Échec du chargement des données de démonstration:', error);
                 }
@@ -2340,10 +2622,11 @@
             const years = Object.values(latestDataByStation).map(d => d.year).filter(Number.isFinite);
             const latestYear = years.length ? Math.max(...years) : 'N/A';
             const sourceYears = formatYearRange(collectYears(geojsonData.features, ['annee', 'year', 'an']));
-            const cacheDate = geojsonData._cache?.generated_at
-                ? `, cache ${formatParisDateTime(geojsonData._cache.generated_at)}`
-                : '';
-            setSourceText('trafficDataFreshness', `data.gouv.fr / CD84 (${sourceYears}${cacheDate})`);
+            renderFreshnessBadge(document.getElementById('freshness-traffic'), {
+                generatedAt: geojsonData._cache?.generated_at,
+                scheduleKey: 'external',
+                errorMsg: geojsonData._cache?.error
+            });
             
             console.log(`✓ Total stations affichées: ${totalStations}`);
             console.log(`✓ Année la plus récente: ${latestYear}`);
@@ -2380,8 +2663,10 @@
                 const dataToUse = await window.InforouteApi.fetchGeoJson('accidents');
                 const stats = dataToUse.metadata?.statistiques || {};
                 const features = dataToUse.features;
-                const accidentYears = formatYearRange(collectYears(features, ['date']));
-                setSourceText('accidentDataFreshness', `ONISR / BAAC ${accidentYears} (${features.length} accidents)`);
+                renderFreshnessBadge(document.getElementById('freshness-accidents'), {
+                    generatedAt: dataToUse._cache?.generated_at,
+                    scheduleKey: 'static'
+                });
                 
                 console.log(`✓ ${features.length} accidents chargés pour le Vaucluse`);
                 console.log('Statistiques:', stats);
@@ -2501,6 +2786,10 @@
                 console.log('   Zone : Vaucluse (84) + bbox élargi');
                 
                 const data = await window.InforouteApi.fetchGeoJson('construction-roads');
+                renderFreshnessBadge(document.getElementById('freshness-construction'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'osm'
+                });
                 const constructionWays = (data.features || [])
                     .map(geoJsonLineFeatureToWay)
                     .filter(Boolean);
@@ -2784,11 +3073,11 @@
                 const data = await window.InforouteApi.fetchGeoJson('road-events');
                 updateExternalRefreshStatus('Info Routière', data._cache);
 
-                const roadEventsDate = data._cache?.generated_at
-                    ? `cache ${formatParisDateTime(data._cache.generated_at)}`
-                    : 'GeoJSON local';
-                const roadEventsError = data._cache?.error ? ', source indisponible' : '';
-                setSourceText('roadEventsFreshness', `Info Routière (${data.features?.length || 0} événement(s), ${roadEventsDate}${roadEventsError})`);
+                renderFreshnessBadge(document.getElementById('freshness-bison-fute'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'external',
+                    errorMsg: data._cache?.error
+                });
                 
                 if (!data.features || data.features.length === 0) {
                     console.log('ℹ️ Aucun événement Info Routière dans le GeoJSON local');
