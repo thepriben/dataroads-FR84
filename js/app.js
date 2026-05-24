@@ -216,6 +216,251 @@
             });
         });
 
+        // ========== WIKIDATA INFOBOX (onglet dédié dans le popup route) ==========
+
+        const WIKIDATA_INFOBOX_CACHE = new Map();
+
+        // Propriétés Wikidata mises en avant dans l'infobox, dans l'ordre d'affichage.
+        const WIKIDATA_PROPS_TO_DISPLAY = [
+            { id: 'P31',   label: 'Nature' },
+            { id: 'P17',   label: 'Pays' },
+            { id: 'P131',  label: 'Localisation' },
+            { id: 'P2043', label: 'Longueur' },
+            { id: 'P126',  label: 'Gestionnaire' },
+            { id: 'P137',  label: 'Opérateur' },
+            { id: 'P16',   label: 'Système routier' },
+            { id: 'P1622', label: 'Sens de circulation' },
+            { id: 'P571',  label: 'Date de création' },
+            { id: 'P729',  label: 'Mise en service' },
+            { id: 'P281',  label: 'Code postal' }
+        ];
+
+        function commonsImageUrl(filename, width = 400) {
+            return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=${width}`;
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        async function fetchWikidataItem(qid) {
+            const url = `https://www.wikidata.org/wiki/Special:EntityData/${encodeURIComponent(qid)}.json`;
+            const response = await fetch(url, { credentials: 'omit' });
+            if (!response.ok) throw new Error(`Wikidata HTTP ${response.status}`);
+            const data = await response.json();
+            return data.entities ? data.entities[qid] : null;
+        }
+
+        async function fetchWikidataLabels(qids) {
+            if (!qids.length) return {};
+            const params = new URLSearchParams({
+                action: 'wbgetentities',
+                ids: qids.slice(0, 50).join('|'),
+                format: 'json',
+                languages: 'fr|en',
+                props: 'labels',
+                origin: '*'
+            });
+            const response = await fetch(`https://www.wikidata.org/w/api.php?${params}`, { credentials: 'omit' });
+            if (!response.ok) throw new Error(`Wikidata labels HTTP ${response.status}`);
+            const data = await response.json();
+            const out = {};
+            Object.entries(data.entities || {}).forEach(([id, entity]) => {
+                out[id] = entity.labels?.fr?.value || entity.labels?.en?.value || id;
+            });
+            return out;
+        }
+
+        async function fetchWikipediaSummary(title) {
+            try {
+                const url = `https://fr.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+                const response = await fetch(url, { credentials: 'omit' });
+                if (!response.ok) return null;
+                return await response.json();
+            } catch {
+                return null;
+            }
+        }
+
+        function extractWikidataValues(entity) {
+            const claims = entity.claims || {};
+            const out = {};
+            Object.keys(claims).forEach(propId => {
+                out[propId] = claims[propId]
+                    .filter(s => s.rank !== 'deprecated' && s.mainsnak?.snaktype === 'value')
+                    .map(s => ({ value: s.mainsnak.datavalue.value, type: s.mainsnak.datavalue.type }));
+            });
+            return out;
+        }
+
+        function formatWikidataValue(item, labels) {
+            if (item.type === 'wikibase-entityid' && item.value.id) {
+                const label = labels[item.value.id] || item.value.id;
+                return `<a href="https://www.wikidata.org/wiki/${item.value.id}" target="_blank" style="color:#3498DB; text-decoration:none;">${escapeHtml(label)}</a>`;
+            }
+            if (item.type === 'quantity') {
+                const amount = item.value.amount.replace(/^\+/, '');
+                const unitUrl = item.value.unit;
+                const unitLabel = unitUrl && unitUrl !== '1' ? ' ' + (labels[unitUrl.split('/').pop()] || '') : '';
+                return `${amount}${unitLabel}`;
+            }
+            if (item.type === 'time') {
+                return item.value.time.replace(/^\+/, '').slice(0, 10);
+            }
+            if (item.type === 'monolingualtext') return escapeHtml(item.value.text);
+            if (item.type === 'string') return escapeHtml(item.value);
+            if (item.type === 'globecoordinate') {
+                return `${item.value.latitude.toFixed(5)}, ${item.value.longitude.toFixed(5)}`;
+            }
+            return '—';
+        }
+
+        async function loadWikidataInfobox(qid, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            if (WIKIDATA_INFOBOX_CACHE.has(qid)) {
+                container.innerHTML = WIKIDATA_INFOBOX_CACHE.get(qid);
+                return;
+            }
+
+            container.innerHTML = `<div style="padding:16px; text-align:center; color:#7f8c8d; font-size:0.8rem;">⏳ Chargement de l'infobox Wikidata…</div>`;
+
+            try {
+                const entity = await fetchWikidataItem(qid);
+                if (!entity) throw new Error('Entité introuvable');
+
+                const labelFr = entity.labels?.fr?.value || entity.labels?.en?.value || qid;
+                const descriptionFr = entity.descriptions?.fr?.value || entity.descriptions?.en?.value || '';
+                const claims = extractWikidataValues(entity);
+
+                const entityIds = new Set();
+                WIKIDATA_PROPS_TO_DISPLAY.forEach(prop => {
+                    (claims[prop.id] || []).forEach(c => {
+                        if (c.type === 'wikibase-entityid' && c.value.id) entityIds.add(c.value.id);
+                        if (c.type === 'quantity' && c.value.unit && c.value.unit !== '1') {
+                            const id = c.value.unit.split('/').pop();
+                            if (id?.startsWith('Q')) entityIds.add(id);
+                        }
+                    });
+                });
+
+                const labels = entityIds.size ? await fetchWikidataLabels([...entityIds]).catch(() => ({})) : {};
+
+                const imageFilename = claims['P18']?.[0]?.value || null;
+                const imageThumbUrl = imageFilename ? commonsImageUrl(imageFilename, 480) : null;
+                const imageFullUrl = imageFilename ? commonsImageUrl(imageFilename, 1200) : null;
+
+                const frWikiTitle = entity.sitelinks?.frwiki?.title;
+                const wikipediaSummary = frWikiTitle ? await fetchWikipediaSummary(frWikiTitle) : null;
+
+                const claimsRows = WIKIDATA_PROPS_TO_DISPLAY
+                    .filter(prop => claims[prop.id]?.length)
+                    .map(prop => {
+                        const values = claims[prop.id]
+                            .slice(0, 3)
+                            .map(c => formatWikidataValue(c, labels))
+                            .join('<br>');
+                        return `
+                            <tr>
+                                <td style="padding:4px 8px; font-weight:600; color:#5b6770; vertical-align:top; white-space:nowrap;">${prop.label}</td>
+                                <td style="padding:4px 8px; color:#2c3e50;">${values}</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                const sitelinks = entity.sitelinks || {};
+                const sitelinkDefs = [
+                    { key: 'frwiki', label: '📖 Wikipédia (fr)', baseUrl: 'https://fr.wikipedia.org/wiki/' },
+                    { key: 'enwiki', label: '📖 Wikipedia (en)', baseUrl: 'https://en.wikipedia.org/wiki/' },
+                    { key: 'commonswiki', label: '📷 Commons', baseUrl: 'https://commons.wikimedia.org/wiki/' },
+                    { key: 'specieswiki', label: '🧬 Wikispecies', baseUrl: 'https://species.wikimedia.org/wiki/' }
+                ];
+                const sitelinksHtml = sitelinkDefs
+                    .filter(def => sitelinks[def.key])
+                    .map(def => `<a href="${def.baseUrl}${encodeURIComponent(sitelinks[def.key].title.replace(/ /g, '_'))}" target="_blank" style="color:#3498DB; margin-right:10px; text-decoration:none; font-weight:600; font-size:0.78rem;">${def.label}</a>`)
+                    .join('');
+
+                const html = `
+                    <div class="wikidata-infobox">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:8px;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-size:1rem; font-weight:700; color:#2C3E50;">${escapeHtml(labelFr)}</div>
+                                ${descriptionFr ? `<div style="font-size:0.78rem; color:#7f8c8d; font-style:italic; margin-top:2px;">${escapeHtml(descriptionFr)}</div>` : ''}
+                            </div>
+                            <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" title="Ouvrir sur Wikidata" style="font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:#9B59B6; text-decoration:none; flex-shrink:0; padding:2px 6px; border:1px solid #9B59B6; border-radius:4px;">${qid}</a>
+                        </div>
+
+                        ${imageThumbUrl ? `
+                            <a href="${imageFullUrl}" target="_blank" style="display:block; margin:8px 0;">
+                                <img src="${imageThumbUrl}" alt="" loading="lazy" style="max-width:100%; max-height:180px; object-fit:cover; border-radius:6px; display:block; margin:auto; border:1px solid #ecf0f1;">
+                            </a>
+                        ` : ''}
+
+                        ${wikipediaSummary?.extract ? `
+                            <div style="font-size:0.78rem; line-height:1.5; color:#2c3e50; background:#f8f9fa; border-left:3px solid #3498DB; padding:8px 10px; border-radius:4px; margin:8px 0;">
+                                ${escapeHtml(wikipediaSummary.extract.slice(0, 320))}${wikipediaSummary.extract.length > 320 ? '…' : ''}
+                            </div>
+                        ` : ''}
+
+                        ${claimsRows ? `
+                            <table style="width:100%; font-size:0.78rem; border-collapse:collapse;">
+                                ${claimsRows}
+                            </table>
+                        ` : '<div style="font-size:0.78rem; color:#95A5A6; font-style:italic;">Aucune propriété structurée renseignée.</div>'}
+
+                        ${sitelinksHtml ? `
+                            <div style="margin-top:10px; padding-top:8px; border-top:1px solid #ecf0f1;">
+                                ${sitelinksHtml}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                WIKIDATA_INFOBOX_CACHE.set(qid, html);
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Wikidata infobox error:', error);
+                container.innerHTML = `
+                    <div style="padding:14px; color:#E74C3C; text-align:center; font-size:0.8rem;">
+                        <strong>⚠️ Infobox indisponible</strong><br>
+                        <small style="color:#7f8c8d;">${escapeHtml(error.message)}</small><br>
+                        <a href="https://www.wikidata.org/wiki/${qid}" target="_blank" style="color:#3498DB; font-weight:600;">Voir sur Wikidata →</a>
+                    </div>
+                `;
+            }
+        }
+
+        window.loadWikidataInfobox = loadWikidataInfobox;
+
+        // Bascule entre les onglets "Détails" et "Infobox Wikidata" d'un popup route.
+        window.switchPopupTab = function(buttonElement, tabName) {
+            const popup = buttonElement.closest('.route-popup');
+            if (!popup) return;
+
+            popup.querySelectorAll('.popup-tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            popup.querySelectorAll('.popup-tab-panel').forEach(panel => {
+                panel.style.display = panel.dataset.tab === tabName ? 'block' : 'none';
+            });
+
+            if (tabName === 'infobox') {
+                const panel = popup.querySelector('.popup-tab-panel[data-tab="infobox"]');
+                const qid = panel?.dataset.qid;
+                const containerId = panel?.dataset.containerId;
+                if (qid && containerId && !panel.dataset.loaded) {
+                    panel.dataset.loaded = '1';
+                    loadWikidataInfobox(qid, containerId);
+                }
+            }
+        };
+
         const hierarchyColors = {
             regional: '#E74C3C',
             territorial: '#F39C12',
@@ -377,130 +622,60 @@
 
         // ========== ROUTES EN CONSTRUCTION ==========
         
-        window.toggleConstruction = function() {
-            console.log('🔵 toggleConstruction appelée, état actuel:', constructionVisible);
-            console.log('   Nombre de polylines:', constructionPolylines.length);
-            
-            constructionVisible = !constructionVisible;
-            
+        // Helper qui applique l'état "couche visible" sur les éléments de l'UI.
+        function applyConstructionVisibleUi() {
             const icon = document.getElementById('constructionToggleIcon');
-            const legendItems = document.querySelectorAll('[data-construction]');
             const title = document.querySelector('.legend-section:has([id="constructionToggleIcon"]) .legend-title');
-            
-            console.log('   Nouvel état:', constructionVisible);
-            console.log('   Icône trouvée:', icon ? 'oui' : 'non');
-            console.log('   Items légende:', legendItems.length);
-            
-            if (constructionVisible) {
-                console.log('   → Affichage des routes en construction');
-                
-                // Charger les données si pas encore fait
-                if (constructionPolylines.length === 0) {
-                    console.log('   → Chargement des données...');
-                    
-                    // Afficher un popup de chargement avec spinner animé
-                    const loadingPopup = L.popup({
-                        closeButton: false,
-                        autoClose: false,
-                        closeOnClick: false,
-                        className: 'loading-popup'
-                    })
-                        .setLatLng([44.0, 5.1])
-                        .setContent(`
-                            <div style="padding: 25px; text-align: center; min-width: 280px;">
-                                <div style="font-size: 3rem; animation: spin 1.5s linear infinite;">⏳</div>
-                                <div style="margin-top: 15px; font-weight: 700; font-size: 1.2rem; color: #2C3E50;">
-                                    Chargement en cours...
-                                </div>
-                                <div style="margin-top: 10px; color: #666; font-size: 0.9rem;">
-                                    Lecture du GeoJSON local
-                                </div>
-                                <div id="loadingTimer" style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; color: white; font-weight: 700; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                                    <span id="timerSeconds">0</span>s
-                                </div>
-                                <div style="margin-top: 12px; font-size: 0.75rem; color: #999; line-height: 1.4;">
-                                    ⏱️ Cela peut prendre 10-30 secondes<br>
-                                    <span style="color: #3498DB;">Merci de votre patience...</span>
-                                </div>
-                            </div>
-                            <style>
-                                @keyframes spin {
-                                    from { transform: rotate(0deg); }
-                                    to { transform: rotate(360deg); }
-                                }
-                                .loading-popup .leaflet-popup-content-wrapper {
-                                    border-radius: 12px;
-                                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                                }
-                            </style>
-                        `)
-                        .openOn(window.map);
-                    
-                    // Compte à rebours visible
-                    let seconds = 0;
-                    const timerInterval = setInterval(() => {
-                        seconds++;
-                        const timerElement = document.getElementById('timerSeconds');
-                        if (timerElement) {
-                            timerElement.textContent = seconds;
-                            // Changer la couleur selon le temps écoulé
-                            const timerDiv = document.getElementById('loadingTimer');
-                            if (timerDiv) {
-                                if (seconds > 30) {
-                                    timerDiv.style.background = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
-                                } else if (seconds > 15) {
-                                    timerDiv.style.background = 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)';
-                                }
-                            }
-                        } else {
-                            clearInterval(timerInterval);
-                        }
-                    }, 1000);
-                    
-                    // Stocker pour pouvoir arrêter le timer plus tard
-                    window.constructionTimerInterval = timerInterval;
-                    window.constructionLoadingPopup = loadingPopup;
-                    
-                    window.loadConstructionRoads();
-                } else {
-                    console.log('   → Affichage des polylines existantes');
-                    constructionPolylines.forEach(polyline => {
-                        if (!window.map.hasLayer(polyline)) {
-                            polyline.addTo(window.map);
-                            console.log('   → Polyline ajoutée');
-                        }
-                    });
-                }
-                
-                setToggleIcon(icon, true);
-                if (title) title.style.fontWeight = '700';
-                
-                legendItems.forEach(item => {
-                    item.style.opacity = '1';
-                    item.style.pointerEvents = 'auto';
-                });
-                
-                console.log('✓ Routes en construction affichées');
-            } else {
-                console.log('   → Masquage des routes en construction');
-                
+            const legendItems = document.querySelectorAll('[data-construction]');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '700';
+            legendItems.forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+        }
+
+        function applyConstructionHiddenUi() {
+            const icon = document.getElementById('constructionToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="constructionToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-construction]');
+            setToggleIcon(icon, false);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '600';
+            legendItems.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+        }
+
+        window.toggleConstruction = function() {
+            constructionVisible = !constructionVisible;
+            console.log('🔵 toggleConstruction →', constructionVisible);
+
+            if (!constructionVisible) {
                 constructionPolylines.forEach(polyline => {
-                    if (window.map.hasLayer(polyline)) {
-                        window.map.removeLayer(polyline);
-                        console.log('   → Polyline retirée');
-                    }
+                    if (window.map.hasLayer(polyline)) window.map.removeLayer(polyline);
                 });
-                
-                setToggleIcon(icon, false);
-                if (title) title.style.fontWeight = '600';
-                
-                legendItems.forEach(item => {
-                    item.style.opacity = '0.5';
-                    item.style.pointerEvents = 'none';
-                });
-                
+                applyConstructionHiddenUi();
                 console.log('✗ Routes en construction masquées');
+                return;
             }
+
+            // À afficher : si on n'a jamais chargé, on lance le fetch local (instantané).
+            // Pas de faux timer 30 s : c'est juste une lecture de GeoJSON local.
+            if (constructionPolylines.length === 0) {
+                const icon = document.getElementById('constructionToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                window.loadConstructionRoads();
+                return;
+            }
+
+            constructionPolylines.forEach(polyline => {
+                if (!window.map.hasLayer(polyline)) polyline.addTo(window.map);
+            });
+            applyConstructionVisibleUi();
+            console.log(`✓ ${constructionPolylines.length} polyline(s) construction affichée(s)`);
         };
 
         // ========== CONVOIS EXCEPTIONNELS ==========
@@ -1270,8 +1445,19 @@
                                     hierarchy === 'territorial' ? 'Réseau de développement territorial' :
                                     'Réseau d\'intérêt local';
 
+                                const wikidataQid = way.relationTags?.wikidata || way.tags.wikidata || null;
+                                const popupInfoboxContainerId = wikidataQid
+                                    ? `infobox-${wikidataQid}-${way.id || Math.random().toString(36).slice(2, 8)}`
+                                    : null;
                                 const popupContent = `
                                     <div class="route-popup">
+                                        <div class="popup-tabs">
+                                            <button type="button" class="popup-tab-btn active" data-tab="details" onclick="switchPopupTab(this,'details')">Détails</button>
+                                            ${wikidataQid ? `
+                                                <button type="button" class="popup-tab-btn" data-tab="infobox" onclick="switchPopupTab(this,'infobox')" title="Infobox Wikidata (${wikidataQid})">📚 Infobox Wikidata</button>
+                                            ` : ''}
+                                        </div>
+                                        <div class="popup-tab-panel" data-tab="details">
                                         <h3>${roadName}</h3>
                                         <div class="detail"><strong>Référence:</strong> ${ref}</div>
                                         <div class="detail"><strong>Type:</strong> ${hierarchyLabel}</div>
@@ -1376,6 +1562,14 @@
                                                 `}
                                             </div>
                                         </div>
+                                        </div>
+                                        ${wikidataQid ? `
+                                            <div class="popup-tab-panel" data-tab="infobox" data-qid="${wikidataQid}" data-container-id="${popupInfoboxContainerId}" style="display:none;">
+                                                <div id="${popupInfoboxContainerId}">
+                                                    <div style="padding:14px; text-align:center; color:#7f8c8d; font-size:0.8rem;">Cliquez sur l'onglet pour charger l'infobox</div>
+                                                </div>
+                                            </div>
+                                        ` : ''}
                                     </div>
                                 `;
 
@@ -2805,31 +2999,22 @@
                 }
                 
                 if (constructionWays.length === 0) {
-                    console.log('ℹ️ Aucune route en construction trouvée');
-                    console.log('💡 Vérifiez sur https://www.openstreetmap.org autour d\'Orange');
-                    console.log('💡 Recherchez les tags: highway=construction ou proposed');
-                    
+                    console.log('ℹ️ Aucune route en construction trouvée dans le GeoJSON local');
                     document.getElementById('count-construction').textContent = '0';
                     document.getElementById('count-proposed').textContent = '0';
-                    
-                    L.popup()
-                        .setLatLng([44.136, 4.809]) // Orange
+                    // Aucune donnée à afficher → on revient à l'état "masqué", l'utilisateur n'attend rien.
+                    constructionVisible = false;
+                    applyConstructionHiddenUi();
+                    L.popup({ closeButton: true, autoClose: true, closeOnClick: true })
+                        .setLatLng([44.0, 5.1])
                         .setContent(`
-                            <div style="padding: 15px; text-align: center;">
-                                <strong>ℹ️ Routes en construction</strong><br>
-                                <small>Aucune route trouvée avec les tags OSM :<br>
-                                • highway=construction<br>
-                                • highway=proposed<br><br>
-                                <strong>💡 Suggestions :</strong><br>
-                                1. Vérifiez sur <a href="https://www.openstreetmap.org/#map=13/44.136/4.809" target="_blank">OSM à Orange</a><br>
-                                2. Les routes en travaux sont peut-être taguées différemment<br>
-                                3. Contribuez en ajoutant les travaux manquants !
-                                </small>
+                            <div style="padding: 12px; text-align: center; max-width: 260px;">
+                                <strong>ℹ️ Aucune route en construction</strong><br>
+                                <small style="color: #666;">Le cache OSM ne contient actuellement aucun chantier en cours ou projet.</small>
                             </div>
                         `)
                         .openOn(window.map);
-                    
-                    setTimeout(() => window.map.closePopup(), 8000);
+                    setTimeout(() => window.map.closePopup(), 4000);
                     return;
                 }
                 
@@ -2982,83 +3167,46 @@
                 
                 const totalConstruction = constructionCount + proposedCount;
                 
-                console.log('📊 RÉSUMÉ:');
-                console.log(`   En construction: ${constructionCount}`);
-                console.log(`   En projet: ${proposedCount}`);
-                console.log(`   Ignorés (sans géométrie): ${skippedCount}`);
-                console.log(`   Total polylines créées: ${constructionPolylines.length}`);
-                console.log(`   Visibles sur carte: ${constructionVisible ? 'OUI' : 'NON (masquées par défaut)'}`);
-                
-                // Arrêter le timer de chargement
-                if (window.constructionTimerInterval) {
-                    clearInterval(window.constructionTimerInterval);
-                    window.constructionTimerInterval = null;
-                }
-                
-                // Fermer le popup de chargement
-                window.map.closePopup();
-                
+                console.log(`📊 RÉSUMÉ construction : ${constructionCount} en travaux, ${proposedCount} projets, ${skippedCount} ignorés. Polylines : ${constructionPolylines.length}.`);
+
                 if (totalConstruction > 0) {
-                    console.log(`✓ ${constructionCount} en construction, ${proposedCount} projets`);
-                    
-                    // Message de confirmation (après une petite pause)
-                    setTimeout(() => {
-                        L.popup()
-                            .setLatLng([44.0, 5.1])
-                            .setContent(`
-                                <div style="padding: 15px; text-align: center;">
-                                    <div style="font-size: 2rem; margin-bottom: 10px;">✅</div>
-                                    <strong>🚧 ${totalConstruction} voie(s) chargée(s) !</strong><br>
-                                    <div style="margin-top: 10px; font-size: 0.9rem;">
-                                        <span style="color: #FF6B35; font-weight: 600;">${constructionCount} en construction</span> | 
-                                        <span style="color: #9B59B6; font-weight: 600;">${proposedCount} projet(s)</span>
-                                    </div>
-                                    <div style="margin-top: 12px; padding: 10px; background: #d4edda; border-radius: 6px; font-size: 0.85rem;">
-                                        <strong>👁️ Elles sont maintenant visibles sur la carte</strong><br>
-                                        <small>Cliquez sur les lignes pour voir les détails</small>
-                                    </div>
-                                </div>
-                            `)
-                            .openOn(window.map);
-                        
-                        setTimeout(() => window.map.closePopup(), 5000);
-                    }, 300);
-                } else {
-                    console.log('ℹ️ Aucune route en construction dans le Vaucluse actuellement');
-                }
-                
-                console.log('🚧 === FIN CHARGEMENT ROUTES EN CONSTRUCTION ===');
-                
-            } catch (error) {
-                console.error('❌ Erreur chargement routes en construction:', error);
-                
-                // Arrêter le timer de chargement
-                if (window.constructionTimerInterval) {
-                    clearInterval(window.constructionTimerInterval);
-                    window.constructionTimerInterval = null;
-                }
-                
-                // Fermer le popup de chargement et afficher l'erreur
-                window.map.closePopup();
-                
-                setTimeout(() => {
-                    L.popup()
+                    applyConstructionVisibleUi();
+                    // Petit toast discret (~2,5 s) plutôt qu'un popup verrouillé sur 5 s.
+                    L.popup({ closeButton: false, autoClose: true, closeOnClick: true })
                         .setLatLng([44.0, 5.1])
                         .setContent(`
-                            <div style="padding: 15px; text-align: center;">
-                                <div style="font-size: 2rem; color: #E74C3C;">⚠️</div>
-                                <strong>Erreur de chargement</strong><br>
-                                <small style="color: #666; display: block; margin-top: 8px;">
-                                    Impossible de charger les routes en construction.<br>
-                                    ${error.message}
-                                </small>
+                            <div style="padding: 10px 14px; text-align: center; font-size: 0.85rem;">
+                                <strong>🚧 ${totalConstruction} voie(s) affichée(s)</strong><br>
+                                <small><span style="color: #FF6B35;">${constructionCount} en construction</span> · <span style="color: #9B59B6;">${proposedCount} projet(s)</span></small>
                             </div>
                         `)
                         .openOn(window.map);
-                    
-                    setTimeout(() => window.map.closePopup(), 4000);
-                }, 300);
-                
+                    setTimeout(() => window.map.closePopup(), 2500);
+                } else {
+                    constructionVisible = false;
+                    applyConstructionHiddenUi();
+                }
+
+                console.log('🚧 === FIN CHARGEMENT ROUTES EN CONSTRUCTION ===');
+
+            } catch (error) {
+                console.error('❌ Erreur chargement routes en construction:', error);
+
+                constructionVisible = false;
+                applyConstructionHiddenUi();
+
+                L.popup({ closeButton: true, autoClose: true, closeOnClick: true })
+                    .setLatLng([44.0, 5.1])
+                    .setContent(`
+                        <div style="padding: 12px; text-align: center;">
+                            <div style="font-size: 1.5rem; color: #E74C3C;">⚠️</div>
+                            <strong>Erreur de chargement</strong><br>
+                            <small style="color: #666;">${error.message}</small>
+                        </div>
+                    `)
+                    .openOn(window.map);
+                setTimeout(() => window.map.closePopup(), 3500);
+
                 document.getElementById('count-construction').textContent = '0';
                 document.getElementById('count-proposed').textContent = '0';
             }
