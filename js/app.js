@@ -3488,8 +3488,8 @@
                 icon: L.divIcon({
                     html: `<div class="speed-picto" style="border-color:${colorForSpeed(kmh)};">${kmh}</div>`,
                     className: 'speed-picto-wrapper',
-                    iconSize: [26, 26],
-                    iconAnchor: [13, 13]
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11]
                 }),
                 interactive: false,
                 keyboard: false
@@ -3497,15 +3497,25 @@
         }
 
         // Pictogramme rectangulaire pour les restrictions (hauteur, poids, longueur, largeur).
+        // Box assez large (90px) pour absorber "🚛 12.5t" sans rognage, ancrée centrée.
         function makeRestrictionPictoMarker(latlng, icon, value, color) {
             return L.marker(latlng, {
                 icon: L.divIcon({
                     html: `<div class="restriction-picto" style="border-color:${color};"><span class="restriction-picto-icon">${icon}</span><span>${value}</span></div>`,
                     className: 'restriction-picto-wrapper',
-                    iconSize: [50, 26],
-                    iconAnchor: [25, 13]
+                    iconSize: [90, 22],
+                    iconAnchor: [45, 11]
                 })
             });
+        }
+
+        // Normalise une valeur OSM type "3.5", "3.5 m" ou "12 t" en chaîne compacte sans espace.
+        function compactUnit(raw, unit) {
+            if (raw === null || raw === undefined) return '';
+            const trimmed = String(raw).trim();
+            // Si la valeur contient déjà une unité, on la garde mais on retire l'espace.
+            if (/[a-zA-Z]/.test(trimmed)) return trimmed.replace(/\s+/g, '');
+            return `${trimmed}${unit}`;
         }
 
         // Décide quelles restrictions on rend pour un way donné (hauteur, poids, longueur, largeur).
@@ -3513,19 +3523,23 @@
             const entries = [];
             const heightRaw = tags.maxheight;
             if (heightRaw && heightRaw !== 'no' && heightRaw !== 'default' && heightRaw !== 'none') {
-                entries.push({ icon: '🏔️', value: `${heightRaw} m`, color: '#C0392B', label: `Hauteur max ${heightRaw} m` });
+                const v = compactUnit(heightRaw, 'm');
+                entries.push({ icon: '🏔️', value: v, color: '#C0392B', label: `Hauteur max ${v}` });
             }
             const weightRaw = tags.maxweight || tags.maxweightrating;
             if (weightRaw && weightRaw !== 'no' && weightRaw !== 'default' && weightRaw !== 'none') {
-                entries.push({ icon: '🚛', value: `${weightRaw} t`, color: '#8E44AD', label: `Poids max ${weightRaw} t` });
+                const v = compactUnit(weightRaw, 't');
+                entries.push({ icon: '🚛', value: v, color: '#8E44AD', label: `Poids max ${v}` });
             }
             const lengthRaw = tags.maxlength;
             if (lengthRaw && lengthRaw !== 'no' && lengthRaw !== 'default') {
-                entries.push({ icon: '↔️', value: `${lengthRaw} m`, color: '#E67E22', label: `Longueur max ${lengthRaw} m` });
+                const v = compactUnit(lengthRaw, 'm');
+                entries.push({ icon: '↔️', value: v, color: '#E67E22', label: `Longueur max ${v}` });
             }
             const widthRaw = tags.maxwidth;
             if (widthRaw && widthRaw !== 'no' && widthRaw !== 'default') {
-                entries.push({ icon: '↕️', value: `${widthRaw} m`, color: '#16A085', label: `Largeur max ${widthRaw} m` });
+                const v = compactUnit(widthRaw, 'm');
+                entries.push({ icon: '↕️', value: v, color: '#16A085', label: `Largeur max ${v}` });
             }
             return entries;
         }
