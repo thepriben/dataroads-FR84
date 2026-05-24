@@ -245,6 +245,16 @@
             color: white;
         }
 
+        #limitsBtn::before {
+            content: "🚦";
+            font-size: 1.2rem;
+        }
+
+        #limitsBtn:hover {
+            background: linear-gradient(135deg, #F39C12 0%, #E67E22 100%);
+            color: white;
+        }
+
         /* Panneau de qualité des données */
         .quality-panel {
             position: absolute;
@@ -799,5 +809,66 @@
             border: 1px solid #ecf0f1;
             border-radius: 6px;
             padding: 10px 12px;
+        }
+
+        /* Pictogrammes de vitesse type panneau rond */
+        .speed-picto {
+            background: white;
+            border: 3px solid #C0392B;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.7rem;
+            color: #2C3E50;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Pictogrammes de restriction (hauteur/poids/longueur/largeur) */
+        .restriction-picto {
+            background: white;
+            border: 3px solid #2C3E50;
+            border-radius: 6px;
+            min-width: 30px;
+            height: 26px;
+            padding: 0 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.65rem;
+            color: #2C3E50;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .restriction-picto-icon {
+            font-size: 0.85rem;
+            line-height: 1;
+        }
+
+        /* Légende dynamique limitations dans la sidebar */
+        .limitations-legend-scale {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            margin: 6px 0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .limitations-legend-step {
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.65rem;
+            padding: 4px 2px;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
         }
     

@@ -207,6 +207,11 @@
                     </div>
                 </div>
 
+                <div class="legend-section" id="limitationsLegend" style="display:none;">
+                    <div class="legend-title">Limitations & Restrictions</div>
+                    <!-- Contenu généré dynamiquement par updateLimitationsLegend() -->
+                </div>
+
                 <div class="legend-section">
                     <div class="legend-title">Rechercher une Route</div>
                     
@@ -327,6 +332,11 @@
                 <!-- Bouton Convois Exceptionnels -->
                 <button class="quality-toggle" onclick="toggleConvoisExceptionnels()" style="top: 80px; right: 20px; background: white; border-color: #9B59B6; color: #9B59B6;" id="convoiBtn" title="Afficher les itinéraires pour convois exceptionnels">
                     Convois Except.
+                </button>
+
+                <!-- Bouton Limitations & Restrictions -->
+                <button class="quality-toggle" onclick="toggleLimitationsMode()" style="top: 80px; right: 180px; background: white; border-color: #F39C12; color: #F39C12;" id="limitsBtn" title="Afficher les limitations de vitesse (dégradé chaud/froid) et les restrictions ponts/PL (hauteur, poids, longueur, largeur)">
+                    Limitations
                 </button>
 
                 <!-- Panneau de qualité des données -->

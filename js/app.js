@@ -1356,7 +1356,9 @@
                                     opacity: 0.8,
                                     smoothFactor: 1,
                                     roadRef: ref,
-                                    roadHierarchy: hierarchy
+                                    roadHierarchy: hierarchy,
+                                    wayTags: way.tags || {},
+                                    wayId: way.id
                                 }).addTo(window.map);
 
                                 // Stocker la polyline par référence de route
@@ -3399,5 +3401,259 @@
             });
         });
         
+        // ========== LIMITATIONS DE VITESSE & RESTRICTIONS (max*) ==========
+
+        let limitationsMode = false;
+        const speedPictoLayer = L.layerGroup();
+        const restrictionLayer = L.layerGroup();
+        let limitationsZoomHandler = null;
+
+        // Échelle de couleurs chaud/froid pour les limites de vitesse (km/h).
+        // Convention : froid (bleu) = lent / sécurisé, chaud (rouge) = rapide.
+        const SPEED_COLOR_SCALE = [
+            { max: 30,  color: '#2980B9', label: '≤30' },
+            { max: 50,  color: '#5DADE2', label: '50' },
+            { max: 70,  color: '#F4D03F', label: '70' },
+            { max: 80,  color: '#F39C12', label: '80' },
+            { max: 100, color: '#E67E22', label: '90' },
+            { max: 130, color: '#C0392B', label: '≥110' }
+        ];
+        const SPEED_UNKNOWN_COLOR = '#95A5A6';
+
+        // Convertit la valeur maxspeed OSM en nombre (km/h), ou null si inconnu.
+        function parseMaxspeed(raw) {
+            if (raw === null || raw === undefined) return null;
+            const trimmed = String(raw).trim();
+            if (!trimmed || trimmed === 'none' || trimmed === 'signals') return null;
+            // OSM convention en France : "FR:rural" = 80, "FR:urban" = 50, "FR:motorway" = 130
+            if (trimmed === 'FR:rural') return 80;
+            if (trimmed === 'FR:urban') return 50;
+            if (trimmed === 'FR:motorway') return 130;
+            if (trimmed === 'FR:zone30') return 30;
+            const m = trimmed.match(/^(\d+)(?:\s*(mph|kmh|km\/h))?$/i);
+            if (!m) return null;
+            const value = Number.parseInt(m[1], 10);
+            if (!Number.isFinite(value)) return null;
+            if (m[2] && m[2].toLowerCase() === 'mph') return Math.round(value * 1.60934);
+            return value;
+        }
+
+        function colorForSpeed(kmh) {
+            if (kmh === null || kmh === undefined) return SPEED_UNKNOWN_COLOR;
+            for (const step of SPEED_COLOR_SCALE) {
+                if (kmh <= step.max) return step.color;
+            }
+            return SPEED_COLOR_SCALE[SPEED_COLOR_SCALE.length - 1].color;
+        }
+
+        // Repeint toutes les polylines de routes selon leur maxspeed.
+        function applySpeedGradient() {
+            Object.keys(window.routePolylines).forEach(ref => {
+                window.routePolylines[ref].forEach(polyline => {
+                    const tags = polyline.options.wayTags || {};
+                    const kmh = parseMaxspeed(tags.maxspeed);
+                    polyline.setStyle({
+                        color: colorForSpeed(kmh),
+                        opacity: kmh === null ? 0.45 : 0.9,
+                        weight: hierarchyWeights[polyline.options.roadHierarchy]
+                    });
+                });
+            });
+        }
+
+        // Inverse de applySpeedGradient : restaure les couleurs hiérarchie normales.
+        function restoreHierarchyStyles() {
+            Object.keys(window.routePolylines).forEach(ref => {
+                window.routePolylines[ref].forEach(polyline => {
+                    const hierarchy = polyline.options.roadHierarchy;
+                    polyline.setStyle({
+                        color: hierarchyColors[hierarchy],
+                        weight: hierarchyWeights[hierarchy],
+                        opacity: 0.8
+                    });
+                });
+            });
+        }
+
+        // Point médian d'une polyline (utilisé comme ancre des pictos).
+        function polylineMidLatLng(polyline) {
+            const latlngs = polyline.getLatLngs();
+            if (!latlngs.length) return null;
+            return latlngs[Math.floor(latlngs.length / 2)];
+        }
+
+        // Pictogramme rond style panneau de vitesse français.
+        function makeSpeedPictoMarker(latlng, kmh) {
+            return L.marker(latlng, {
+                icon: L.divIcon({
+                    html: `<div class="speed-picto" style="border-color:${colorForSpeed(kmh)};">${kmh}</div>`,
+                    className: 'speed-picto-wrapper',
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                }),
+                interactive: false,
+                keyboard: false
+            });
+        }
+
+        // Pictogramme rectangulaire pour les restrictions (hauteur, poids, longueur, largeur).
+        function makeRestrictionPictoMarker(latlng, icon, value, color) {
+            return L.marker(latlng, {
+                icon: L.divIcon({
+                    html: `<div class="restriction-picto" style="border-color:${color};"><span class="restriction-picto-icon">${icon}</span><span>${value}</span></div>`,
+                    className: 'restriction-picto-wrapper',
+                    iconSize: [50, 26],
+                    iconAnchor: [25, 13]
+                })
+            });
+        }
+
+        // Décide quelles restrictions on rend pour un way donné (hauteur, poids, longueur, largeur).
+        function restrictionEntriesFromTags(tags) {
+            const entries = [];
+            const heightRaw = tags.maxheight;
+            if (heightRaw && heightRaw !== 'no' && heightRaw !== 'default' && heightRaw !== 'none') {
+                entries.push({ icon: '🏔️', value: `${heightRaw} m`, color: '#C0392B', label: `Hauteur max ${heightRaw} m` });
+            }
+            const weightRaw = tags.maxweight || tags.maxweightrating;
+            if (weightRaw && weightRaw !== 'no' && weightRaw !== 'default' && weightRaw !== 'none') {
+                entries.push({ icon: '🚛', value: `${weightRaw} t`, color: '#8E44AD', label: `Poids max ${weightRaw} t` });
+            }
+            const lengthRaw = tags.maxlength;
+            if (lengthRaw && lengthRaw !== 'no' && lengthRaw !== 'default') {
+                entries.push({ icon: '↔️', value: `${lengthRaw} m`, color: '#E67E22', label: `Longueur max ${lengthRaw} m` });
+            }
+            const widthRaw = tags.maxwidth;
+            if (widthRaw && widthRaw !== 'no' && widthRaw !== 'default') {
+                entries.push({ icon: '↕️', value: `${widthRaw} m`, color: '#16A085', label: `Largeur max ${widthRaw} m` });
+            }
+            return entries;
+        }
+
+        // Affiche les pictos vitesse / restrictions visibles dans la vue actuelle.
+        // Stratégie zoom :
+        //   - zoom <  11 : dégradé seul, aucun picto (carto-overview)
+        //   - zoom 11-12: restrictions des ponts/PL seulement
+        //   - zoom ≥ 13 : pictos vitesse + restrictions
+        function renderPictograms() {
+            speedPictoLayer.clearLayers();
+            restrictionLayer.clearLayers();
+            if (!limitationsMode) return;
+
+            const zoom = window.map.getZoom();
+            const bounds = window.map.getBounds();
+            const showSpeed = zoom >= 13;
+            const showRestrictions = zoom >= 11;
+            if (!showSpeed && !showRestrictions) return;
+
+            // Pour éviter la surcharge, on évite plusieurs pictos vitesse pour une même route
+            // identifiée par sa valeur de maxspeed dans un petit rayon.
+            const speedKeysSeen = new Set();
+
+            Object.keys(window.routePolylines).forEach(ref => {
+                window.routePolylines[ref].forEach(polyline => {
+                    const tags = polyline.options.wayTags || {};
+                    const mid = polylineMidLatLng(polyline);
+                    if (!mid || !bounds.contains(mid)) return;
+
+                    if (showSpeed) {
+                        const kmh = parseMaxspeed(tags.maxspeed);
+                        if (kmh !== null) {
+                            // Clé approximative (réf + vitesse + 0.005° ~ 500 m) pour limiter les doublons.
+                            const key = `${ref}|${kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
+                            if (!speedKeysSeen.has(key)) {
+                                speedKeysSeen.add(key);
+                                makeSpeedPictoMarker(mid, kmh).addTo(speedPictoLayer);
+                            }
+                        }
+                    }
+
+                    if (showRestrictions) {
+                        // On restreint les restrictions visuelles aux tronçons "remarquables"
+                        // pour rester lisible : ponts, tunnels, ou tronçons restreints en zone large.
+                        const isBridge = tags.bridge && tags.bridge !== 'no';
+                        const isTunnel = tags.tunnel === 'yes';
+                        const entries = restrictionEntriesFromTags(tags);
+                        const interestingZoom = zoom >= 13;
+                        if (entries.length > 0 && (isBridge || isTunnel || interestingZoom)) {
+                            entries.slice(0, 2).forEach((entry, i) => {
+                                const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
+                                const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
+                                marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
+                                marker.addTo(restrictionLayer);
+                            });
+                        }
+                    }
+                });
+            });
+        }
+
+        function updateLimitationsLegend() {
+            const container = document.getElementById('limitationsLegend');
+            if (!container) return;
+            if (!limitationsMode) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'block';
+            const scaleHtml = SPEED_COLOR_SCALE.map(step =>
+                `<div class="limitations-legend-step" style="background:${step.color};">${step.label}</div>`
+            ).join('');
+            container.innerHTML = `
+                <div style="font-size:0.78rem; color:#5b6770; font-weight:600; margin-bottom:4px;">Limites de vitesse (km/h)</div>
+                <div class="limitations-legend-scale">${scaleHtml}</div>
+                <div style="font-size:0.7rem; color:#7f8c8d; margin-top:6px;">Inconnue : <span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:${SPEED_UNKNOWN_COLOR};vertical-align:middle;"></span></div>
+                <div style="font-size:0.7rem; color:#7f8c8d; margin-top:8px; padding-top:6px; border-top:1px solid #ecf0f1;">
+                    Pictogrammes <strong style="color:#2C3E50;">vitesse</strong> au zoom ≥ 13.<br>
+                    Restrictions <strong style="color:#C0392B;">🏔️ hauteur</strong> · <strong style="color:#8E44AD;">🚛 poids</strong> sur ponts et tronçons remarquables au zoom ≥ 11.
+                </div>
+            `;
+        }
+
+        function setLimitationsButtonActive(active) {
+            const btn = document.getElementById('limitsBtn');
+            if (!btn) return;
+            if (active) {
+                btn.style.background = 'linear-gradient(135deg, #F39C12 0%, #E67E22 100%)';
+                btn.style.color = 'white';
+                btn.style.borderColor = '#F39C12';
+                btn.style.fontWeight = '700';
+            } else {
+                btn.style.background = 'white';
+                btn.style.color = '#F39C12';
+                btn.style.borderColor = '#F39C12';
+                btn.style.fontWeight = '600';
+            }
+        }
+
+        window.toggleLimitationsMode = function() {
+            limitationsMode = !limitationsMode;
+            console.log(`🚦 Mode Limitations : ${limitationsMode ? 'ON' : 'OFF'}`);
+
+            if (limitationsMode) {
+                applySpeedGradient();
+                speedPictoLayer.addTo(window.map);
+                restrictionLayer.addTo(window.map);
+                renderPictograms();
+                if (!limitationsZoomHandler) {
+                    limitationsZoomHandler = () => renderPictograms();
+                    window.map.on('zoomend moveend', limitationsZoomHandler);
+                }
+                setLimitationsButtonActive(true);
+            } else {
+                restoreHierarchyStyles();
+                speedPictoLayer.clearLayers();
+                restrictionLayer.clearLayers();
+                window.map.removeLayer(speedPictoLayer);
+                window.map.removeLayer(restrictionLayer);
+                if (limitationsZoomHandler) {
+                    window.map.off('zoomend moveend', limitationsZoomHandler);
+                    limitationsZoomHandler = null;
+                }
+                setLimitationsButtonActive(false);
+            }
+            updateLimitationsLegend();
+        };
+
         }); // Fin DOMContentLoaded
     
