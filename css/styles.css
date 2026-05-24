@@ -910,21 +910,23 @@
             background: white;
             border: 1px solid var(--border);
             border-radius: 8px;
-            padding: 12px 14px;
-            font-size: 0.78rem;
-            line-height: 1.55;
+            padding: 10px 12px;
+            font-size: 0.72rem;
+            line-height: 1.5;
             color: #2C3E50;
         }
 
         .credits-headline {
             font-weight: 700;
             color: #2C3E50;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+            font-size: 0.72rem;
         }
 
         .credits-author {
-            margin: 6px 0 10px 0;
-            color: #2C3E50;
+            margin: 0 0 6px 0;
+            color: #5b6770;
+            font-size: 0.72rem;
         }
 
         .credits-author a {
@@ -939,50 +941,28 @@
             text-decoration: underline;
         }
 
-        /* Lien inline du dépôt GitHub : icône + badge étoiles + nom */
-        .repo-inline {
+        .credits-repo {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 2px 6px;
-            border-radius: 5px;
-            color: #f3f4f6 !important;
-            background: #1f2937;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
             font-size: 0.72rem;
-            text-decoration: none;
-            transition: background 0.15s, transform 0.15s;
-            vertical-align: middle;
+            color: #5b6770;
         }
 
-        .repo-inline:hover {
-            background: #111827;
-            transform: translateY(-1px);
-            text-decoration: none !important;
-        }
-
-        .repo-inline-icon {
+        .credits-repo a {
             display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #f3f4f6;
-        }
-
-        .repo-inline-icon svg {
-            width: 14px;
-            height: 14px;
-            display: block;
-        }
-
-        .repo-inline-stars {
-            height: 16px;
-            display: block;
+            line-height: 0;
             border-radius: 3px;
+            transition: transform 0.15s;
         }
 
-        .repo-inline-name {
-            word-break: break-all;
+        .credits-repo a:hover {
+            transform: translateY(-1px);
+        }
+
+        .credits-repo img {
+            height: 18px;
+            display: block;
         }
 
         /* === Familles de sections de la sidebar === */
