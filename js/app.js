@@ -1986,13 +1986,6 @@
                     </div>
                 </div>
 
-                <div class="quality-metric" style="background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%); border-left: 4px solid #00ACC1;">
-                    <div class="quality-metric-title" style="color: #00838F;">💡 Comment contribuer</div>
-                    <div class="quality-metric-desc" style="line-height: 1.6; color: #00695C;">
-                        <strong>Cliquez sur les barres</strong> pour visualiser les routes à améliorer. 
-                        Puis cliquez sur une route pour accéder directement à OSM et ajouter le Wikidata ou créer la relation manquante.
-                    </div>
-                </div>
             `;
         }
 
