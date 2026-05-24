@@ -3509,13 +3509,23 @@
             });
         }
 
-        // Normalise une valeur OSM type "3.5", "3.5 m" ou "12 t" en chaîne compacte sans espace.
+        // Normalise une valeur OSM type "3.5", "4.0", "3.5 m" ou "12 t" en chaîne compacte
+        // sans espace et sans décimale superflue ("4.0m" → "4m", "3.50m" → "3.5m").
         function compactUnit(raw, unit) {
             if (raw === null || raw === undefined) return '';
             const trimmed = String(raw).trim();
-            // Si la valeur contient déjà une unité, on la garde mais on retire l'espace.
-            if (/[a-zA-Z]/.test(trimmed)) return trimmed.replace(/\s+/g, '');
-            return `${trimmed}${unit}`;
+            // Si la valeur contient déjà une unité, on garde l'unité mais on nettoie.
+            if (/[a-zA-Z]/.test(trimmed)) {
+                const m = trimmed.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z/]+)$/);
+                if (m) {
+                    const num = Number.parseFloat(m[1]);
+                    return `${Number.isFinite(num) ? +num.toFixed(2) : m[1]}${m[2]}`;
+                }
+                return trimmed.replace(/\s+/g, '');
+            }
+            const num = Number.parseFloat(trimmed);
+            const display = Number.isFinite(num) ? +num.toFixed(2) : trimmed;
+            return `${display}${unit}`;
         }
 
         // Décide quelles restrictions on rend pour un way donné (hauteur, poids, longueur, largeur).
