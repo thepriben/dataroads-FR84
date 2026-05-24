@@ -1946,19 +1946,23 @@
                 const popup = marker.getPopup && marker.getPopup();
                 if (!popup) return;
                 const html = popup.getContent ? popup.getContent() : '';
-                const match = String(html).match(/MJA[^:]*:[^>]*?([\d\u00a0,. ]+)\s*v[ée]h\/jour/i);
+                // Accepte aussi le narrow no-break space (\u202f) que toLocaleString peut produire en fr-FR.
+                const match = String(html).match(/MJA[^:]*:[^>]*?([\d\u00a0\u202f,. ]+)\s*v[ée]h\/jour/i);
                 if (match) {
                     const num = Number.parseInt(match[1].replace(/[^0-9]/g, ''), 10);
                     if (Number.isFinite(num) && num > 0) mjaValues.push(num);
                 }
             });
+            const trafficTile = trafficEl ? trafficEl.closest('.network-tile') : null;
             if (mjaValues.length) {
                 const min = Math.min(...mjaValues);
                 const max = Math.max(...mjaValues);
                 const fmt = v => v >= 1000 ? `${Math.round(v / 1000)}k` : String(v);
                 trafficEl.textContent = `${fmt(min)} – ${fmt(max)} véh/j`;
+                if (trafficTile) trafficTile.style.display = '';
             } else {
-                trafficEl.textContent = '—';
+                // On masque entièrement la tuile tant que la donnée n'est pas calculable.
+                if (trafficTile) trafficTile.style.display = 'none';
             }
         }
 
