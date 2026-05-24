@@ -756,4 +756,48 @@
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.7rem;
         }
+
+        /* Onglets dans le popup route (Détails / Infobox Wikidata) */
+        .route-popup .popup-tabs {
+            display: flex;
+            gap: 2px;
+            margin: -8px -8px 10px -8px;
+            padding: 0 8px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .route-popup .popup-tab-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 8px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #95A5A6;
+            cursor: pointer;
+            font-family: inherit;
+            transition: color 0.15s, border-color 0.15s;
+        }
+
+        .route-popup .popup-tab-btn:hover {
+            color: #34495E;
+        }
+
+        .route-popup .popup-tab-btn.active {
+            color: #2C3E50;
+            border-bottom-color: #3498DB;
+        }
+
+        .route-popup .popup-tab-panel {
+            min-height: 50px;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+
+        .wikidata-infobox {
+            background: #fdfefe;
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+            padding: 10px 12px;
+        }
     
