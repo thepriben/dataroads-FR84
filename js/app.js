@@ -216,6 +216,57 @@
             });
         });
 
+        // ========== FAMILLES DE SECTIONS DE LA SIDEBAR (collapsibles) ==========
+
+        function refreshFamilyMeta(fam) {
+            if (!fam) return;
+            const meta = fam.querySelector('.legend-family-meta');
+            if (!meta) return;
+            // On ignore les sections dynamiques masquées (display:none inline) pour ne pas
+            // gonfler artificiellement le compteur quand la couche n'est pas active.
+            const sections = fam.querySelectorAll('.legend-family-body > .legend-section');
+            let count = 0;
+            sections.forEach(section => {
+                const style = section.getAttribute('style') || '';
+                if (style.includes('display: none') || style.includes('display:none')) return;
+                count++;
+            });
+            meta.textContent = count > 1 ? `${count} couches` : `${count} couche`;
+        }
+
+        function setupLegendFamilies() {
+            document.querySelectorAll('.legend-family').forEach(fam => {
+                refreshFamilyMeta(fam);
+                const header = fam.querySelector('.legend-family-header');
+                if (!header) return;
+                header.addEventListener('click', () => {
+                    const isExpanded = fam.dataset.expanded !== 'false';
+                    const nextExpanded = !isExpanded;
+                    fam.dataset.expanded = nextExpanded ? 'true' : 'false';
+                    header.setAttribute('aria-expanded', String(nextExpanded));
+                });
+            });
+
+            // Quand la section "Limitations" devient visible/invisible dynamiquement,
+            // on rafraîchit le compteur de la famille "factual".
+            const limitations = document.getElementById('limitationsLegend');
+            if (limitations && typeof MutationObserver !== 'undefined') {
+                const observer = new MutationObserver(() => {
+                    refreshFamilyMeta(limitations.closest('.legend-family'));
+                });
+                observer.observe(limitations, { attributes: true, attributeFilter: ['style'] });
+            }
+            const roadInfo = document.getElementById('road-info-section');
+            if (roadInfo && typeof MutationObserver !== 'undefined') {
+                const observer = new MutationObserver(() => {
+                    refreshFamilyMeta(roadInfo.closest('.legend-family'));
+                });
+                observer.observe(roadInfo, { attributes: true, attributeFilter: ['style'] });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', setupLegendFamilies);
+
         // ========== WIKIDATA INFOBOX (onglet dédié dans le popup route) ==========
 
         const WIKIDATA_INFOBOX_CACHE = new Map();

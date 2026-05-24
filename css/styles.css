@@ -16,6 +16,10 @@
             --text-light: #636e72;
             --border: #dfe6e9;
             --shadow: rgba(0, 0, 0, 0.1);
+            --family-factual: #2C3E50;
+            --family-stats: #8E44AD;
+            --family-realtime: #E67E22;
+            --family-tools: #16A085;
         }
 
         body {
@@ -877,5 +881,125 @@
             padding: 4px 2px;
             color: white;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        }
+
+        /* === Familles de sections de la sidebar === */
+        .legend-family {
+            margin: 0 0 18px 0;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-left: 4px solid var(--family-accent, #95A5A6);
+            background: var(--family-tint, rgba(149, 165, 166, 0.05));
+            overflow: hidden;
+            transition: background 0.2s;
+        }
+
+        .legend-family[data-family="factual"]  { --family-accent: var(--family-factual);  --family-tint: rgba(44, 62, 80, 0.05); }
+        .legend-family[data-family="stats"]    { --family-accent: var(--family-stats);    --family-tint: rgba(142, 68, 173, 0.05); }
+        .legend-family[data-family="realtime"] { --family-accent: var(--family-realtime); --family-tint: rgba(230, 126, 34, 0.05); }
+        .legend-family[data-family="tools"]    { --family-accent: var(--family-tools);    --family-tint: rgba(22, 160, 133, 0.05); }
+
+        .legend-family-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.6px;
+            font-weight: 700;
+            color: var(--family-accent);
+            text-align: left;
+            transition: background 0.18s;
+        }
+
+        .legend-family-header:hover {
+            background: var(--family-tint);
+        }
+
+        .legend-family-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+
+        .legend-family-icon svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--family-accent);
+            display: block;
+        }
+
+        .legend-family-label {
+            flex: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .legend-family-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing: 0;
+            color: #7f8c8d;
+            background: white;
+            padding: 2px 7px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+        }
+
+        .legend-family-chevron {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            transition: transform 0.2s ease;
+            color: var(--family-accent);
+            flex-shrink: 0;
+        }
+
+        .legend-family-chevron svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+        }
+
+        .legend-family[data-expanded="false"] .legend-family-chevron {
+            transform: rotate(-90deg);
+        }
+
+        .legend-family[data-expanded="false"] .legend-family-body {
+            display: none;
+        }
+
+        .legend-family-body {
+            padding: 4px 10px 10px 10px;
+        }
+
+        /* Les sections enfantes d'une famille n'ont plus besoin de leur grosse marge */
+        .legend-family-body .legend-section {
+            margin: 0 0 12px 0;
+        }
+
+        .legend-family-body .legend-section:last-child {
+            margin-bottom: 0;
+        }
+
+        /* La section dynamique Limitations cache son margin auto historique quand elle est dans une famille */
+        .legend-family-body .legend-section[style*="display:none"] {
+            margin: 0;
         }
     
