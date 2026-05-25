@@ -685,14 +685,14 @@
         let wazeLayer = null;
         let wazeEnabled = false;
         let trafficMarkers = [];
-        let trafficVisible = true;
+        let trafficVisible = false;
         let accidentMarkers = [];
         let accidentsVisible = false;
         let convoiMode = false;
         let constructionPolylines = [];
         let constructionVisible = false;
         let bisonFuteMarkers = [];
-        let bisonFuteVisible = true;
+        let bisonFuteVisible = false;
         let cityMarkers = [];
         let citiesVisible = true;
         const dataRefreshState = {};
@@ -2891,7 +2891,7 @@
                     trafficCounts.low++;
                 }
 
-                // Créer le marqueur
+                // Créer le marqueur (masqué par défaut — voir trafficVisible)
                 const marker = L.circleMarker([lat, lon], {
                     radius: size,
                     fillColor: color,
@@ -2900,7 +2900,7 @@
                     opacity: 1,
                     fillOpacity: 0.8,
                     stationType: 'counting'  // Pour identification lors du toggle trafic
-                }).addTo(window.map);
+                });
 
                 // Stocker pour le toggle de visibilité
                 trafficMarkers.push(marker);
@@ -3416,7 +3416,7 @@
                         eventsCount.autres++;
                     }
                     
-                    // Créer le marqueur
+                    // Créer le marqueur (masqué par défaut — voir bisonFuteVisible)
                     const marker = L.marker([lat, lon], {
                         icon: L.divIcon({
                             html: `<div style="font-size: 1.5rem; text-shadow: 0 0 3px white;">${icon}</div>`,
@@ -3424,7 +3424,7 @@
                             iconSize: [30, 30],
                             iconAnchor: [15, 15]
                         })
-                    }).addTo(window.map);
+                    });
 
                     // Stocker pour le toggle de visibilité
                     bisonFuteMarkers.push(marker);
