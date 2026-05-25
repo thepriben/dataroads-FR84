@@ -1092,6 +1092,15 @@
 
         // ========== STATIONS DE COMPTAGE ==========
 
+        function syncTrafficMarkersOnMap() {
+            const shouldShow = trafficVisible || wazeEnabled;
+            trafficMarkers.forEach(marker => {
+                const onMap = window.map.hasLayer(marker);
+                if (shouldShow && !onMap) marker.addTo(window.map);
+                if (!shouldShow && onMap) window.map.removeLayer(marker);
+            });
+        }
+
         window.toggleTraffic = function() {
             trafficVisible = !trafficVisible;
 
@@ -1099,10 +1108,9 @@
             const title = document.querySelector('.legend-section:has([id="trafficToggleIcon"]) .legend-title');
             const legendItems = document.querySelectorAll('[data-traffic]');
 
+            syncTrafficMarkersOnMap();
+
             if (trafficVisible) {
-                trafficMarkers.forEach(marker => {
-                    if (!window.map.hasLayer(marker)) marker.addTo(window.map);
-                });
                 setToggleIcon(icon, true);
                 if (title) title.style.fontWeight = '700';
                 legendItems.forEach(item => {
@@ -1110,9 +1118,6 @@
                 });
                 console.log(`✓ ${trafficMarkers.length} stations de comptage affichées`);
             } else {
-                trafficMarkers.forEach(marker => {
-                    if (window.map.hasLayer(marker)) window.map.removeLayer(marker);
-                });
                 setToggleIcon(icon, false);
                 if (title) title.style.fontWeight = '600';
                 legendItems.forEach(item => {
@@ -1190,60 +1195,42 @@
             wazeEnabled = !wazeEnabled;
             
             setToolActive('wazeBtn', wazeEnabled);
+            syncTrafficMarkersOnMap();
 
             if (wazeEnabled) {
                 // Mettre en évidence les stations de comptage CD84 (données de trafic réelles)
                 console.log('🚗 Mise en évidence des stations de comptage CD84');
-                
-                // Compter les stations
-                let stationCount = 0;
-                
-                // Faire pulser tous les marqueurs de comptage
-                window.map.eachLayer(function(layer) {
-                    if (layer instanceof L.CircleMarker && layer.options.stationType === 'counting') {
-                        // Animation de pulsation
-                        const originalRadius = layer.getRadius();
-                        let pulse = 0;
-                        const pulseInterval = setInterval(() => {
-                            pulse++;
-                            const scale = 1 + Math.sin(pulse * 0.3) * 0.3;
-                            layer.setRadius(originalRadius * scale);
-                            
-                            if (pulse > 20) {
-                                clearInterval(pulseInterval);
-                                layer.setRadius(originalRadius);
-                            }
-                        }, 100);
-                        
-                        // Augmenter temporairement l'opacité
-                        layer.setStyle({ fillOpacity: 1, opacity: 1 });
-                        
-                        stationCount++;
-                    }
+
+                trafficMarkers.forEach(marker => {
+                    const originalRadius = marker.getRadius();
+                    let pulse = 0;
+                    const pulseInterval = setInterval(() => {
+                        pulse++;
+                        const scale = 1 + Math.sin(pulse * 0.3) * 0.3;
+                        marker.setRadius(originalRadius * scale);
+
+                        if (pulse > 20) {
+                            clearInterval(pulseInterval);
+                            marker.setRadius(originalRadius);
+                        }
+                    }, 100);
+
+                    marker.setStyle({ fillOpacity: 1, opacity: 1 });
                 });
-                
-                // Zoomer pour voir toutes les stations
-                const stationBounds = [];
-                window.map.eachLayer(function(layer) {
-                    if (layer instanceof L.CircleMarker && layer.options.stationType === 'counting') {
-                        stationBounds.push(layer.getLatLng());
-                    }
-                });
-                
+
+                const stationBounds = trafficMarkers.map(marker => marker.getLatLng());
+
                 if (stationBounds.length > 0) {
                     setTimeout(() => {
                         window.map.fitBounds(stationBounds, { padding: [50, 50], maxZoom: 11 });
                     }, 500);
                 }
-                
-                console.log(`✓ ${stationCount} stations de comptage mises en évidence`);
-                
+
+                console.log(`✓ ${trafficMarkers.length} stations de comptage mises en évidence`);
+
             } else {
-                // Restaurer l'apparence normale des stations
-                window.map.eachLayer(function(layer) {
-                    if (layer instanceof L.CircleMarker && layer.options.stationType === 'counting') {
-                        layer.setStyle({ fillOpacity: 0.8, opacity: 1 });
-                    }
+                trafficMarkers.forEach(marker => {
+                    marker.setStyle({ fillOpacity: 0.8, opacity: 1 });
                 });
                 window.map.closePopup();
                 console.log('✗ Mode Trafic désactivé');
