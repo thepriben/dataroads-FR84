@@ -554,15 +554,13 @@
         const hierarchyColors = {
             regional: '#E74C3C',
             territorial: '#F39C12',
-            local: '#3498DB',
-            veloroute: '#27AE60'
+            local: '#3498DB'
         };
 
         const hierarchyWeights = {
             regional: 6,
             territorial: 5,
-            local: 4,
-            veloroute: 3
+            local: 4
         };
 
         function geoJsonLineFeatureToWay(feature) {
