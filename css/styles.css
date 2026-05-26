@@ -858,6 +858,15 @@
             background: rgba(149, 165, 166, 0.28);
         }
 
+        .freshness-badge.is-layer-hidden .freshness-pill {
+            color: #BDC3C7 !important;
+            background: #ECF0F1 !important;
+        }
+
+        .freshness-badge.is-layer-hidden .freshness-dot {
+            background: #BDC3C7 !important;
+        }
+
         /* Badge fraîcheur (date d'intégration + prochain rafraîchissement) */
         .freshness-badge {
             margin: 2px 0 8px 0;
@@ -1196,6 +1205,9 @@
         }
 
         .legend-family-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.65rem;
             font-weight: 600;
@@ -1203,10 +1215,69 @@
             letter-spacing: 0;
             color: #7f8c8d;
             background: white;
-            padding: 2px 7px;
+            padding: 3px 8px;
             border-radius: 10px;
             border: 1px solid rgba(0, 0, 0, 0.06);
             flex-shrink: 0;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .legend-family-meta.is-all-visible {
+            border-color: rgba(39, 174, 96, 0.25);
+            background: rgba(39, 174, 96, 0.06);
+        }
+
+        .legend-family-meta.is-partial-visible {
+            border-color: rgba(243, 156, 18, 0.25);
+            background: rgba(243, 156, 18, 0.06);
+        }
+
+        .legend-family-meta.is-none-visible {
+            color: #95a5a6;
+            background: #f4f6f7;
+        }
+
+        .layer-vis-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .layer-vis-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .layer-vis-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #d5dbdb;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .layer-vis-dot.is-on {
+            background: var(--family-accent, #7f8c8d);
+            transform: scale(1.15);
+        }
+
+        .legend-family-meta.is-all-visible .layer-vis-dot.is-on {
+            background: #27AE60;
+        }
+
+        .layer-vis-num strong {
+            color: var(--family-accent, #2C3E50);
+            font-weight: 700;
+        }
+
+        .legend-family-meta.is-none-visible .layer-vis-num strong {
+            color: #95a5a6;
+        }
+
+        .layer-vis-sep {
+            opacity: 0.45;
+            margin: 0 1px;
         }
 
         .legend-family-chevron {

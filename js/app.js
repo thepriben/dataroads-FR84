@@ -189,7 +189,12 @@
             ].filter(Boolean);
             element.title = tooltipLines.join('\n');
 
+            if (element.dataset.layerVisible === 'false') {
+                state = { color: '#BDC3C7', tone: '#ECF0F1', label: 'masqué', dotLabel: 'hidden' };
+            }
+
             const errorIcon = errorMsg ? '<span style="margin-left:4px;">⚠</span>' : '';
+            element.classList.toggle('is-layer-hidden', element.dataset.layerVisible === 'false');
             element.innerHTML = `<span class="freshness-pill" style="background:${state.tone};color:${state.color};"><span class="freshness-dot" style="background:${state.color};"></span>${ageText}${nextText}${errorIcon}</span>`;
         }
 
@@ -218,20 +223,120 @@
 
         // ========== FAMILLES DE SECTIONS DE LA SIDEBAR (collapsibles) ==========
 
+        function isToggleIconVisible(toggleIconId) {
+            const icon = document.getElementById(toggleIconId);
+            return icon ? !icon.classList.contains('is-hidden') : false;
+        }
+
+        function countHierarchySubLayersVisible() {
+            let visible = 0;
+            ['regional', 'territorial', 'local'].forEach(hierarchy => {
+                const item = document.querySelector(`[data-hierarchy="${hierarchy}"]`);
+                if (!item) return;
+                const opacity = parseFloat(item.style.opacity || '1');
+                if (opacity > 0.5) visible++;
+            });
+            return visible;
+        }
+
+        function getFamilyLayerCounts(familyId) {
+            switch (familyId) {
+                case 'factual': {
+                    let visible = 1;
+                    let total = 1;
+                    total += 3;
+                    visible += countHierarchySubLayersVisible();
+                    total += 1;
+                    if (isToggleIconVisible('constructionToggleIcon')) visible++;
+                    total += 1;
+                    if (isToggleIconVisible('citiesToggleIcon')) visible++;
+                    const limitations = document.getElementById('limitationsLegend');
+                    if (limitations && limitations.style.display !== 'none') {
+                        total += 1;
+                        if (document.getElementById('limitsBtn')?.classList.contains('is-active')) visible++;
+                    }
+                    return { visible, total };
+                }
+                case 'stats': {
+                    let visible = 0;
+                    const total = 2;
+                    if (isToggleIconVisible('accidentToggleIcon')) visible++;
+                    if (isToggleIconVisible('trafficToggleIcon') || document.getElementById('wazeBtn')?.classList.contains('is-active')) {
+                        visible++;
+                    }
+                    return { visible, total };
+                }
+                case 'realtime':
+                    return {
+                        visible: isToggleIconVisible('bisonFuteToggleIcon') ? 1 : 0,
+                        total: 1
+                    };
+                default:
+                    return null;
+            }
+        }
+
+        function isFreshnessBadgeLayerVisible(badgeId) {
+            switch (badgeId) {
+                case 'freshness-boundary':
+                case 'freshness-wikidata':
+                    return true;
+                case 'freshness-hierarchy':
+                    return isToggleIconVisible('hierarchyToggleIcon');
+                case 'freshness-construction':
+                    return isToggleIconVisible('constructionToggleIcon');
+                case 'freshness-accidents':
+                    return isToggleIconVisible('accidentToggleIcon');
+                case 'freshness-traffic':
+                    return isToggleIconVisible('trafficToggleIcon') || document.getElementById('wazeBtn')?.classList.contains('is-active');
+                case 'freshness-bison-fute':
+                    return isToggleIconVisible('bisonFuteToggleIcon');
+                default:
+                    return true;
+            }
+        }
+
+        function syncFreshnessBadgeVisibility() {
+            document.querySelectorAll('.freshness-badge[id]').forEach(element => {
+                const layerVisible = isFreshnessBadgeLayerVisible(element.id);
+                element.dataset.layerVisible = layerVisible ? 'true' : 'false';
+                renderFreshnessBadge(element, {
+                    generatedAt: element.dataset.generatedAt,
+                    scheduleKey: element.dataset.scheduleKey,
+                    errorMsg: element.dataset.errorMsg || undefined
+                });
+            });
+        }
+
+        function syncLegendChrome() {
+            syncFreshnessBadgeVisibility();
+            document.querySelectorAll('.legend-family').forEach(refreshFamilyMeta);
+        }
+
         function refreshFamilyMeta(fam) {
             if (!fam) return;
             const meta = fam.querySelector('.legend-family-meta');
             if (!meta) return;
-            // On ignore les sections dynamiques masquées (display:none inline) pour ne pas
-            // gonfler artificiellement le compteur quand la couche n'est pas active.
-            const sections = fam.querySelectorAll('.legend-family-body > .legend-section');
-            let count = 0;
-            sections.forEach(section => {
-                const style = section.getAttribute('style') || '';
-                if (style.includes('display: none') || style.includes('display:none')) return;
-                count++;
-            });
-            meta.textContent = count > 1 ? `${count} couches` : `${count} couche`;
+
+            const counts = getFamilyLayerCounts(fam.dataset.family);
+            if (!counts) {
+                meta.innerHTML = '';
+                meta.hidden = true;
+                return;
+            }
+
+            meta.hidden = false;
+            const { visible, total } = counts;
+            const label = visible > 1 ? 'couches visibles' : 'couche visible';
+            const dots = Array.from({ length: total }, (_, index) =>
+                `<span class="layer-vis-dot${index < visible ? ' is-on' : ''}"></span>`
+            ).join('');
+
+            meta.classList.toggle('is-all-visible', visible === total);
+            meta.classList.toggle('is-partial-visible', visible > 0 && visible < total);
+            meta.classList.toggle('is-none-visible', visible === 0);
+            meta.title = `${visible} ${label} sur ${total}`;
+            meta.innerHTML = `<span class="layer-vis-indicator"><span class="layer-vis-dots" aria-hidden="true">${dots}</span><span class="layer-vis-num"><strong>${visible}</strong><span class="layer-vis-sep">/</span>${total}</span></span>`;
         }
 
         function setupLegendFamilies() {
@@ -252,20 +357,23 @@
             const limitations = document.getElementById('limitationsLegend');
             if (limitations && typeof MutationObserver !== 'undefined') {
                 const observer = new MutationObserver(() => {
-                    refreshFamilyMeta(limitations.closest('.legend-family'));
+                    syncLegendChrome();
                 });
                 observer.observe(limitations, { attributes: true, attributeFilter: ['style'] });
             }
             const roadInfo = document.getElementById('road-info-section');
             if (roadInfo && typeof MutationObserver !== 'undefined') {
                 const observer = new MutationObserver(() => {
-                    refreshFamilyMeta(roadInfo.closest('.legend-family'));
+                    syncLegendChrome();
                 });
                 observer.observe(roadInfo, { attributes: true, attributeFilter: ['style'] });
             }
         }
 
-        document.addEventListener('DOMContentLoaded', setupLegendFamilies);
+        document.addEventListener('DOMContentLoaded', () => {
+            setupLegendFamilies();
+            syncLegendChrome();
+        });
 
         // ========== WIKIDATA INFOBOX (onglet dédié dans le popup route) ==========
 
@@ -807,6 +915,7 @@
                     if (window.map.hasLayer(polyline)) window.map.removeLayer(polyline);
                 });
                 applyConstructionHiddenUi();
+                syncLegendChrome();
                 console.log('✗ Routes en construction masquées');
                 return;
             }
@@ -824,6 +933,7 @@
                 if (!window.map.hasLayer(polyline)) polyline.addTo(window.map);
             });
             applyConstructionVisibleUi();
+            syncLegendChrome();
             console.log(`✓ ${constructionPolylines.length} polyline(s) construction affichée(s)`);
         };
 
@@ -1045,6 +1155,11 @@
                 setToggleIcon(icon, true);
                 if (title) title.style.fontWeight = '700';
             }
+
+            if (typeof updateRouteLabels === 'function') {
+                updateRouteLabels();
+            }
+            syncLegendChrome();
         };
 
 
@@ -1087,6 +1202,7 @@
                 
                 console.log('✗ Accidents masqués');
             }
+            syncLegendChrome();
         }
 
         // ========== STATIONS DE COMPTAGE ==========
@@ -1130,6 +1246,7 @@
                 });
                 console.log('✗ Stations de comptage masquées');
             }
+            syncLegendChrome();
         };
 
         // ========== ÉVÉNEMENTS ROUTIERS / BISON FUTÉ ==========
@@ -1162,6 +1279,7 @@
                 });
                 console.log('✗ Événements routiers masqués');
             }
+            syncLegendChrome();
         };
 
         // ========== VILLES PRINCIPALES ==========
@@ -1194,6 +1312,7 @@
                 });
                 console.log('✗ Villes principales masquées');
             }
+            syncLegendChrome();
         };
 
         async function toggleWazeTraffic() {
@@ -1240,6 +1359,7 @@
                 window.map.closePopup();
                 console.log('✗ Mode Trafic désactivé');
             }
+            syncLegendChrome();
         }
 
         // Attendre que tout soit chargé (DOM + Leaflet)
@@ -1755,8 +1875,9 @@
                 return null;
             }
 
-            // Afficher les étiquettes selon le niveau de zoom
+            // Afficher les étiquettes selon le niveau de zoom et la visibilité hiérarchique
             ['regional', 'territorial', 'local'].forEach(hierarchy => {
+                if (!hierarchyVisibility[hierarchy]) return;
                 if (zoom >= zoomThresholds[hierarchy]) {
                     routesByHierarchy[hierarchy].forEach(route => {
                         const center = getRouteCenter(route);
@@ -3755,6 +3876,7 @@
                 setLimitationsButtonActive(false);
             }
             updateLimitationsLegend();
+            syncLegendChrome();
         };
 
         }); // Fin DOMContentLoaded
