@@ -173,19 +173,19 @@
                     <span class="freshness-badge" id="freshness-traffic" data-schedule-key="external"></span>
                     
                     <div class="legend-item" data-traffic="high" style="opacity: 0.5;">
-                        <div class="legend-color" style="background: #E74C3C; width: 12px; height: 12px; border-radius: 50%;"></div>
+                        <div class="legend-color" style="background: #34495E; width: 12px; height: 12px; border-radius: 50%;"></div>
                         <div class="legend-label">Trafic élevé (&gt;20k véh/j)</div>
                         <div class="legend-count" id="count-high">-</div>
                     </div>
                     
                     <div class="legend-item" data-traffic="medium" style="opacity: 0.5;">
-                        <div class="legend-color" style="background: #F39C12; width: 10px; height: 10px; border-radius: 50%;"></div>
+                        <div class="legend-color" style="background: #95A5A6; width: 10px; height: 10px; border-radius: 50%;"></div>
                         <div class="legend-label">Trafic moyen (5k-20k)</div>
                         <div class="legend-count" id="count-medium">-</div>
                     </div>
                     
                     <div class="legend-item" data-traffic="low" style="opacity: 0.5;">
-                        <div class="legend-color" style="background: #3498DB; width: 8px; height: 8px; border-radius: 50%;"></div>
+                        <div class="legend-color" style="background: #D5DBDB; width: 8px; height: 8px; border-radius: 50%; border: 1px solid #7F8C8D;"></div>
                         <div class="legend-label">Trafic faible (&lt;5k véh/j)</div>
                         <div class="legend-count" id="count-low">-</div>
                     </div>
@@ -370,7 +370,7 @@
             <div style="position: relative;">
                 <!-- Barre d'outils unifiée : modes spéciaux groupés en haut à droite -->
                 <div class="map-toolbar" role="toolbar" aria-label="Modes d'affichage spéciaux">
-                    <button type="button" class="map-tool" data-accent="#00A8E8" onclick="toggleWazeTraffic()" id="wazeBtn" title="Mettre en évidence les stations de comptage CD84">
+                    <button type="button" class="map-tool" data-accent="#7F8C8D" onclick="toggleWazeTraffic()" id="wazeBtn" title="Mettre en évidence les stations de comptage CD84">
                         <span class="map-tool-icon">📊</span><span class="map-tool-label">Comptages CD84</span>
                     </button>
                     <button type="button" class="map-tool" data-accent="#9B59B6" onclick="toggleConvoisExceptionnels()" id="convoiBtn" title="Afficher les itinéraires adaptés aux convois exceptionnels">
@@ -401,6 +401,6 @@
 
     <script src="js/config.js?v=20260524-2"></script>
     <script src="js/api.js?v=20260524-2"></script>
-    <script src="js/app.js?v=20260526-1"></script>
+    <script src="js/app.js?v=20260526-2"></script>
 </body>
 </html>
