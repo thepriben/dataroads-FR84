@@ -1091,6 +1091,12 @@
 
         // ========== STATIONS DE COMPTAGE ==========
 
+        const TRAFFIC_STYLES = {
+            high: { fill: '#34495E', stroke: '#FFFFFF', size: 12 },
+            medium: { fill: '#95A5A6', stroke: '#FFFFFF', size: 10 },
+            low: { fill: '#D5DBDB', stroke: '#7F8C8D', size: 8 }
+        };
+
         function syncTrafficMarkersOnMap() {
             const shouldShow = trafficVisible || wazeEnabled;
             trafficMarkers.forEach(marker => {
@@ -2857,33 +2863,30 @@
                 
                 const formatNumber = (value, suffix = '') => Number.isFinite(value) ? `${value.toLocaleString()}${suffix}` : 'N/A';
                 
-                // Déterminer la catégorie de trafic
-                let color, size, category;
+                // Déterminer la catégorie de trafic (gris clair → gris foncé)
+                let style, category;
                 if (mja >= 20000) {
-                    color = '#E74C3C';
-                    size = 12;
+                    style = TRAFFIC_STYLES.high;
                     category = 'high';
                     trafficCounts.high++;
                 } else if (mja >= 5000) {
-                    color = '#F39C12';
-                    size = 10;
+                    style = TRAFFIC_STYLES.medium;
                     category = 'medium';
                     trafficCounts.medium++;
                 } else {
-                    color = '#3498DB';
-                    size = 8;
+                    style = TRAFFIC_STYLES.low;
                     category = 'low';
                     trafficCounts.low++;
                 }
 
                 // Créer le marqueur (masqué par défaut — voir trafficVisible)
                 const marker = L.circleMarker([lat, lon], {
-                    radius: size,
-                    fillColor: color,
-                    color: 'white',
+                    radius: style.size,
+                    fillColor: style.fill,
+                    color: style.stroke,
                     weight: 2,
                     opacity: 1,
-                    fillOpacity: 0.8,
+                    fillOpacity: 0.9,
                     stationType: 'counting'  // Pour identification lors du toggle trafic
                 });
 
@@ -2913,18 +2916,18 @@
 
                 // Effet de survol
                 marker.on('mouseover', function() {
-                    this.setStyle({ 
-                        radius: size + 3,
+                    this.setStyle({
+                        radius: style.size + 3,
                         weight: 3,
                         fillOpacity: 1
                     });
                 });
 
                 marker.on('mouseout', function() {
-                    this.setStyle({ 
-                        radius: size,
+                    this.setStyle({
+                        radius: style.size,
                         weight: 2,
-                        fillOpacity: 0.8
+                        fillOpacity: 0.9
                     });
                 });
             });
