@@ -89,10 +89,27 @@ python3 scripts/update_osm_geojson.py
 python3 scripts/update_external_data.py
 ```
 
-`scripts/update_osm_geojson.py` interroge Overpass avec un `User-Agent` explicite :
+## Versionnement
+
+La version applicative est centralisée dans `VERSION` (actuellement **0.2.0**). Les scripts Python la lisent via `scripts/project_meta.py` ; le front lit `js/config.js` (synchronisé par le script ci-dessous).
+
+```bash
+# Afficher la version courante
+python3 scripts/bump_version.py show
+
+# Recopier VERSION -> js/config.js
+python3 scripts/bump_version.py sync
+
+# Incrémenter (minor / patch / major), puis mettre à jour CHANGELOG.md
+python3 scripts/bump_version.py bump minor
+```
+
+Historique des versions : [`CHANGELOG.md`](CHANGELOG.md).
+
+`scripts/update_osm_geojson.py` interroge Overpass avec un `User-Agent` explicite (version lue depuis `VERSION`) :
 
 ```text
-dataroads-FR84/0.1.0 (https://github.com/thepriben/dataroads-FR84)
+dataroads-FR84/0.2.0 (https://github.com/thepriben/dataroads-FR84)
 ```
 
 `scripts/update_external_data.py` matérialise les données data.gouv.fr et Info Routière dans `data/external/`. Si Info Routière est indisponible, le script conserve un GeoJSON vide avec l'erreur dans `_cache`.
