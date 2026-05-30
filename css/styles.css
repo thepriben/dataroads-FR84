@@ -861,12 +861,13 @@
         }
 
         .freshness-badge.is-layer-hidden .freshness-pill {
-            color: #BDC3C7 !important;
-            background: #ECF0F1 !important;
+            color: #bdc3c7;
+            background: #f0f1f2;
+            border-color: rgba(44, 62, 80, 0.18);
         }
 
         .freshness-badge.is-layer-hidden .freshness-dot {
-            background: #BDC3C7 !important;
+            background: #bdc3c7;
         }
 
         /* Badge fraîcheur (date d'intégration + prochain rafraîchissement) */
@@ -881,6 +882,9 @@
             gap: 5px;
             padding: 3px 9px;
             border-radius: 11px;
+            border: 1px solid rgba(44, 62, 80, 0.32);
+            background: #f3f4f5;
+            color: #5b6770;
             font-size: 0.65rem;
             font-weight: 600;
             font-family: 'JetBrains Mono', monospace;
@@ -889,11 +893,31 @@
         }
 
         .freshness-dot {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             display: inline-block;
             flex-shrink: 0;
+            background: #95a5a6;
+        }
+
+        .freshness-pill--stale .freshness-dot,
+        .freshness-pill--late .freshness-dot {
+            background: #7f8c8d;
+        }
+
+        .freshness-pill--stale {
+            border-color: rgba(44, 62, 80, 0.48);
+        }
+
+        .freshness-pill--error {
+            border-color: rgba(44, 62, 80, 0.55);
+        }
+
+        .freshness-error-icon {
+            margin-left: 2px;
+            font-size: 0.6rem;
+            opacity: 0.75;
         }
 
         /* Panneau "Formule de rafraîchissement" */
