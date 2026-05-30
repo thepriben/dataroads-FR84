@@ -102,16 +102,16 @@
 
         function freshnessState(generatedAtMs, scheduleConfig) {
             if (!scheduleConfig.intervalMs) {
-                return { color: '#7f8c8d', tone: '#7f8c8d22', label: 'figé', dotLabel: 'static' };
+                return { status: 'static' };
             }
             if (!generatedAtMs) {
-                return { color: '#95A5A6', tone: '#95A5A622', label: 'inconnu', dotLabel: 'unknown' };
+                return { status: 'unknown' };
             }
             const ageMs = Date.now() - generatedAtMs;
             const interval = scheduleConfig.intervalMs;
-            if (ageMs <= interval * 1.15) return { color: '#27AE60', tone: '#27AE6022', label: 'à jour', dotLabel: 'fresh' };
-            if (ageMs <= interval * 2) return { color: '#F39C12', tone: '#F39C1222', label: 'en retard', dotLabel: 'late' };
-            return { color: '#E74C3C', tone: '#E74C3C22', label: 'obsolète', dotLabel: 'stale' };
+            if (ageMs <= interval * 1.15) return { status: 'fresh' };
+            if (ageMs <= interval * 2) return { status: 'late' };
+            return { status: 'stale' };
         }
 
         const latestCacheByGroup = {};
@@ -149,7 +149,7 @@
             if (!element) return;
             const config = FRESHNESS_SCHEDULES[scheduleKey] || {};
             const generatedAtMs = generatedAt ? new Date(generatedAt).getTime() : null;
-            let state = freshnessState(generatedAtMs, config);
+            let status = freshnessState(generatedAtMs, config).status;
 
             if (generatedAt && config.cron) {
                 const current = latestCacheByGroup[scheduleKey];
@@ -199,14 +199,16 @@
             const layerHidden = !layerVisible;
 
             if (layerHidden) {
-                state = { color: '#BDC3C7', tone: '#ECF0F1', label: 'masqué', dotLabel: 'hidden' };
+                status = 'hidden';
             } else if (!config.intervalMs && generatedAtMs) {
-                state = { color: '#27AE60', tone: '#27AE6022', label: 'snapshot', dotLabel: 'static' };
+                status = 'static';
             }
 
-            const errorIcon = errorMsg ? '<span style="margin-left:4px;">⚠</span>' : '';
+            const errorIcon = errorMsg ? '<span class="freshness-error-icon" aria-hidden="true">⚠</span>' : '';
+            const pillClasses = ['freshness-pill', `freshness-pill--${status}`];
+            if (errorMsg) pillClasses.push('freshness-pill--error');
             element.classList.toggle('is-layer-hidden', layerHidden);
-            element.innerHTML = `<span class="freshness-pill" style="background:${state.tone};color:${state.color};"><span class="freshness-dot" style="background:${state.color};"></span>${ageText}${nextText}${errorIcon}</span>`;
+            element.innerHTML = `<span class="${pillClasses.join(' ')}"><span class="freshness-dot" aria-hidden="true"></span>${ageText}${nextText}${errorIcon}</span>`;
         }
 
         function refreshAllBadges() {
