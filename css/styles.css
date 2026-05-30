@@ -1208,6 +1208,9 @@
 
         .site-footer-repo-box {
             flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             border: 1px solid var(--border);
             border-radius: 6px;
             padding: 4px 10px;
@@ -1226,6 +1229,19 @@
 
         .site-footer-repo-box a:hover {
             color: #3498DB;
+        }
+
+        .site-footer-version {
+            color: #bdc3c7;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.58rem;
+            white-space: nowrap;
+        }
+
+        .site-footer-version::before {
+            content: '·';
+            margin-right: 8px;
+            opacity: 0.7;
         }
 
         @media (max-width: 720px) {

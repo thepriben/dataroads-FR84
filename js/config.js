@@ -5,7 +5,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.1.0',
+        version: '0.2.0',
         repository,
         data: {
             externalRefreshHours: 3,

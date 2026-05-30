@@ -15,11 +15,15 @@ from typing import Any, Callable
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from project_meta import read_version, user_agent
+
 DATA_DIR = ROOT / "data" / "external"
-APP_NAME = os.environ.get("APP_NAME", "dataroads-FR84")
-APP_VERSION = os.environ.get("APP_VERSION", "0.1.0")
-REPOSITORY = os.environ.get("APP_REPOSITORY", "https://github.com/thepriben/dataroads-FR84")
-USER_AGENT = os.environ.get("APP_USER_AGENT", f"{APP_NAME}/{APP_VERSION} ({REPOSITORY})")
+APP_VERSION = os.environ.get("APP_VERSION", read_version())
+USER_AGENT = os.environ.get("APP_USER_AGENT", user_agent())
 
 TRAFFIC_COUNTING_URL = (
     "https://www.data.gouv.fr/api/1/datasets/r/"
