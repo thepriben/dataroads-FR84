@@ -148,7 +148,7 @@
             display: grid;
             grid-template-columns: var(--sidebar-width, 320px) 6px 1fr;
             gap: 0;
-            height: calc(100vh - 165px);
+            height: calc(100vh - 165px - 36px);
             min-height: 600px;
             position: relative;
         }
@@ -1150,22 +1150,52 @@
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
         }
 
-        /* === Crédits (pied de sidebar) === */
-        .credits-section .legend-title {
-            font-size: 0.8rem;
-            color: #5b6770;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
+        /* === Pied de page === */
+        .site-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 20px;
+            border-top: 1px solid var(--border);
+            background: #fafbfc;
+            font-size: 0.65rem;
+            line-height: 1.4;
+            color: #95a5a6;
         }
 
-        .credits-box {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px 10px;
-            font-size: 0.68rem;
-            line-height: 1.45;
-            color: #2C3E50;
+        .site-footer-author a {
+            color: #7f8c8d;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.18s;
+        }
+
+        .site-footer-author a:hover {
+            color: #3498DB;
+            text-decoration: underline;
+        }
+
+        .site-footer-sep {
+            margin: 0 0.35em;
+            opacity: 0.6;
+        }
+
+        .site-footer-repo {
+            display: inline-flex;
+            flex-shrink: 0;
+            line-height: 0;
+            border-radius: 3px;
+            transition: transform 0.15s;
+        }
+
+        .site-footer-repo:hover {
+            transform: translateY(-1px);
+        }
+
+        .site-footer-repo img {
+            height: 16px;
+            display: block;
         }
 
         /* === Tuiles "Informations Réseau" === */
@@ -1206,45 +1236,6 @@
             text-transform: uppercase;
             letter-spacing: 0.4px;
             margin-top: 3px;
-        }
-
-        .credits-author {
-            margin: 0 0 6px 0;
-            color: #5b6770;
-            font-size: 0.68rem;
-        }
-
-        .credits-author a {
-            color: #3498DB;
-            font-weight: 600;
-            text-decoration: none;
-            transition: color 0.18s;
-        }
-
-        .credits-author a:hover {
-            color: #1f6391;
-            text-decoration: underline;
-        }
-
-        .credits-repo {
-            display: inline-flex;
-            align-items: center;
-        }
-
-        .credits-repo a {
-            display: inline-flex;
-            line-height: 0;
-            border-radius: 3px;
-            transition: transform 0.15s;
-        }
-
-        .credits-repo a:hover {
-            transform: translateY(-1px);
-        }
-
-        .credits-repo img {
-            height: 18px;
-            display: block;
         }
 
         /* === Familles de sections de la sidebar === */

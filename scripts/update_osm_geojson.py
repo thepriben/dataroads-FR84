@@ -18,9 +18,9 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data" / "osm"
 ENDPOINT = os.environ.get("OVERPASS_ENDPOINT", "https://overpass-api.de/api/interpreter")
-APP_NAME = os.environ.get("APP_NAME", "demo-inforoute-084")
+APP_NAME = os.environ.get("APP_NAME", "dataroads-FR84")
 APP_VERSION = os.environ.get("APP_VERSION", "0.1.0")
-REPOSITORY = os.environ.get("APP_REPOSITORY", "https://github.com/thepriben/demo-inforoute-084")
+REPOSITORY = os.environ.get("APP_REPOSITORY", "https://github.com/thepriben/dataroads-FR84")
 USER_AGENT = os.environ.get("OVERPASS_USER_AGENT", f"{APP_NAME}/{APP_VERSION} ({REPOSITORY})")
 
 

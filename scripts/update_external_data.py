@@ -16,9 +16,9 @@ from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data" / "external"
-APP_NAME = os.environ.get("APP_NAME", "demo-inforoute-084")
+APP_NAME = os.environ.get("APP_NAME", "dataroads-FR84")
 APP_VERSION = os.environ.get("APP_VERSION", "0.1.0")
-REPOSITORY = os.environ.get("APP_REPOSITORY", "https://github.com/thepriben/demo-inforoute-084")
+REPOSITORY = os.environ.get("APP_REPOSITORY", "https://github.com/thepriben/dataroads-FR84")
 USER_AGENT = os.environ.get("APP_USER_AGENT", f"{APP_NAME}/{APP_VERSION} ({REPOSITORY})")
 
 TRAFFIC_COUNTING_URL = (

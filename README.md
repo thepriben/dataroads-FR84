@@ -90,7 +90,7 @@ python3 scripts/update_external_data.py
 `scripts/update_osm_geojson.py` interroge Overpass avec un `User-Agent` explicite :
 
 ```text
-demo-inforoute-084/0.1.0 (https://github.com/thepriben/demo-inforoute-084)
+dataroads-FR84/0.1.0 (https://github.com/thepriben/dataroads-FR84)
 ```
 
 `scripts/update_external_data.py` matérialise les données data.gouv.fr et Info Routière dans `data/external/`. Si Info Routière est indisponible, le script conserve un GeoJSON vide avec l'erreur dans `_cache`.
