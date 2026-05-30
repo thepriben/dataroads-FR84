@@ -13,7 +13,7 @@ from typing import Any
 
 
 DEFAULT_OWNER = "thepriben"
-REPO = "demo-inforoute-084"
+REPO = "dataroads-FR84"
 API_ROOT = "https://api.github.com"
 API_VERSION = "2026-03-10"
 
@@ -28,7 +28,7 @@ def github_request(token: str, method: str, path: str, body: dict[str, Any] | No
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
-            "User-Agent": "demo-inforoute-084-publisher",
+            "User-Agent": "dataroads-FR84-publisher",
             "X-GitHub-Api-Version": API_VERSION,
         },
     )

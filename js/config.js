@@ -1,10 +1,10 @@
 (function (window) {
     'use strict';
 
-    const repository = 'https://github.com/thepriben/demo-inforoute-084';
+    const repository = 'https://github.com/thepriben/dataroads-FR84';
 
     window.APP_CONFIG = Object.freeze({
-        appName: 'demo-inforoute-084',
+        appName: 'dataroads-FR84',
         version: '0.1.0',
         repository,
         data: {
