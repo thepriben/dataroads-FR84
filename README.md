@@ -19,6 +19,7 @@ Ce démonstrateur incubé au sein du Bureau de l'information Routière (Conseil 
 - Les stations de comptage CD84, classées par niveau de trafic.
 - L'accidentologie fournie pour 2024, affichable à la demande pour ne pas surcharger la carte.
 - Les routes en construction ou en projet issues du cache OSM.
+- Les véloroutes du Vaucluse (relations OSM `route=bicycle`), affichables à la demande.
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
 - Un panneau de qualité OSM pour repérer les tronçons qui ont ou non une relation OSM exploitable.
 
@@ -50,6 +51,7 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 | --- | --- | --- | --- |
 | Routes départementales | OpenStreetMap | cache du 2026-05-17 22:52 UTC | Données réseau, pas un millésime administratif CD84. |
 | Routes en construction | OpenStreetMap | cache du 2026-05-17 22:53 UTC | Quelques ouvertures indiquées entre 2025 et 2027 selon les tags OSM. |
+| Véloroutes | OpenStreetMap | cache hebdomadaire (lundi 03:17 UTC) | Relations `route=bicycle` du département. |
 | Communes | OpenStreetMap | cache du 2026-05-17 22:53 UTC | 151 communes ; les tags de population pointent vers 2021. |
 | Limite du Vaucluse | OpenStreetMap | GeoJSON local | Limite départementale 84, figée dans `data/static/`. |
 | Accidentologie | Fichier fourni / BAAC | 2024 | 113 accidents, tous datés de 2024. |
