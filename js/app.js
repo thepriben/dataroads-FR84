@@ -727,6 +727,8 @@
         let convoiMode = false;
         let constructionPolylines = [];
         let constructionVisible = false;
+        let bicyclePolylines = [];
+        let bicycleVisible = false;
         let bisonFuteMarkers = [];
         let bisonFuteVisible = false;
         let cityMarkers = [];
@@ -749,6 +751,8 @@
                     visible += ['regional', 'territorial', 'local'].filter(h => hierarchyVisibility[h]).length;
                     total += 1;
                     if (constructionVisible) visible++;
+                    total += 1;
+                    if (bicycleVisible) visible++;
                     total += 1;
                     if (citiesVisible) visible++;
                     const limitations = document.getElementById('limitationsLegend');
@@ -784,6 +788,8 @@
                     return hierarchyVisibility.regional || hierarchyVisibility.territorial || hierarchyVisibility.local;
                 case 'freshness-construction':
                     return constructionVisible;
+                case 'freshness-bicycle':
+                    return bicycleVisible;
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
@@ -919,6 +925,62 @@
             applyConstructionVisibleUi();
             syncLegendChrome();
             console.log(`✓ ${constructionPolylines.length} polyline(s) construction affichée(s)`);
+        };
+
+        // ========== VÉLOROUTES (relations OSM route=bicycle) ==========
+
+        const BICYCLE_ROUTE_COLOUR = '#27AE60';
+
+        function applyBicycleVisibleUi() {
+            const icon = document.getElementById('bicycleToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="bicycleToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-bicycle]');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '700';
+            legendItems.forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+        }
+
+        function applyBicycleHiddenUi() {
+            const icon = document.getElementById('bicycleToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="bicycleToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-bicycle]');
+            setToggleIcon(icon, false);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '600';
+            legendItems.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+        }
+
+        window.toggleBicycleRoutes = function() {
+            bicycleVisible = !bicycleVisible;
+
+            if (!bicycleVisible) {
+                bicyclePolylines.forEach(polyline => {
+                    if (window.map.hasLayer(polyline)) window.map.removeLayer(polyline);
+                });
+                applyBicycleHiddenUi();
+                syncLegendChrome();
+                return;
+            }
+
+            if (bicyclePolylines.length === 0) {
+                const icon = document.getElementById('bicycleToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                window.loadBicycleRoutes();
+                return;
+            }
+
+            bicyclePolylines.forEach(polyline => {
+                if (!window.map.hasLayer(polyline)) polyline.addTo(window.map);
+            });
+            applyBicycleVisibleUi();
+            syncLegendChrome();
         };
 
         // ========== CONVOIS EXCEPTIONNELS ==========
@@ -3423,6 +3485,83 @@
                 document.getElementById('count-proposed').textContent = '0';
             }
         }
+
+        window.loadBicycleRoutes = async function() {
+            try {
+                const data = await window.InforouteApi.fetchGeoJson('bicycle-routes');
+                renderFreshnessBadge(document.getElementById('freshness-bicycle'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'osm'
+                });
+                syncLegendChrome();
+
+                const bicycleWays = (data.features || [])
+                    .map(geoJsonLineFeatureToWay)
+                    .filter(Boolean);
+
+                const relationIds = new Set(
+                    bicycleWays
+                        .map(way => way.tags?.relation_id)
+                        .filter(Boolean)
+                );
+
+                document.getElementById('count-bicycle-routes').textContent = String(relationIds.size);
+
+                if (bicycleWays.length === 0) {
+                    bicycleVisible = false;
+                    applyBicycleHiddenUi();
+                    return;
+                }
+
+                bicycleWays.forEach(way => {
+                    const coords = way.geometry.map(point => [point.lat, point.lon]);
+                    const tags = way.tags || {};
+                    const relationTags = tags.relation_tags || {};
+                    const name = tags.name || relationTags.name || tags.ref || relationTags.ref || 'Véloroute sans nom';
+                    const network = tags.network || relationTags.network || '';
+                    const operator = tags.operator || relationTags.operator || '';
+                    const relationId = tags.relation_id;
+
+                    const polyline = L.polyline(coords, {
+                        color: BICYCLE_ROUTE_COLOUR,
+                        weight: 4,
+                        opacity: 0.85
+                    }).addTo(window.map);
+
+                    bicyclePolylines.push(polyline);
+
+                    const popupContent = `
+                        <div class="route-popup">
+                            <h3>🚴 ${escapeHtml(name)}</h3>
+                            ${network ? `<div class="detail"><strong>Réseau&nbsp;:</strong> ${escapeHtml(network)}</div>` : ''}
+                            ${operator ? `<div class="detail"><strong>Opérateur&nbsp;:</strong> ${escapeHtml(operator)}</div>` : ''}
+                            ${relationId ? `
+                                <div class="detail" style="margin-top: 10px;">
+                                    <a href="https://www.openstreetmap.org/relation/${relationId}" target="_blank" rel="noopener noreferrer" style="color: #3498DB; font-weight: 600; text-decoration: none;">
+                                        Voir la relation OSM →
+                                    </a>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+
+                    polyline.bindPopup(popupContent);
+                    polyline.on('mouseover', function() {
+                        this.setStyle({ weight: 6, opacity: 1 });
+                    });
+                    polyline.on('mouseout', function() {
+                        this.setStyle({ weight: 4, opacity: 0.85 });
+                    });
+                });
+
+                applyBicycleVisibleUi();
+            } catch (error) {
+                console.error('Erreur chargement véloroutes:', error);
+                bicycleVisible = false;
+                applyBicycleHiddenUi();
+                document.getElementById('count-bicycle-routes').textContent = '0';
+            }
+        };
 
         // ========== BISON FUTÉ / INFO ROUTIÈRE ==========
         

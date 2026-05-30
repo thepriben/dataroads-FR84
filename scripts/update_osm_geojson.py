@@ -58,6 +58,14 @@ QUERIES = {
         relation(area.dept)["boundary"="administrative"]["admin_level"="8"];
         out geom;
     """,
+    "bicycle-routes": """
+        [out:json][timeout:120];
+        area["ISO3166-2"="FR-84"]->.dept;
+        relation(area.dept)["type"="route"]["route"="bicycle"];
+        out body;
+        >;
+        out geom;
+    """,
 }
 
 
@@ -274,10 +282,57 @@ def communes_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     return collection(features, len(data.get("elements", [])))
 
 
+def bicycle_routes_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    elements = data.get("elements", [])
+    relations = {
+        element["id"]: element
+        for element in elements
+        if element.get("type") == "relation"
+        and element.get("tags", {}).get("route") == "bicycle"
+    }
+
+    way_to_relations: dict[int, list[int]] = {}
+    for relation_id, relation in relations.items():
+        for member in relation.get("members", []):
+            if member.get("type") != "way":
+                continue
+            if member.get("role") not in ("", "forward", "backward"):
+                continue
+            member_id = member.get("ref") or member.get("id")
+            if member_id is None:
+                continue
+            way_to_relations.setdefault(member_id, []).append(relation_id)
+
+    features: list[dict[str, Any]] = []
+    for element in elements:
+        if element.get("type") != "way":
+            continue
+
+        relation_ids = way_to_relations.get(element.get("id"), [])
+        if not relation_ids:
+            continue
+
+        primary_relation = relations[relation_ids[0]]
+        relation_tags = primary_relation.get("tags") or {}
+        extra_properties = {
+            "has_relation": True,
+            "relation_id": primary_relation.get("id"),
+            "relation_ids": relation_ids,
+            "relation_tags": relation_tags,
+        }
+
+        feature = way_to_feature(element, extra_properties)
+        if feature:
+            features.append(feature)
+
+    return collection(features, len(elements))
+
+
 CONVERTERS = {
     "departmental-roads": departmental_roads_to_geojson,
     "construction-roads": construction_roads_to_geojson,
     "communes-vaucluse": communes_to_geojson,
+    "bicycle-routes": bicycle_routes_to_geojson,
 }
 
 

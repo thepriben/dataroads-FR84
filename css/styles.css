@@ -148,7 +148,7 @@
             display: grid;
             grid-template-columns: var(--sidebar-width, 320px) 6px 1fr;
             gap: 0;
-            height: calc(100vh - 165px - 36px);
+            height: calc(100vh - 165px - 52px);
             min-height: 600px;
             position: relative;
         }
@@ -1155,47 +1155,60 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            padding: 8px 20px;
+            gap: 16px;
+            padding: 10px 20px;
             border-top: 1px solid var(--border);
             background: #fafbfc;
-            font-size: 0.65rem;
-            line-height: 1.4;
+            font-size: 0.62rem;
+            line-height: 1.45;
             color: #95a5a6;
         }
 
-        .site-footer-author a {
+        .site-footer-credit {
+            flex: 1;
+            min-width: 0;
+            margin: 0;
+        }
+
+        .site-footer-credit a {
             color: #7f8c8d;
             font-weight: 500;
             text-decoration: none;
             transition: color 0.18s;
         }
 
-        .site-footer-author a:hover {
+        .site-footer-credit a:hover {
             color: #3498DB;
             text-decoration: underline;
         }
 
-        .site-footer-sep {
-            margin: 0 0.35em;
-            opacity: 0.6;
-        }
-
-        .site-footer-repo {
-            display: inline-flex;
+        .site-footer-repo-box {
             flex-shrink: 0;
-            line-height: 0;
-            border-radius: 3px;
-            transition: transform 0.15s;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 10px;
+            background: white;
+            font-size: 0.6rem;
+            line-height: 1.2;
         }
 
-        .site-footer-repo:hover {
-            transform: translateY(-1px);
+        .site-footer-repo-box a {
+            color: #95a5a6;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.18s;
         }
 
-        .site-footer-repo img {
-            height: 16px;
-            display: block;
+        .site-footer-repo-box a:hover {
+            color: #3498DB;
+        }
+
+        @media (max-width: 720px) {
+            .site-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
 
         /* === Tuiles "Informations Réseau" === */
