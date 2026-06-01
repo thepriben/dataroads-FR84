@@ -127,25 +127,12 @@
         }
     }
 
-    function vintageForSection(sectionId, vintages) {
-        const map = {
-            network: vintages.osm,
-            traffic: vintages.traffic,
-            safety: vintages.accidents,
-            realtime: vintages.bisonFute,
-            mobility: vintages.osm,
-            quality: vintages.osm
-        };
-        return map[sectionId] || '';
-    }
-
     function renderDashboard() {
         const container = document.getElementById('dashboardContent');
         if (!container) return;
 
         const metrics = window.dashboardMetrics;
         const sectionsHtml = DASHBOARD_SECTIONS.map(section => {
-            const vintage = vintageForSection(section.id, metrics.vintages || {});
             const tilesHtml = section.tiles.map(tile => {
                 const value = formatDashboardValue(
                     section.id === 'safety' ? 'accidents'
@@ -167,10 +154,7 @@
 
             return `
                 <section class="dashboard-section">
-                    <div class="dashboard-section-head">
-                        <h3>${section.title}</h3>
-                        ${vintage ? `<span class="dashboard-vintage">${vintage}</span>` : ''}
-                    </div>
+                    <h3 class="dashboard-section-title">${section.title}</h3>
                     <div class="dashboard-grid">${tilesHtml}</div>
                 </section>
             `;
@@ -179,10 +163,7 @@
         const weather = metrics.weather;
         const weatherBlock = weather ? `
             <section class="dashboard-section dashboard-section-weather">
-                <div class="dashboard-section-head">
-                    <h3>Météo · Avignon</h3>
-                    <span class="dashboard-vintage">${metrics.vintages.weather || 'Temps réel'}</span>
-                </div>
+                <h3 class="dashboard-section-title">Météo · Avignon</h3>
                 <div class="dashboard-weather">
                     <span class="dashboard-weather-icon">${weather.icon || '⏳'}</span>
                     <span class="dashboard-weather-temp">${weather.temp != null ? `${weather.temp}°C` : '—'}</span>
@@ -191,17 +172,7 @@
             </section>
         ` : '';
 
-        container.innerHTML = `
-            <p class="dashboard-intro">
-                Synthèse des indicateurs clés du Vaucluse (84). Chaque section indique son millésime ou sa fraîcheur.
-            </p>
-            ${sectionsHtml}
-            ${weatherBlock}
-            <p class="dashboard-footnote">
-                Phase 2 prévue&nbsp;: filtres par agence routière, centre routier, EPCI et commune
-                (<a href="docs/phase2-territorial-dashboard.md" target="_blank" rel="noopener">spec</a>).
-            </p>
-        `;
+        container.innerHTML = `${sectionsHtml}${weatherBlock}`;
     }
 
     window.patchDashboardMetrics = function patchDashboardMetrics(partial) {

@@ -646,20 +646,6 @@
             }
         }
 
-        function syncDashboardQualityMetrics() {
-            if (typeof window.patchDashboardMetrics !== 'function') return;
-            const total = qualityMetrics.totalRoutes || 0;
-            const wikidataPct = total ? Math.round((qualityMetrics.withWikidata / total) * 100) : 0;
-            const relationPct = total ? Math.round((qualityMetrics.withRelation / total) * 100) : 0;
-            window.patchDashboardMetrics({
-                quality: {
-                    wikidataPct,
-                    relationPct,
-                    segments: qualityMetrics.totalSegments || 0
-                }
-            });
-        }
-
         function updateBisonFuteLegendCounts(eventsCount) {
             const mapping = [
                 ['travaux', eventsCount.travaux],

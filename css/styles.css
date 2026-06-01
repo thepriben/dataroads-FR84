@@ -537,49 +537,17 @@
             flex: 1;
         }
 
-        .dashboard-intro {
-            margin: 0 0 18px;
-            font-size: 0.85rem;
-            color: #5d6d7e;
-            line-height: 1.45;
-        }
-
-        .dashboard-footnote {
-            margin: 20px 0 0;
-            font-size: 0.72rem;
-            color: #95a5a6;
-            line-height: 1.4;
-        }
-
-        .dashboard-footnote a {
-            color: #16A085;
-        }
-
         .dashboard-section {
             margin-bottom: 18px;
         }
 
-        .dashboard-section-head {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .dashboard-section-head h3 {
-            margin: 0;
+        .dashboard-section-title {
+            margin: 0 0 8px;
             font-size: 0.78rem;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: #2C3E50;
             font-weight: 700;
-        }
-
-        .dashboard-vintage {
-            font-size: 0.68rem;
-            color: #7f8c8d;
-            white-space: nowrap;
         }
 
         .dashboard-grid {
