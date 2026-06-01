@@ -1,6 +1,6 @@
 /**
  * @file Department-level KPI dashboard (phase 1).
- * @description Compact floating panel fed by window.dashboardMetrics (patched from app.js).
+ * @description Compact centered panel fed by window.dashboardMetrics (patched from app.js).
  */
 (function (window) {
     'use strict';
@@ -21,14 +21,19 @@
     window.dashboardMetrics = { ...EMPTY_DASHBOARD_METRICS, vintages: {} };
 
     function isDashboardDataComplete(metrics) {
+        const accidents = metrics?.accidents;
+        const bison = metrics?.bisonFute;
+        const bicycle = metrics?.bicycle;
+        const construction = metrics?.construction;
+
         return Boolean(
             metrics?.network
             && metrics?.hierarchy
             && metrics?.traffic
-            && metrics?.accidents
-            && metrics?.bisonFute
-            && metrics?.bicycle
-            && metrics?.construction
+            && accidents && accidents.total != null
+            && bison && bison.total != null
+            && bicycle && bicycle.structurantes != null
+            && construction && construction.construction != null
             && metrics?.quality
             && metrics?.weather
         );
@@ -69,7 +74,7 @@
         container.innerHTML = `
             <div class="dashboard-loading" role="status" aria-live="polite">
                 <div class="dashboard-spinner" aria-hidden="true"></div>
-                <p>${message || 'Chargement des indicateurs…'}</p>
+                <p>${message || 'Chargement…'}</p>
             </div>
         `;
     };
@@ -89,121 +94,108 @@
 
     const DASHBOARD_SECTIONS = [
         {
-            id: 'network',
             title: 'Réseau',
-            tiles: [
-                { key: 'refs', label: 'routes' },
-                { key: 'lengthKm', label: 'km' },
-                { key: 'hierarchySplit', label: 'R/T/L' },
-                { key: 'bridges', label: 'ponts' },
-                { key: 'tunnels', label: 'tunnels' }
+            items: [
+                { metricsKey: 'network', key: 'refs', label: 'routes' },
+                { metricsKey: 'network', key: 'lengthKm', label: 'km' },
+                { metricsKey: 'network', key: 'hierarchySplit', label: 'R/T/L' },
+                { metricsKey: 'network', key: 'bridges', label: 'ponts' },
+                { metricsKey: 'network', key: 'tunnels', label: 'tunnels' }
             ]
         },
         {
-            id: 'traffic',
             title: 'Trafic',
-            tiles: [
-                { key: 'stations', label: 'sta.' },
-                { key: 'mjaRange', label: 'MJA' },
-                { key: 'tierSplit', label: 'F/M/f' }
+            items: [
+                { metricsKey: 'traffic', key: 'stations', label: 'sta.' },
+                { metricsKey: 'traffic', key: 'mjaRange', label: 'MJA' },
+                { metricsKey: 'traffic', key: 'tierSplit', label: 'F/M/f' }
             ]
         },
         {
-            id: 'safety',
             title: 'Sécurité',
-            tiles: [
-                { key: 'total', label: 'acc.' },
-                { key: 'fatal', label: 'mortels' },
-                { key: 'hospitalized', label: 'hosp.' },
-                { key: 'light', label: 'légers' }
+            items: [
+                { metricsKey: 'accidents', key: 'total', label: 'acc.' },
+                { metricsKey: 'accidents', key: 'fatal', label: 'mortels' },
+                { metricsKey: 'accidents', key: 'hospitalized', label: 'hosp.' },
+                { metricsKey: 'accidents', key: 'light', label: 'légers' }
             ]
         },
         {
-            id: 'realtime',
             title: 'Live',
-            tiles: [
-                { key: 'total', label: 'év.' },
-                { key: 'travaux', label: 'trav.' },
-                { key: 'bouchons', label: 'bouch.' },
-                { key: 'accidents', label: 'acc.' }
+            items: [
+                { metricsKey: 'bisonFute', key: 'total', label: 'év.' },
+                { metricsKey: 'bisonFute', key: 'travaux', label: 'trav.' },
+                { metricsKey: 'bisonFute', key: 'bouchons', label: 'bouch.' },
+                { metricsKey: 'bisonFute', key: 'accidents', label: 'acc.' }
             ]
         },
         {
-            id: 'mobility',
             title: 'Mobilité',
-            tiles: [
-                { key: 'structurantes', label: 'vélo str.' },
-                { key: 'local', label: 'vélo loc.' },
-                { key: 'constructionSplit', label: 'chant./proj.' }
+            items: [
+                { metricsKey: 'bicycle', key: 'structurantes', label: 'vélo str.' },
+                { metricsKey: 'bicycle', key: 'local', label: 'vélo loc.' },
+                { metricsKey: 'construction', key: 'constructionSplit', label: 'chant./proj.' }
             ]
         },
         {
-            id: 'quality',
             title: 'Qualité',
-            tiles: [
-                { key: 'wikidataPct', label: 'Wikidata' },
-                { key: 'relationPct', label: 'relation' },
-                { key: 'segments', label: 'tronçons' }
+            items: [
+                { metricsKey: 'quality', key: 'wikidataPct', label: 'Wikidata' },
+                { metricsKey: 'quality', key: 'relationPct', label: 'relation' },
+                { metricsKey: 'quality', key: 'segments', label: 'tronçons' }
             ]
         }
     ];
 
-    function formatDashboardValue(sectionId, key, metrics) {
-        const section = metrics[sectionId];
-        if (!section) return '…';
+    function formatDashboardValue(metricsKey, key, metrics) {
+        const section = metrics[metricsKey];
+        if (!section) return null;
 
-        switch (sectionId) {
+        switch (metricsKey) {
             case 'network':
                 if (key === 'lengthKm') {
                     return section.lengthKm >= 1
-                        ? `${Math.round(section.lengthKm).toLocaleString('fr-FR')} km`
-                        : '—';
+                        ? Math.round(section.lengthKm).toLocaleString('fr-FR')
+                        : null;
                 }
                 if (key === 'hierarchySplit') {
                     const h = metrics.hierarchy;
-                    if (!h) return '…';
-                    return `${h.regional} / ${h.territorial} / ${h.local}`;
+                    if (!h) return null;
+                    return `${h.regional}/${h.territorial}/${h.local}`;
                 }
-                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : '—';
+                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
 
             case 'traffic':
                 if (key === 'mjaRange') {
-                    return (section.mjaRange || '—').replace(/\s*v[ée]h\/j/i, '');
+                    const range = section.mjaRange;
+                    if (!range) return null;
+                    return range.replace(/\s*v[ée]h\/j/i, '').trim();
                 }
                 if (key === 'tierSplit') {
-                    return `${section.high} / ${section.medium} / ${section.low}`;
+                    return `${section.high}/${section.medium}/${section.low}`;
                 }
-                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : '—';
+                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
 
-            case 'safety':
-            case 'realtime':
-                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : '—';
+            case 'accidents':
+            case 'bisonFute':
+            case 'bicycle':
+                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
 
-            case 'mobility':
+            case 'construction':
                 if (key === 'constructionSplit') {
-                    const c = metrics.construction;
-                    if (!c) return '…';
-                    return `${c.construction} / ${c.proposed}`;
+                    return `${section.construction}/${section.proposed}`;
                 }
-                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : '—';
+                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
 
             case 'quality':
                 if (key === 'wikidataPct' || key === 'relationPct') {
-                    return section[key] != null ? `${section[key]} %` : '…';
+                    return section[key] != null ? `${section[key]}%` : null;
                 }
-                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : '—';
+                return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
 
             default:
-                return '—';
+                return null;
         }
-    }
-
-    function resolveSectionMetricsKey(sectionId, tileKey) {
-        if (sectionId === 'safety') return 'accidents';
-        if (sectionId === 'realtime') return 'bisonFute';
-        if (sectionId === 'mobility' && tileKey.startsWith('construction')) return 'construction';
-        if (sectionId === 'mobility') return 'bicycle';
-        return sectionId;
     }
 
     function renderDashboard() {
@@ -211,39 +203,37 @@
         if (!container) return;
 
         const metrics = window.dashboardMetrics;
-        const sectionsHtml = DASHBOARD_SECTIONS.map(section => {
-            const statsHtml = section.tiles.map(tile => {
-                const value = formatDashboardValue(
-                    resolveSectionMetricsKey(section.id, tile.key),
-                    tile.key,
-                    metrics
-                );
-                return `<span class="dashboard-stat"><strong>${value}</strong> ${tile.label}</span>`;
-            }).join('');
+        const rowsHtml = DASHBOARD_SECTIONS.map(section => {
+            const itemsHtml = section.items.map(item => {
+                const value = formatDashboardValue(item.metricsKey, item.key, metrics);
+                if (value == null) {
+                    return `<span class="dash-item dash-item-missing"><b>—</b> ${item.label}</span>`;
+                }
+                return `<span class="dash-item"><b>${value}</b> ${item.label}</span>`;
+            }).join('<span class="dash-sep">·</span>');
 
             return `
-                <section class="dashboard-row">
-                    <span class="dashboard-row-label">${section.title}</span>
-                    <div class="dashboard-row-values">${statsHtml}</div>
-                </section>
+                <div class="dash-row">
+                    <span class="dash-k">${section.title}</span>
+                    <div class="dash-v">${itemsHtml}</div>
+                </div>
             `;
         }).join('');
 
         const weather = metrics.weather;
-        const weatherBlock = weather ? `
-            <section class="dashboard-row dashboard-row-weather">
-                <span class="dashboard-row-label">Météo</span>
-                <div class="dashboard-row-values">
-                    <span class="dashboard-stat">
-                        <span class="dashboard-weather-icon">${weather.icon || '⏳'}</span>
-                        <strong>${weather.temp != null ? `${weather.temp}°C` : '—'}</strong>
-                        ${weather.desc || ''}
+        const weatherRow = weather ? `
+            <div class="dash-row dash-row-weather">
+                <span class="dash-k">Météo</span>
+                <div class="dash-v">
+                    <span class="dash-item">
+                        ${weather.icon || '⏳'} <b>${weather.temp != null ? `${weather.temp}°C` : '—'}</b>
+                        ${(weather.desc || '').replace(/\s*·\s*Avignon/i, '')}
                     </span>
                 </div>
-            </section>
+            </div>
         ` : '';
 
-        container.innerHTML = `<div class="dashboard-dense">${sectionsHtml}${weatherBlock}</div>`;
+        container.innerHTML = `<div class="dashboard-card">${rowsHtml}${weatherRow}</div>`;
     }
 
     window.patchDashboardMetrics = function patchDashboardMetrics(partial) {

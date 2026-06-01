@@ -473,20 +473,27 @@
             padding: 20px;
         }
 
-        /* === Department KPI dashboard (compact floating panel) === */
+        /* === Department KPI dashboard (compact centered panel) === */
         .dashboard-panel {
             position: absolute;
             top: 68px;
-            right: 14px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 999;
-            width: min(400px, calc(100% - 28px));
-            background: #f4f6f8;
+            width: min(300px, calc(100% - 28px));
+            background: #fff;
             border-radius: 10px;
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+            border: 1px solid #dde4ea;
             display: none;
             flex-direction: column;
             overflow: visible;
-            animation: slideIn 0.28s ease;
+            animation: dashboardIn 0.22s ease;
+        }
+
+        @keyframes dashboardIn {
+            from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
 
         .dashboard-panel.active {
@@ -545,20 +552,22 @@
         }
 
         .dashboard-header {
-            background: linear-gradient(135deg, #16A085 0%, #1ABC9C 55%, #2ECC71 100%);
+            background: linear-gradient(135deg, #16A085 0%, #1ABC9C 100%);
             color: white;
-            padding: 7px 10px;
+            padding: 6px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 8px;
             flex-shrink: 0;
+            border-radius: 9px 9px 0 0;
         }
 
         .dashboard-header h2 {
             margin: 0;
-            font-size: 0.82rem;
+            font-size: 0.78rem;
             font-weight: 700;
+            letter-spacing: 0.2px;
         }
 
         .dashboard-subtitle {
@@ -583,83 +592,79 @@
         }
 
         .dashboard-content {
-            padding: 6px 10px 8px;
+            padding: 0;
             overflow: visible;
         }
 
-        .dashboard-dense {
+        .dashboard-card {
             display: flex;
             flex-direction: column;
-            gap: 0;
         }
 
-        .dashboard-row {
-            display: grid;
-            grid-template-columns: 48px 1fr;
-            gap: 2px 6px;
-            padding: 4px 0;
-            border-bottom: 1px solid #e3e8ec;
-            align-items: center;
+        .dash-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            padding: 5px 10px;
+            border-bottom: 1px solid #eef2f5;
+            font-size: 0.68rem;
+            line-height: 1.35;
         }
 
-        .dashboard-row:last-child {
+        .dash-row:last-child {
             border-bottom: none;
-            padding-bottom: 0;
         }
 
-        .dashboard-row-label {
+        .dash-k {
+            width: 46px;
+            flex-shrink: 0;
             font-weight: 700;
             color: #16A085;
             font-size: 0.58rem;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
-            line-height: 1.2;
+            letter-spacing: 0.25px;
+            padding-top: 1px;
         }
 
-        .dashboard-row-values {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1px 8px;
-            line-height: 1.25;
-            font-size: 0.68rem;
-            color: #5d6d7e;
+        .dash-v {
+            flex: 1;
+            min-width: 0;
+            color: #6b7c8d;
         }
 
-        .dashboard-stat strong {
+        .dash-item b {
             font-family: 'JetBrains Mono', monospace;
             font-weight: 700;
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             color: #2C3E50;
         }
 
-        .dashboard-row-weather .dashboard-stat {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            flex-wrap: wrap;
+        .dash-item-missing b {
+            color: #bdc3c7;
         }
 
-        .dashboard-weather-icon {
-            font-size: 0.9rem;
-            line-height: 1;
+        .dash-sep {
+            margin: 0 2px;
+            color: #ccd5de;
+            user-select: none;
+        }
+
+        .dash-row-weather .dash-item {
+            display: inline;
         }
 
         @media (max-width: 640px) {
             .dashboard-panel {
                 top: auto;
-                bottom: 14px;
-                right: 14px;
-                left: 14px;
-                width: auto;
+                bottom: 12px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: min(300px, calc(100% - 24px));
             }
 
-            .dashboard-row {
-                grid-template-columns: 44px 1fr;
-            }
-
-            .dashboard-row-values {
-                gap: 1px 6px;
-                font-size: 0.64rem;
+            @keyframes dashboardIn {
+                from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+                to { opacity: 1; transform: translateX(-50%) translateY(0); }
             }
         }
 
