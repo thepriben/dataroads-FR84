@@ -295,6 +295,9 @@ def communes_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     return collection(features, len(data.get("elements", [])))
 
 
+STRUCTURANTE_REFS = ("EV17", "EV8", "V861")
+
+
 def bicycle_routes_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     elements = data.get("elements", [])
     relations = {
@@ -327,11 +330,23 @@ def bicycle_routes_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
 
         primary_relation = relations[relation_ids[0]]
         relation_tags = primary_relation.get("tags") or {}
+        route_refs = [
+            normalize_ref(relations[relation_id].get("tags", {}).get("ref"))
+            for relation_id in relation_ids
+            if relation_id in relations
+        ]
+        route_refs = [route_ref for route_ref in route_refs if route_ref]
+        structurante_ref = next(
+            (route_ref for route_ref in STRUCTURANTE_REFS if route_ref in route_refs),
+            "",
+        )
         extra_properties = {
             "has_relation": True,
             "relation_id": primary_relation.get("id"),
             "relation_ids": relation_ids,
             "relation_tags": relation_tags,
+            "route_refs": route_refs,
+            "structurante_ref": structurante_ref,
         }
 
         feature = way_to_feature(element, extra_properties)

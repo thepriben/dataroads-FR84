@@ -941,7 +941,136 @@
 
         // ========== VÉLOROUTES (relations OSM route=bicycle) ==========
 
-        const BICYCLE_ROUTE_COLOUR = '#27AE60';
+        const BICYCLE_STRUCTURANTES = {
+            EV17: { label: 'Via Rhôna', colour: '#DCD431', weight: 6 },
+            EV8: { label: 'La route de la Méditerranée', colour: '#9f5723', weight: 6 },
+            V861: { label: 'Via Venaissia', colour: '#59D422', weight: 5 }
+        };
+        const BICYCLE_STRUCTURANTE_PRIORITY = ['EV17', 'EV8', 'V861'];
+        const BICYCLE_LOCAL_STYLE = { colour: '#C8CDD3', weight: 2, opacity: 0.35 };
+
+        function buildBicycleRelationIdToRef(bicycleWays) {
+            const relationIdToRef = new Map();
+            bicycleWays.forEach(way => {
+                const tags = way.tags || {};
+                const relationId = tags.relation_id;
+                const ref = (tags.relation_tags?.ref || tags.ref || '').replace(/\s/g, '').toUpperCase();
+                if (relationId && ref) {
+                    relationIdToRef.set(relationId, ref);
+                }
+            });
+            return relationIdToRef;
+        }
+
+        function resolveStructuranteRef(tags, relationIdToRef) {
+            const directRef = (tags.structurante_ref || '').replace(/\s/g, '').toUpperCase();
+            if (directRef) {
+                return directRef;
+            }
+
+            const routeRefs = new Set();
+            (tags.route_refs || []).forEach(ref => {
+                if (ref) routeRefs.add(String(ref).replace(/\s/g, '').toUpperCase());
+            });
+            (tags.relation_ids || (tags.relation_id ? [tags.relation_id] : [])).forEach(relationId => {
+                const ref = relationIdToRef.get(relationId);
+                if (ref) routeRefs.add(ref);
+            });
+
+            return BICYCLE_STRUCTURANTE_PRIORITY.find(ref => routeRefs.has(ref)) || '';
+        }
+
+        function getBicycleRouteStyle(tags, relationIdToRef) {
+            const structuranteRef = resolveStructuranteRef(tags, relationIdToRef);
+            if (BICYCLE_STRUCTURANTES[structuranteRef]) {
+                const structurante = BICYCLE_STRUCTURANTES[structuranteRef];
+                return {
+                    colour: structurante.colour,
+                    weight: structurante.weight,
+                    opacity: 0.95,
+                    structuranteRef
+                };
+            }
+
+            return {
+                colour: BICYCLE_LOCAL_STYLE.colour,
+                weight: BICYCLE_LOCAL_STYLE.weight,
+                opacity: BICYCLE_LOCAL_STYLE.opacity,
+                structuranteRef: ''
+            };
+        }
+
+        function setBicycleLegendCounts(counts) {
+            const countElements = {
+                'count-ev17': counts.EV17,
+                'count-ev8': counts.EV8,
+                'count-v861': counts.V861,
+                'count-bicycle-local': counts.local,
+                'count-bicycle-routes': counts.relations
+            };
+            Object.entries(countElements).forEach(([elementId, value]) => {
+                const element = document.getElementById(elementId);
+                if (element) element.textContent = String(value ?? 0);
+            });
+        }
+
+        function renderBicycleWayPolyline(way, relationIdToRef) {
+            const coords = way.geometry.map(point => [point.lat, point.lon]);
+            const tags = way.tags || {};
+            const relationTags = tags.relation_tags || {};
+            const style = getBicycleRouteStyle(tags, relationIdToRef);
+            const structurante = style.structuranteRef ? BICYCLE_STRUCTURANTES[style.structuranteRef] : null;
+            const name = structurante?.label
+                || tags.name
+                || relationTags.name
+                || tags.ref
+                || relationTags.ref
+                || 'Véloroute sans nom';
+            const network = tags.network || relationTags.network || '';
+            const operator = tags.operator || relationTags.operator || '';
+            const relationId = tags.relation_id;
+            const refLabel = style.structuranteRef || relationTags.ref || tags.ref || '';
+
+            const polyline = L.polyline(coords, {
+                color: style.colour,
+                weight: style.weight,
+                opacity: style.opacity
+            }).addTo(window.map);
+
+            bicyclePolylines.push(polyline);
+
+            const popupContent = `
+                <div class="route-popup">
+                    <h3>🚴 ${escapeHtml(name)}</h3>
+                    ${refLabel ? `<div class="detail"><strong>Réf.&nbsp;:</strong> ${escapeHtml(refLabel)}</div>` : ''}
+                    ${network ? `<div class="detail"><strong>Réseau&nbsp;:</strong> ${escapeHtml(network)}</div>` : ''}
+                    ${operator ? `<div class="detail"><strong>Opérateur&nbsp;:</strong> ${escapeHtml(operator)}</div>` : ''}
+                    ${relationId ? `
+                        <div class="detail" style="margin-top: 10px;">
+                            <a href="https://www.openstreetmap.org/relation/${relationId}" target="_blank" rel="noopener noreferrer" style="color: #3498DB; font-weight: 600; text-decoration: none;">
+                                Voir la relation OSM →
+                            </a>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+
+            polyline.bindPopup(popupContent);
+            polyline.on('mouseover', function() {
+                this.setStyle({
+                    weight: style.weight + (style.structuranteRef ? 2 : 1),
+                    opacity: 1
+                });
+            });
+            polyline.on('mouseout', function() {
+                this.setStyle({
+                    weight: style.weight,
+                    opacity: style.opacity
+                });
+            });
+
+            return polyline;
+        }
 
         function applyBicycleVisibleUi() {
             const icon = document.getElementById('bicycleToggleIcon');
@@ -3383,59 +3512,43 @@
                     .map(geoJsonLineFeatureToWay)
                     .filter(Boolean);
 
+                const relationIdToRef = buildBicycleRelationIdToRef(bicycleWays);
                 const relationIds = new Set(
                     bicycleWays
                         .map(way => way.tags?.relation_id)
                         .filter(Boolean)
                 );
-
-                document.getElementById('count-bicycle-routes').textContent = String(relationIds.size);
+                const segmentCounts = { EV17: 0, EV8: 0, V861: 0, local: 0, relations: relationIds.size };
 
                 if (bicycleWays.length === 0) {
                     bicycleVisible = false;
                     applyBicycleHiddenUi();
+                    setBicycleLegendCounts(segmentCounts);
                     return;
                 }
 
+                const localWays = [];
+                const structuranteWays = [];
                 bicycleWays.forEach(way => {
-                    const coords = way.geometry.map(point => [point.lat, point.lon]);
-                    const tags = way.tags || {};
-                    const relationTags = tags.relation_tags || {};
-                    const name = tags.name || relationTags.name || tags.ref || relationTags.ref || 'Véloroute sans nom';
-                    const network = tags.network || relationTags.network || '';
-                    const operator = tags.operator || relationTags.operator || '';
-                    const relationId = tags.relation_id;
+                    const style = getBicycleRouteStyle(way.tags || {}, relationIdToRef);
+                    if (style.structuranteRef) {
+                        segmentCounts[style.structuranteRef] += 1;
+                        structuranteWays.push(way);
+                    } else {
+                        segmentCounts.local += 1;
+                        localWays.push(way);
+                    }
+                });
 
-                    const polyline = L.polyline(coords, {
-                        color: BICYCLE_ROUTE_COLOUR,
-                        weight: 4,
-                        opacity: 0.85
-                    }).addTo(window.map);
+                setBicycleLegendCounts(segmentCounts);
 
-                    bicyclePolylines.push(polyline);
+                localWays.forEach(way => {
+                    renderBicycleWayPolyline(way, relationIdToRef);
+                });
 
-                    const popupContent = `
-                        <div class="route-popup">
-                            <h3>🚴 ${escapeHtml(name)}</h3>
-                            ${network ? `<div class="detail"><strong>Réseau&nbsp;:</strong> ${escapeHtml(network)}</div>` : ''}
-                            ${operator ? `<div class="detail"><strong>Opérateur&nbsp;:</strong> ${escapeHtml(operator)}</div>` : ''}
-                            ${relationId ? `
-                                <div class="detail" style="margin-top: 10px;">
-                                    <a href="https://www.openstreetmap.org/relation/${relationId}" target="_blank" rel="noopener noreferrer" style="color: #3498DB; font-weight: 600; text-decoration: none;">
-                                        Voir la relation OSM →
-                                    </a>
-                                </div>
-                            ` : ''}
-                        </div>
-                    `;
-
-                    polyline.bindPopup(popupContent);
-                    polyline.on('mouseover', function() {
-                        this.setStyle({ weight: 6, opacity: 1 });
-                    });
-                    polyline.on('mouseout', function() {
-                        this.setStyle({ weight: 4, opacity: 0.85 });
-                    });
+                structuranteWays.forEach(way => {
+                    const polyline = renderBicycleWayPolyline(way, relationIdToRef);
+                    polyline.bringToFront();
                 });
 
                 applyBicycleVisibleUi();
@@ -3443,7 +3556,7 @@
                 console.error('Erreur chargement véloroutes:', error);
                 bicycleVisible = false;
                 applyBicycleHiddenUi();
-                document.getElementById('count-bicycle-routes').textContent = '0';
+                setBicycleLegendCounts({ EV17: 0, EV8: 0, V861: 0, local: 0, relations: 0 });
             }
         };
 

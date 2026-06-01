@@ -7,6 +7,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Véloroutes layer: permanent visual hierarchy highlighting EV17 (Via Rhôna), EV8, and V861 (Via Venaissia) with official OSM colours; local routes subdued.
+
 ## [0.2.1] - 2026-05-30
 
 ### Changed
