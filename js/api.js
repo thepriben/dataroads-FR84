@@ -55,7 +55,9 @@
             return responseCache.get(cachePath);
         }
 
-        const data = await fetchJson(cachePath, { cache: 'no-cache' }, { timeoutMs: 20000 });
+        const data = await fetchJson(cachePath, { cache: 'no-cache' }, {
+            timeoutMs: cacheName === 'departmental-roads' ? 60000 : 20000
+        });
 
         if (data?.type !== 'FeatureCollection' || !Array.isArray(data.features)) {
             throw new Error(`GeoJSON invalide: ${cachePath}`);

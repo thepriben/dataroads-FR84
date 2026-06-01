@@ -45,3 +45,5 @@ No global “current year” filter — each tile shows its own data vintage bec
 ## Tile interaction
 
 Clicking a tile closes the dashboard and activates the related map layer (or opens the OSM quality panel for quality tiles).
+
+**Update:** tiles are read-only (no map interaction).

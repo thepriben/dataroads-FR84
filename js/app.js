@@ -623,7 +623,9 @@
             if (panel.classList.contains('active')) {
                 btn?.classList.add('is-active');
                 if (!panel.dataset.loaded) {
-                    calculateQualityMetrics();
+                    if (typeof window.calculateQualityMetrics === 'function') {
+                        window.calculateQualityMetrics();
+                    }
                     panel.dataset.loaded = 'true';
                 }
             } else {
@@ -2074,16 +2076,27 @@
                     createRoadList();
 
                     // Compute OSM/Wikidata quality metrics and feed sidebar summary
-                    calculateQualityMetrics();
-                    updateWikidataSummary();
+                    if (typeof window.calculateQualityMetrics === 'function') {
+                        window.calculateQualityMetrics();
+                    } else {
+                        updateWikidataSummary();
+                        updateNetworkStats();
+                    }
                 }
             } catch (error) {
                 routesLoadingPopup.remove();
                 console.error('Erreur lors du chargement des routes:', error);
-                
+
+                const detail = error && error.message
+                    ? String(error.message).replace(/</g, '&lt;')
+                    : 'Erreur inconnue';
+                const fileHint = window.location.protocol === 'file:'
+                    ? '<br><small>Ouvrez la page via un serveur HTTP (<code>python3 -m http.server 8080</code>), pas en file://.</small>'
+                    : '';
+
                 L.popup()
                     .setLatLng([43.95, 5.1])
-                    .setContent('<div style="padding: 10px;"><strong>⚠️ Routes non disponibles</strong><br><small>Impossible de charger le GeoJSON local des routes.</small></div>')
+                    .setContent(`<div style="padding: 10px;"><strong>⚠️ Routes non disponibles</strong><br><small>Impossible de charger le GeoJSON local des routes.</small><br><small style="color:#7f8c8d;">${detail}</small>${fileHint}</div>`)
                     .openOn(window.map);
                 
                 setTimeout(() => window.map.closePopup(), 4000);

@@ -23,58 +23,58 @@
             id: 'network',
             title: 'Réseau départemental',
             tiles: [
-                { key: 'refs', label: 'Routes uniques', action: 'hierarchy' },
-                { key: 'lengthKm', label: 'Longueur cumulée', action: 'hierarchy' },
-                { key: 'hierarchySplit', label: 'Régional / terr. / local', action: 'hierarchy', wide: true },
-                { key: 'bridges', label: 'Ponts', action: 'hierarchy' },
-                { key: 'tunnels', label: 'Tunnels', action: 'hierarchy' }
+                { key: 'refs', label: 'Routes uniques' },
+                { key: 'lengthKm', label: 'Longueur cumulée' },
+                { key: 'hierarchySplit', label: 'Régional / terr. / local', wide: true },
+                { key: 'bridges', label: 'Ponts' },
+                { key: 'tunnels', label: 'Tunnels' }
             ]
         },
         {
             id: 'traffic',
             title: 'Trafic & comptages',
             tiles: [
-                { key: 'stations', label: 'Stations actives', action: 'traffic' },
-                { key: 'mjaRange', label: 'Fourchette MJA', action: 'traffic', wide: true },
-                { key: 'tierSplit', label: 'Fort / moyen / faible', action: 'traffic', wide: true }
+                { key: 'stations', label: 'Stations actives' },
+                { key: 'mjaRange', label: 'Fourchette MJA', wide: true },
+                { key: 'tierSplit', label: 'Fort / moyen / faible', wide: true }
             ]
         },
         {
             id: 'safety',
             title: 'Sécurité routière',
             tiles: [
-                { key: 'total', label: 'Accidents recensés', action: 'accidents' },
-                { key: 'fatal', label: 'Accidents mortels', action: 'accidents' },
-                { key: 'hospitalized', label: 'Blessés hospitalisés', action: 'accidents' },
-                { key: 'light', label: 'Blessés légers', action: 'accidents' }
+                { key: 'total', label: 'Accidents recensés' },
+                { key: 'fatal', label: 'Accidents mortels' },
+                { key: 'hospitalized', label: 'Blessés hospitalisés' },
+                { key: 'light', label: 'Blessés légers' }
             ]
         },
         {
             id: 'realtime',
             title: 'Temps réel',
             tiles: [
-                { key: 'total', label: 'Événements actifs', action: 'bison' },
-                { key: 'travaux', label: 'Travaux', action: 'bison' },
-                { key: 'bouchons', label: 'Bouchons', action: 'bison' },
-                { key: 'accidents', label: 'Accidents en cours', action: 'bison' }
+                { key: 'total', label: 'Événements actifs' },
+                { key: 'travaux', label: 'Travaux' },
+                { key: 'bouchons', label: 'Bouchons' },
+                { key: 'accidents', label: 'Accidents en cours' }
             ]
         },
         {
             id: 'mobility',
             title: 'Véloroutes & chantiers',
             tiles: [
-                { key: 'structurantes', label: 'Segments structurants', action: 'bicycle' },
-                { key: 'local', label: 'Segments réseau local', action: 'bicycle' },
-                { key: 'constructionSplit', label: 'Chantiers / projets', action: 'construction', wide: true }
+                { key: 'structurantes', label: 'Segments structurants' },
+                { key: 'local', label: 'Segments réseau local' },
+                { key: 'constructionSplit', label: 'Chantiers / projets', wide: true }
             ]
         },
         {
             id: 'quality',
             title: 'Qualité des données',
             tiles: [
-                { key: 'wikidataPct', label: 'Routes liées Wikidata', action: 'quality' },
-                { key: 'relationPct', label: 'Routes avec relation OSM', action: 'quality' },
-                { key: 'segments', label: 'Tronçons OSM', action: 'quality' }
+                { key: 'wikidataPct', label: 'Routes liées Wikidata' },
+                { key: 'relationPct', label: 'Routes avec relation OSM' },
+                { key: 'segments', label: 'Tronçons OSM' }
             ]
         }
     ];
@@ -158,10 +158,10 @@
                 );
                 const wideClass = tile.wide ? ' dashboard-tile-wide' : '';
                 return `
-                    <button type="button" class="dashboard-tile${wideClass}" data-dashboard-action="${tile.action || ''}" title="Afficher sur la carte">
+                    <div class="dashboard-tile${wideClass}">
                         <div class="dashboard-tile-value">${value}</div>
                         <div class="dashboard-tile-label">${tile.label}</div>
-                    </button>
+                    </div>
                 `;
             }).join('');
 
@@ -193,8 +193,7 @@
 
         container.innerHTML = `
             <p class="dashboard-intro">
-                Synthèse des indicateurs clés du Vaucluse (84). Chaque tuile indique son millésime ou sa fraîcheur.
-                Cliquez une tuile pour afficher la couche correspondante sur la carte.
+                Synthèse des indicateurs clés du Vaucluse (84). Chaque section indique son millésime ou sa fraîcheur.
             </p>
             ${sectionsHtml}
             ${weatherBlock}
@@ -203,68 +202,6 @@
                 (<a href="docs/phase2-territorial-dashboard.md" target="_blank" rel="noopener">spec</a>).
             </p>
         `;
-
-        container.querySelectorAll('[data-dashboard-action]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                handleDashboardTileClick(btn.dataset.dashboardAction);
-            });
-        });
-    }
-
-    function handleDashboardTileClick(action) {
-        if (!action) return;
-
-        window.toggleDashboardPanel(false);
-
-        function layerHidden(iconId) {
-            const icon = document.getElementById(iconId);
-            return !icon || icon.classList.contains('is-hidden');
-        }
-
-        switch (action) {
-            case 'hierarchy':
-                if (layerHidden('hierarchyToggleIcon') && typeof window.toggleAllHierarchy === 'function') {
-                    window.toggleAllHierarchy();
-                }
-                break;
-            case 'traffic':
-                if (layerHidden('trafficToggleIcon') && typeof window.toggleTraffic === 'function') {
-                    window.toggleTraffic();
-                }
-                if (!document.getElementById('wazeBtn')?.classList.contains('is-active') && typeof window.toggleWazeTraffic === 'function') {
-                    window.toggleWazeTraffic();
-                }
-                break;
-            case 'accidents':
-                if (layerHidden('accidentToggleIcon') && typeof window.toggleAccidents === 'function') {
-                    window.toggleAccidents();
-                }
-                break;
-            case 'bison':
-                if (layerHidden('bisonFuteToggleIcon') && typeof window.toggleBisonFute === 'function') {
-                    window.toggleBisonFute();
-                }
-                break;
-            case 'bicycle':
-                if (layerHidden('bicycleToggleIcon') && typeof window.toggleBicycleRoutes === 'function') {
-                    window.toggleBicycleRoutes();
-                }
-                break;
-            case 'construction':
-                if (layerHidden('constructionToggleIcon') && typeof window.toggleConstruction === 'function') {
-                    window.toggleConstruction();
-                }
-                break;
-            case 'quality':
-                if (typeof window.calculateQualityMetrics === 'function') window.calculateQualityMetrics();
-                if (typeof window.toggleQualityPanel === 'function') {
-                    const panel = document.getElementById('qualityPanel');
-                    if (panel && !panel.classList.contains('active')) window.toggleQualityPanel();
-                }
-                break;
-            default:
-                break;
-        }
     }
 
     window.patchDashboardMetrics = function patchDashboardMetrics(partial) {

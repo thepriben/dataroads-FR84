@@ -594,15 +594,6 @@
             border-radius: 10px;
             padding: 12px 10px;
             text-align: center;
-            cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
-            font-family: inherit;
-        }
-
-        .dashboard-tile:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(22, 160, 133, 0.15);
-            border-color: #16A085;
         }
 
         .dashboard-tile-wide {
