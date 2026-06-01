@@ -14,83 +14,10 @@
         bicycle: null,
         construction: null,
         quality: null,
-        weather: null,
         vintages: {}
     };
 
     window.dashboardMetrics = { ...EMPTY_DASHBOARD_METRICS, vintages: {} };
-
-    function isDashboardDataComplete(metrics) {
-        const accidents = metrics?.accidents;
-        const bison = metrics?.bisonFute;
-        const bicycle = metrics?.bicycle;
-        const construction = metrics?.construction;
-
-        return Boolean(
-            metrics?.network
-            && metrics?.hierarchy
-            && metrics?.traffic
-            && accidents && accidents.total != null
-            && bison && bison.total != null
-            && bicycle && bicycle.structurantes != null
-            && construction && construction.construction != null
-            && metrics?.quality
-            && metrics?.weather
-        );
-    }
-
-    let dashboardCacheReady = false;
-    window.dashboardRefreshInProgress = false;
-
-    window.isDashboardDataComplete = isDashboardDataComplete;
-
-    window.isDashboardDataCached = function isDashboardDataCached() {
-        return dashboardCacheReady;
-    };
-
-    window.markDashboardCacheReady = function markDashboardCacheReady() {
-        if (!isDashboardDataComplete(window.dashboardMetrics)) {
-            dashboardCacheReady = false;
-            return;
-        }
-        dashboardCacheReady = true;
-    };
-
-    window.clearDashboardCache = function clearDashboardCache() {
-        dashboardCacheReady = false;
-    };
-
-    window.resetDashboardMetrics = function resetDashboardMetrics() {
-        window.dashboardMetrics = {
-            ...EMPTY_DASHBOARD_METRICS,
-            vintages: {}
-        };
-        dashboardCacheReady = false;
-    };
-
-    window.showDashboardSpinner = function showDashboardSpinner(message) {
-        const container = document.getElementById('dashboardContent');
-        if (!container) return;
-        container.innerHTML = `
-            <div class="dashboard-loading" role="status" aria-live="polite">
-                <div class="dashboard-spinner" aria-hidden="true"></div>
-                <p>${message || 'Chargement…'}</p>
-            </div>
-        `;
-    };
-
-    window.showDashboardLoadError = function showDashboardLoadError(message) {
-        const container = document.getElementById('dashboardContent');
-        if (!container) return;
-        container.innerHTML = `
-            <div class="dashboard-loading dashboard-loading-error" role="alert">
-                <p>${message || 'Impossible de charger tous les indicateurs.'}</p>
-                <button type="button" class="dashboard-retry-btn" onclick="refreshDashboardData({ force: true })">
-                    Réessayer
-                </button>
-            </div>
-        `;
-    };
 
     const DASHBOARD_SECTIONS = [
         {
@@ -160,7 +87,7 @@
                 }
                 if (key === 'hierarchySplit') {
                     const h = metrics.hierarchy;
-                    if (!h) return null;
+                    if (!h || h.regional == null || h.territorial == null || h.local == null) return null;
                     return `${h.regional}/${h.territorial}/${h.local}`;
                 }
                 return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
@@ -172,6 +99,7 @@
                     return range.replace(/\s*v[ée]h\/j/i, '').trim();
                 }
                 if (key === 'tierSplit') {
+                    if (section.high == null || section.medium == null || section.low == null) return null;
                     return `${section.high}/${section.medium}/${section.low}`;
                 }
                 return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
@@ -183,6 +111,7 @@
 
             case 'construction':
                 if (key === 'constructionSplit') {
+                    if (section.construction == null || section.proposed == null) return null;
                     return `${section.construction}/${section.proposed}`;
                 }
                 return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
@@ -198,6 +127,82 @@
         }
     }
 
+    function areAllDashboardFieldsPopulated(metrics) {
+        return DASHBOARD_SECTIONS.every(section => section.items.every(item => (
+            formatDashboardValue(item.metricsKey, item.key, metrics) != null
+        )));
+    }
+
+    function isDashboardDataComplete(metrics) {
+        return areAllDashboardFieldsPopulated(metrics);
+    }
+
+    let dashboardCacheReady = false;
+    window.dashboardRefreshInProgress = false;
+
+    window.isDashboardDataComplete = isDashboardDataComplete;
+    window.areAllDashboardFieldsPopulated = areAllDashboardFieldsPopulated;
+
+    window.isDashboardDataCached = function isDashboardDataCached() {
+        return dashboardCacheReady;
+    };
+
+    window.markDashboardCacheReady = function markDashboardCacheReady() {
+        dashboardCacheReady = isDashboardDataComplete(window.dashboardMetrics);
+    };
+
+    window.clearDashboardCache = function clearDashboardCache() {
+        dashboardCacheReady = false;
+    };
+
+    window.resetDashboardMetrics = function resetDashboardMetrics() {
+        window.dashboardMetrics = {
+            ...EMPTY_DASHBOARD_METRICS,
+            vintages: {}
+        };
+        dashboardCacheReady = false;
+    };
+
+    window.applyDashboardMetrics = function applyDashboardMetrics(patch) {
+        if (!patch || typeof patch !== 'object') return;
+        window.dashboardMetrics = {
+            ...EMPTY_DASHBOARD_METRICS,
+            ...patch,
+            vintages: patch.vintages || {}
+        };
+    };
+
+    window.setDashboardButtonLoading = function setDashboardButtonLoading(isLoading) {
+        const btn = document.getElementById('dashboardBtn');
+        if (!btn) return;
+        btn.classList.toggle('is-loading', Boolean(isLoading));
+        btn.disabled = Boolean(isLoading);
+    };
+
+    window.showDashboardSpinner = function showDashboardSpinner(message) {
+        const container = document.getElementById('dashboardContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div class="dashboard-loading" role="status" aria-live="polite">
+                <div class="dashboard-spinner" aria-hidden="true"></div>
+                <p>${message || 'Chargement…'}</p>
+            </div>
+        `;
+    };
+
+    window.showDashboardLoadError = function showDashboardLoadError(message) {
+        const container = document.getElementById('dashboardContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div class="dashboard-loading dashboard-loading-error" role="alert">
+                <p>${message || 'Impossible de charger tous les indicateurs.'}</p>
+                <button type="button" class="dashboard-retry-btn" onclick="toggleDashboardPanel(true)">
+                    Réessayer
+                </button>
+            </div>
+        `;
+    };
+
     function renderDashboard() {
         const container = document.getElementById('dashboardContent');
         if (!container) return;
@@ -206,9 +211,6 @@
         const rowsHtml = DASHBOARD_SECTIONS.map(section => {
             const itemsHtml = section.items.map(item => {
                 const value = formatDashboardValue(item.metricsKey, item.key, metrics);
-                if (value == null) {
-                    return `<span class="dash-item dash-item-missing"><b>—</b> ${item.label}</span>`;
-                }
                 return `<span class="dash-item"><b>${value}</b> ${item.label}</span>`;
             }).join('<span class="dash-sep">·</span>');
 
@@ -220,24 +222,12 @@
             `;
         }).join('');
 
-        const weather = metrics.weather;
-        const weatherRow = weather ? `
-            <div class="dash-row dash-row-weather">
-                <span class="dash-k">Météo</span>
-                <div class="dash-v">
-                    <span class="dash-item">
-                        ${weather.icon || '⏳'} <b>${weather.temp != null ? `${weather.temp}°C` : '—'}</b>
-                        ${(weather.desc || '').replace(/\s*·\s*Avignon/i, '')}
-                    </span>
-                </div>
-            </div>
-        ` : '';
-
-        container.innerHTML = `<div class="dashboard-card">${rowsHtml}${weatherRow}</div>`;
+        container.innerHTML = `<div class="dashboard-card">${rowsHtml}</div>`;
     }
 
     window.patchDashboardMetrics = function patchDashboardMetrics(partial) {
         if (!partial || typeof partial !== 'object') return;
+        if (window.dashboardRefreshInProgress) return;
         Object.assign(window.dashboardMetrics, partial);
         if (partial.vintages) {
             window.dashboardMetrics.vintages = {
@@ -245,26 +235,51 @@
                 ...partial.vintages
             };
         }
-        const panel = document.getElementById('dashboardPanel');
-        if (panel?.classList.contains('active') && !window.dashboardRefreshInProgress) {
-            renderDashboard();
-        }
     };
 
-    window.toggleDashboardPanel = function toggleDashboardPanel(forceOpen) {
+    window.toggleDashboardPanel = async function toggleDashboardPanel(forceOpen) {
         const panel = document.getElementById('dashboardPanel');
         const btn = document.getElementById('dashboardBtn');
         if (!panel) return;
 
         const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('active');
-        panel.classList.toggle('active', shouldOpen);
-        btn?.classList.toggle('is-active', shouldOpen);
 
-        if (shouldOpen) {
+        if (!shouldOpen) {
+            panel.classList.remove('active');
+            btn?.classList.remove('is-active');
+            return;
+        }
+
+        if (typeof window.isDashboardDataCached === 'function' && window.isDashboardDataCached()) {
+            panel.classList.add('active');
+            btn?.classList.add('is-active');
+            renderDashboard();
+            return;
+        }
+
+        panel.classList.remove('active');
+        btn?.classList.remove('is-active');
+
+        if (typeof window.setDashboardButtonLoading === 'function') {
+            window.setDashboardButtonLoading(true);
+        }
+
+        try {
             if (typeof window.refreshDashboardData === 'function') {
-                window.refreshDashboardData();
-            } else {
+                await window.refreshDashboardData({ force: Boolean(forceOpen) });
+            }
+
+            if (typeof window.isDashboardDataCached === 'function' && window.isDashboardDataCached()) {
+                panel.classList.add('active');
+                btn?.classList.add('is-active');
                 renderDashboard();
+            } else {
+                panel.classList.add('active');
+                btn?.classList.remove('is-active');
+            }
+        } finally {
+            if (typeof window.setDashboardButtonLoading === 'function') {
+                window.setDashboardButtonLoading(false);
             }
         }
     };

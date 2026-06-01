@@ -3427,15 +3427,6 @@
                     document.getElementById('weatherIcon').textContent = icon;
                     document.getElementById('weatherTemp').textContent = `${temp}°C`;
                     document.getElementById('weatherDesc').textContent = `${desc} • ${details}`;
-
-                    if (typeof window.patchDashboardMetrics === 'function') {
-                        window.patchDashboardMetrics({
-                            weather: { icon, temp, desc: `${desc} · Avignon` },
-                            vintages: {
-                                weather: updatedAt ? `Temps réel · ${updatedAt}` : 'Temps réel · Avignon'
-                            }
-                        });
-                    }
                 }
             } catch (error) {
                 console.error('Erreur météo:', error);
@@ -4683,34 +4674,6 @@
             };
         }
 
-        function computeWeatherMetricsFromLiveJson(data) {
-            if (!data?.current) return null;
-
-            const temp = Math.round(data.current.temperature_2m);
-            const weatherCode = data.current.weather_code;
-            const weatherIcons = {
-                0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️',
-                51: '🌦️', 53: '🌦️', 55: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️',
-                71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️', 80: '🌧️', 81: '🌧️',
-                82: '🌧️', 85: '🌨️', 86: '🌨️', 95: '⛈️', 96: '⛈️', 99: '⛈️'
-            };
-            const weatherDescriptions = {
-                0: 'Ciel dégagé', 1: 'Dégagé', 2: 'Nuageux', 3: 'Couvert',
-                45: 'Brouillard', 48: 'Brouillard', 51: 'Bruine', 53: 'Bruine', 55: 'Bruine',
-                61: 'Pluie légère', 63: 'Pluie', 65: 'Forte pluie', 71: 'Neige légère',
-                73: 'Neige', 75: 'Forte neige', 77: 'Grésil', 80: 'Averses', 81: 'Averses',
-                82: 'Fortes averses', 85: 'Averses de neige', 86: 'Averses de neige',
-                95: 'Orage', 96: 'Orage', 99: 'Orage violent'
-            };
-
-            const icon = weatherIcons[weatherCode] || '🌡️';
-            const desc = weatherDescriptions[weatherCode] || 'Variable';
-            return {
-                weather: { icon, temp, desc: `${desc} · Avignon` },
-                vintages: { weather: 'Temps réel · Open-Meteo' }
-            };
-        }
-
         async function fetchTrafficGeoJsonForDashboard() {
             try {
                 return await window.InforouteApi.fetchGeoJson('traffic-counting');
@@ -4725,9 +4688,6 @@
             const forceRefresh = options.force === true;
 
             if (!forceRefresh && typeof window.isDashboardDataCached === 'function' && window.isDashboardDataCached()) {
-                if (typeof window.renderDashboard === 'function') {
-                    window.renderDashboard();
-                }
                 return;
             }
 
@@ -4736,9 +4696,6 @@
             }
             if (typeof window.clearDashboardCache === 'function') {
                 window.clearDashboardCache();
-            }
-            if (typeof window.showDashboardSpinner === 'function') {
-                window.showDashboardSpinner();
             }
 
             if (dashboardRefreshPromise) return dashboardRefreshPromise;
@@ -4753,8 +4710,7 @@
                         'accidents',
                         'road-events',
                         'bicycle-routes',
-                        'construction-roads',
-                        'weather'
+                        'construction-roads'
                     ];
                     const [
                         roadsResult,
@@ -4762,16 +4718,14 @@
                         accidentsResult,
                         eventsResult,
                         bicycleResult,
-                        constructionResult,
-                        weatherResult
+                        constructionResult
                     ] = await Promise.allSettled([
                         window.InforouteApi.fetchGeoJson('departmental-roads'),
                         fetchTrafficGeoJsonForDashboard(),
                         window.InforouteApi.fetchGeoJson('accidents'),
                         window.InforouteApi.fetchGeoJson('road-events'),
                         window.InforouteApi.fetchGeoJson('bicycle-routes'),
-                        window.InforouteApi.fetchGeoJson('construction-roads'),
-                        window.InforouteApi.fetchLiveJson('weather')
+                        window.InforouteApi.fetchGeoJson('construction-roads')
                     ]);
 
                     [
@@ -4780,8 +4734,7 @@
                         accidentsResult,
                         eventsResult,
                         bicycleResult,
-                        constructionResult,
-                        weatherResult
+                        constructionResult
                     ].forEach((result, index) => {
                         if (result.status === 'rejected') {
                             console.warn(
@@ -4792,31 +4745,8 @@
                     });
 
                     const patch = { vintages: {} };
-                    const routesOnMap = Object.keys(window.routePolylines || {}).length > 0;
 
-                    if (routesOnMap) {
-                        const stats = collectNetworkStatsData();
-                        patch.network = {
-                            refs: stats.refs,
-                            lengthKm: stats.lengthKm,
-                            bridges: stats.bridges,
-                            tunnels: stats.tunnels
-                        };
-                        patch.hierarchy = {
-                            regional: routesByHierarchy.regional.length,
-                            territorial: routesByHierarchy.territorial.length,
-                            local: routesByHierarchy.local.length
-                        };
-                        if (typeof window.calculateQualityMetrics === 'function') {
-                            window.calculateQualityMetrics();
-                        }
-                        const total = qualityMetrics.totalRoutes || 0;
-                        patch.quality = {
-                            wikidataPct: total ? Math.round((qualityMetrics.withWikidata / total) * 100) : 0,
-                            relationPct: total ? Math.round((qualityMetrics.withRelation / total) * 100) : 0,
-                            segments: qualityMetrics.totalSegments || 0
-                        };
-                    } else if (roadsResult.status === 'fulfilled') {
+                    if (roadsResult.status === 'fulfilled') {
                         Object.assign(patch, computeNetworkMetricsFromGeoJson(roadsResult.value));
                         if (roadsResult.value._cache?.generated_at) {
                             patch.vintages.osm = formatDashboardCacheVintage(
@@ -4830,10 +4760,6 @@
                         const trafficPatch = computeTrafficMetricsFromGeoJson(trafficResult.value);
                         patch.traffic = trafficPatch.traffic;
                         Object.assign(patch.vintages, trafficPatch.vintages);
-                        if (routesOnMap && patch.network && !patch.traffic.mjaRange) {
-                            const mjaRange = collectNetworkStatsData().mjaRange;
-                            if (mjaRange) patch.traffic.mjaRange = mjaRange;
-                        }
                     }
 
                     if (accidentsResult.status === 'fulfilled') {
@@ -4860,14 +4786,6 @@
                         }
                     }
 
-                    if (weatherResult.status === 'fulfilled') {
-                        const weatherPatch = computeWeatherMetricsFromLiveJson(weatherResult.value);
-                        if (weatherPatch) {
-                            patch.weather = weatherPatch.weather;
-                            Object.assign(patch.vintages, weatherPatch.vintages);
-                        }
-                    }
-
                     window.dashboardRefreshInProgress = false;
 
                     const fetchResults = [
@@ -4876,17 +4794,27 @@
                         accidentsResult,
                         eventsResult,
                         bicycleResult,
-                        constructionResult,
-                        weatherResult
+                        constructionResult
                     ];
                     const allSourcesOk = fetchResults.every(result => result.status === 'fulfilled');
-                    const mergedMetrics = { ...window.dashboardMetrics, ...patch };
-                    const metricsComplete = typeof window.isDashboardDataComplete === 'function'
-                        && window.isDashboardDataComplete(mergedMetrics);
+                    const mergedMetrics = {
+                        network: null,
+                        hierarchy: null,
+                        traffic: null,
+                        accidents: null,
+                        bisonFute: null,
+                        bicycle: null,
+                        construction: null,
+                        quality: null,
+                        vintages: {},
+                        ...patch
+                    };
+                    const allFieldsOk = typeof window.areAllDashboardFieldsPopulated === 'function'
+                        && window.areAllDashboardFieldsPopulated(mergedMetrics);
 
-                    if (allSourcesOk && metricsComplete) {
-                        if (typeof window.patchDashboardMetrics === 'function') {
-                            window.patchDashboardMetrics(patch);
+                    if (allSourcesOk && allFieldsOk) {
+                        if (typeof window.applyDashboardMetrics === 'function') {
+                            window.applyDashboardMetrics(patch);
                         }
                         if (typeof window.markDashboardCacheReady === 'function') {
                             window.markDashboardCacheReady();
@@ -4895,9 +4823,13 @@
                         if (typeof window.clearDashboardCache === 'function') {
                             window.clearDashboardCache();
                         }
+                        const failedSources = sourceLabels.filter((_, i) => fetchResults[i].status === 'rejected');
+                        const detail = failedSources.length
+                            ? ` Sources en échec : ${failedSources.join(', ')}.`
+                            : '';
                         if (typeof window.showDashboardLoadError === 'function') {
                             window.showDashboardLoadError(
-                                'Chargement incomplet. Toutes les sources n\'ont pas répondu — réessayez dans un instant.'
+                                `Chargement incomplet.${detail} Réessayez dans un instant.`
                             );
                         }
                     }
