@@ -298,6 +298,35 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
+        .legend-km-hint {
+            margin: 2px 0 8px;
+            font-size: 0.68rem;
+            font-weight: 500;
+            color: var(--text-light);
+            letter-spacing: 0.02em;
+        }
+
+        .legend-count-km {
+            font-weight: 700;
+            color: #334155;
+            white-space: nowrap;
+        }
+
+        .legend-item-summary {
+            background: #f4f8fa;
+            border-color: #dce6ec;
+            font-weight: 600;
+        }
+
+        .legend-item-summary .legend-label {
+            font-weight: 700;
+        }
+
+        .legend-color-spacer {
+            background: transparent !important;
+            visibility: hidden;
+        }
+
         .info-box {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -489,12 +518,12 @@
         /* === Department KPI dashboard (wide, low panel inside map) === */
         .dashboard-panel {
             position: absolute;
-            top: 56px;
+            top: 88px;
             left: 10px;
             right: 10px;
             z-index: 999;
             width: auto;
-            max-height: calc(100% - 66px);
+            max-height: calc(100% - 100px);
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 10px 36px rgba(22, 160, 133, 0.12), 0 4px 16px rgba(0, 0, 0, 0.1);
@@ -606,56 +635,71 @@
         }
 
         .dashboard-content {
-            padding: 10px 12px 12px;
-            overflow: hidden;
+            padding: 12px 14px 14px;
+            overflow-y: auto;
+            overflow-x: hidden;
             flex: 1;
             min-height: 0;
-            background: #f7fafb;
+            background: #f4f8fa;
         }
 
         .dashboard-sections {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
+            gap: 12px;
         }
 
         .dash-block {
             background: #fff;
-            border: 1px solid #e4ebf0;
+            border: 1px solid #e2e9ef;
             border-radius: 10px;
-            padding: 8px 10px 10px;
+            padding: 10px 11px 11px;
             min-width: 0;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
         }
 
         .dash-block-title {
-            margin: 0 0 7px;
-            padding-bottom: 5px;
+            margin: 0 0 8px;
+            padding-bottom: 6px;
             border-bottom: 1px solid #eef3f6;
-            font-size: 0.7rem;
+            font-size: 0.72rem;
             font-weight: 700;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
             color: #16A085;
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .dash-block-vintage {
+            font-size: 0.58rem;
+            font-weight: 500;
+            letter-spacing: 0;
+            text-transform: none;
+            color: #94a3b8;
+            white-space: nowrap;
         }
 
         .dash-tiles {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
-            gap: 6px;
+            grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+            gap: 7px;
         }
 
         .dash-tile {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 3px;
-            min-height: 50px;
-            padding: 7px 6px;
-            background: #f9fbfc;
+            align-items: flex-start;
+            justify-content: flex-start;
+            gap: 2px;
+            min-height: 58px;
+            padding: 8px 9px;
+            background: #f8fafb;
             border: 1px solid #e8eef3;
             border-radius: 8px;
-            text-align: center;
+            text-align: left;
         }
 
         .dash-tile-full {
@@ -665,21 +709,55 @@
         .dash-tile-value {
             font-family: 'JetBrains Mono', monospace;
             font-weight: 700;
-            font-size: 0.8rem;
-            color: #1e293b;
-            line-height: 1.25;
+            font-size: 0.92rem;
+            color: #0f172a;
+            line-height: 1.2;
             max-width: 100%;
-            overflow-wrap: normal;
-            word-break: normal;
-            hyphens: manual;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .dash-tile-full .dash-tile-value {
+            font-size: 0.84rem;
+        }
+
+        .dash-tile-meta {
+            line-height: 1;
+        }
+
+        .dash-tile-unit {
+            font-family: inherit;
+            font-size: 0.58rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+
+        .dash-tile-unit-inline {
+            margin-left: 2px;
+            font-size: 0.72rem;
         }
 
         .dash-tile-label {
-            font-size: 0.62rem;
+            font-size: 0.66rem;
+            font-weight: 600;
+            color: #475569;
+            line-height: 1.25;
+            margin-top: 2px;
+        }
+
+        .dash-tile-hint {
+            font-size: 0.58rem;
+            font-weight: 500;
+            color: #94a3b8;
+            line-height: 1.2;
+        }
+
+        .dash-tile-detail {
+            font-size: 0.58rem;
             font-weight: 500;
             color: #64748b;
             line-height: 1.2;
-            padding: 0 2px;
         }
 
         @media (max-width: 900px) {
@@ -694,14 +772,14 @@
             }
 
             .dashboard-panel {
-                top: 52px;
+                top: 78px;
                 left: 8px;
                 right: 8px;
-                max-height: calc(100% - 60px);
+                max-height: calc(100% - 88px);
             }
 
             .dash-tiles {
-                grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
             }
         }
 

@@ -1027,25 +1027,88 @@
             };
         }
 
-        function setBicycleLegendCounts(counts) {
+        function formatBicycleKmLabel(km) {
+            if (km == null || Number.isNaN(km) || km < 0.005) return '0 km';
+            if (km >= 10) return `${Math.round(km).toLocaleString('fr-FR')} km`;
+            return `${km.toFixed(1).replace('.', ',')} km`;
+        }
+
+        function computeBicycleStatsFromWays(bicycleWays, relationIdToRef) {
+            const segmentCounts = { EV17: 0, EV8: 0, V861: 0, local: 0 };
+            const lengthKm = { EV17: 0, EV8: 0, V861: 0, local: 0 };
+            const relationIds = new Set();
+
+            bicycleWays.forEach(way => {
+                const relationId = way.tags?.relation_id;
+                if (relationId) relationIds.add(relationId);
+
+                const style = getBicycleRouteStyle(way.tags || {}, relationIdToRef);
+                const wayKm = way.geometry?.length ? wayLengthKmFromGeometry(way.geometry) : 0;
+                if (style.structuranteRef) {
+                    segmentCounts[style.structuranteRef] += 1;
+                    lengthKm[style.structuranteRef] += wayKm;
+                } else {
+                    segmentCounts.local += 1;
+                    lengthKm.local += wayKm;
+                }
+            });
+
+            const structurantesKm = lengthKm.EV17 + lengthKm.EV8 + lengthKm.V861;
+            const structurantesSegments = segmentCounts.EV17 + segmentCounts.EV8 + segmentCounts.V861;
+
+            return {
+                segmentCounts,
+                lengthKm,
+                relations: relationIds.size,
+                structurantesKm,
+                structurantesSegments,
+                localKm: lengthKm.local,
+                localSegments: segmentCounts.local
+            };
+        }
+
+        function setBicycleLegendCounts(stats) {
+            const lengthKm = stats.lengthKm || {};
+            const segmentCounts = stats.segmentCounts || {};
+            const totalKm = (stats.structurantesKm ?? 0) + (stats.localKm ?? 0);
+
             const countElements = {
-                'count-ev17': counts.EV17,
-                'count-ev8': counts.EV8,
-                'count-v861': counts.V861,
-                'count-bicycle-local': counts.local,
-                'count-bicycle-routes': counts.relations
+                'count-bicycle-total': formatBicycleKmLabel(totalKm),
+                'count-ev17': formatBicycleKmLabel(lengthKm.EV17),
+                'count-ev8': formatBicycleKmLabel(lengthKm.EV8),
+                'count-v861': formatBicycleKmLabel(lengthKm.V861),
+                'count-bicycle-local': formatBicycleKmLabel(lengthKm.local),
+                'count-bicycle-routes': stats.relations ?? 0
             };
             Object.entries(countElements).forEach(([elementId, value]) => {
                 const element = document.getElementById(elementId);
                 if (element) element.textContent = String(value ?? 0);
             });
 
+            const kmTooltips = {
+                'count-bicycle-total': {
+                    km: totalKm,
+                    segments: (stats.structurantesSegments ?? 0) + (stats.localSegments ?? 0)
+                },
+                'count-ev17': { km: lengthKm.EV17, segments: segmentCounts.EV17 },
+                'count-ev8': { km: lengthKm.EV8, segments: segmentCounts.EV8 },
+                'count-v861': { km: lengthKm.V861, segments: segmentCounts.V861 },
+                'count-bicycle-local': { km: lengthKm.local, segments: segmentCounts.local }
+            };
+            Object.entries(kmTooltips).forEach(([elementId, { km, segments }]) => {
+                const element = document.getElementById(elementId);
+                if (!element) return;
+                const seg = Number(segments ?? 0).toLocaleString('fr-FR');
+                element.title = `${formatBicycleKmLabel(km)} · ${seg} tronçons OSM`;
+            });
+
             if (typeof window.patchDashboardMetrics === 'function') {
-                const structurantes = (counts.EV17 || 0) + (counts.EV8 || 0) + (counts.V861 || 0);
                 window.patchDashboardMetrics({
                     bicycle: {
-                        structurantes,
-                        local: counts.local || 0
+                        structurantesKm: stats.structurantesKm ?? 0,
+                        structurantesSegments: stats.structurantesSegments ?? 0,
+                        localKm: stats.localKm ?? 0,
+                        localSegments: stats.localSegments ?? 0
                     }
                 });
             }
@@ -1067,6 +1130,7 @@
             const operator = tags.operator || relationTags.operator || '';
             const relationId = tags.relation_id;
             const refLabel = style.structuranteRef || relationTags.ref || tags.ref || '';
+            const segmentKm = way.geometry?.length ? wayLengthKmFromGeometry(way.geometry) : 0;
 
             const polyline = L.polyline(coords, {
                 color: style.colour,
@@ -1080,6 +1144,7 @@
                 <div class="route-popup">
                     <h3>🚴 ${escapeHtml(name)}</h3>
                     ${refLabel ? `<div class="detail"><strong>Réf.&nbsp;:</strong> ${escapeHtml(refLabel)}</div>` : ''}
+                    <div class="detail"><strong>Longueur&nbsp;:</strong> ${formatBicycleKmLabel(segmentKm)}</div>
                     ${network ? `<div class="detail"><strong>Réseau&nbsp;:</strong> ${escapeHtml(network)}</div>` : ''}
                     ${operator ? `<div class="detail"><strong>Opérateur&nbsp;:</strong> ${escapeHtml(operator)}</div>` : ''}
                     ${relationId ? `
@@ -3918,34 +3983,24 @@
                     .filter(Boolean);
 
                 const relationIdToRef = buildBicycleRelationIdToRef(bicycleWays);
-                const relationIds = new Set(
-                    bicycleWays
-                        .map(way => way.tags?.relation_id)
-                        .filter(Boolean)
-                );
-                const segmentCounts = { EV17: 0, EV8: 0, V861: 0, local: 0, relations: relationIds.size };
 
                 if (bicycleWays.length === 0) {
                     bicycleVisible = false;
                     applyBicycleHiddenUi();
-                    setBicycleLegendCounts(segmentCounts);
+                    setBicycleLegendCounts(computeBicycleStatsFromWays([], relationIdToRef));
                     return;
                 }
 
+                const bikeStats = computeBicycleStatsFromWays(bicycleWays, relationIdToRef);
                 const localWays = [];
                 const structuranteWays = [];
                 bicycleWays.forEach(way => {
                     const style = getBicycleRouteStyle(way.tags || {}, relationIdToRef);
-                    if (style.structuranteRef) {
-                        segmentCounts[style.structuranteRef] += 1;
-                        structuranteWays.push(way);
-                    } else {
-                        segmentCounts.local += 1;
-                        localWays.push(way);
-                    }
+                    if (style.structuranteRef) structuranteWays.push(way);
+                    else localWays.push(way);
                 });
 
-                setBicycleLegendCounts(segmentCounts);
+                setBicycleLegendCounts(bikeStats);
 
                 localWays.forEach(way => {
                     renderBicycleWayPolyline(way, relationIdToRef);
@@ -3961,7 +4016,7 @@
                 console.error('Erreur chargement véloroutes:', error);
                 bicycleVisible = false;
                 applyBicycleHiddenUi();
-                setBicycleLegendCounts({ EV17: 0, EV8: 0, V861: 0, local: 0, relations: 0 });
+                setBicycleLegendCounts(computeBicycleStatsFromWays([], new Map()));
             }
         };
 
@@ -4638,18 +4693,14 @@
         function computeBicycleMetricsFromGeoJson(data) {
             const bicycleWays = (data.features || []).map(geoJsonLineFeatureToWay).filter(Boolean);
             const relationIdToRef = buildBicycleRelationIdToRef(bicycleWays);
-            const segmentCounts = { EV17: 0, EV8: 0, V861: 0, local: 0 };
-
-            bicycleWays.forEach(way => {
-                const style = getBicycleRouteStyle(way.tags || {}, relationIdToRef);
-                if (style.structuranteRef) segmentCounts[style.structuranteRef] += 1;
-                else segmentCounts.local += 1;
-            });
+            const stats = computeBicycleStatsFromWays(bicycleWays, relationIdToRef);
 
             return {
                 bicycle: {
-                    structurantes: (segmentCounts.EV17 || 0) + (segmentCounts.EV8 || 0) + (segmentCounts.V861 || 0),
-                    local: segmentCounts.local || 0
+                    structurantesKm: stats.structurantesKm,
+                    structurantesSegments: stats.structurantesSegments,
+                    localKm: stats.localKm,
+                    localSegments: stats.localSegments
                 }
             };
         }
