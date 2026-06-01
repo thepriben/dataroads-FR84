@@ -396,6 +396,9 @@
             <div style="position: relative;">
                 <!-- Barre d'outils unifiée : modes spéciaux groupés en haut à droite -->
                 <div class="map-toolbar" role="toolbar" aria-label="Modes d'affichage spéciaux">
+                    <button type="button" class="map-tool" data-accent="#16A085" onclick="toggleDashboardPanel()" id="dashboardBtn" title="Tableau de bord — chiffres clés du Vaucluse">
+                        <span class="map-tool-icon">📈</span><span class="map-tool-label">Chiffres&nbsp;clés</span>
+                    </button>
                     <button type="button" class="map-tool" data-accent="#7F8C8D" onclick="toggleWazeTraffic()" id="wazeBtn" title="Mettre en évidence les stations de comptage CD84">
                         <span class="map-tool-icon">📊</span><span class="map-tool-label">Comptages CD84</span>
                     </button>
@@ -405,6 +408,20 @@
                     <button type="button" class="map-tool" data-accent="#F39C12" onclick="toggleLimitationsMode()" id="limitsBtn" title="Afficher les limitations de vitesse (dégradé chaud/froid) et les restrictions ponts/PL (hauteur, poids, longueur, largeur)">
                         <span class="map-tool-icon">🚦</span><span class="map-tool-label">Limitations</span>
                     </button>
+                </div>
+
+                <!-- Panneau tableau de bord (chiffres clés Vaucluse) -->
+                <div class="dashboard-panel" id="dashboardPanel" role="dialog" aria-labelledby="dashboardTitle" aria-modal="true">
+                    <div class="dashboard-header">
+                        <div>
+                            <h2 id="dashboardTitle">Chiffres clés — Vaucluse (84)</h2>
+                            <p class="dashboard-subtitle">Tableau de bord départemental · Inforoute84</p>
+                        </div>
+                        <button type="button" class="dashboard-close" onclick="toggleDashboardPanel(false)" aria-label="Fermer le tableau de bord">×</button>
+                    </div>
+                    <div class="dashboard-content" id="dashboardContent">
+                        <p style="text-align:center;color:#7f8c8d;padding:24px;">Chargement des indicateurs…</p>
+                    </div>
                 </div>
 
                 <!-- Panneau de qualité des données -->
@@ -442,6 +459,7 @@
         })();
     </script>
     <script src="js/api.js?v=20260524-2"></script>
+    <script src="js/dashboard.js?v=20260601-1"></script>
     <script src="js/app.js?v=20260530-3"></script>
 </body>
 </html>

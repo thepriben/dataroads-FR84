@@ -473,6 +473,195 @@
             padding: 20px;
         }
 
+        /* === Department KPI dashboard (full-screen overlay) === */
+        .dashboard-panel {
+            position: absolute;
+            inset: 14px;
+            z-index: 1000;
+            background: #f4f6f8;
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideIn 0.28s ease;
+        }
+
+        .dashboard-panel.active {
+            display: flex;
+        }
+
+        .dashboard-header {
+            background: linear-gradient(135deg, #16A085 0%, #1ABC9C 55%, #2ECC71 100%);
+            color: white;
+            padding: 18px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .dashboard-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .dashboard-subtitle {
+            margin: 4px 0 0;
+            font-size: 0.78rem;
+            opacity: 0.92;
+        }
+
+        .dashboard-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.35rem;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+
+        .dashboard-close:hover {
+            background: rgba(255, 255, 255, 0.32);
+        }
+
+        .dashboard-content {
+            padding: 18px 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .dashboard-intro {
+            margin: 0 0 18px;
+            font-size: 0.85rem;
+            color: #5d6d7e;
+            line-height: 1.45;
+        }
+
+        .dashboard-footnote {
+            margin: 20px 0 0;
+            font-size: 0.72rem;
+            color: #95a5a6;
+            line-height: 1.4;
+        }
+
+        .dashboard-footnote a {
+            color: #16A085;
+        }
+
+        .dashboard-section {
+            margin-bottom: 18px;
+        }
+
+        .dashboard-section-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .dashboard-section-head h3 {
+            margin: 0;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #2C3E50;
+            font-weight: 700;
+        }
+
+        .dashboard-vintage {
+            font-size: 0.68rem;
+            color: #7f8c8d;
+            white-space: nowrap;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 8px;
+        }
+
+        .dashboard-tile {
+            background: white;
+            border: 1px solid #e1e8ed;
+            border-radius: 10px;
+            padding: 12px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+            font-family: inherit;
+        }
+
+        .dashboard-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(22, 160, 133, 0.15);
+            border-color: #16A085;
+        }
+
+        .dashboard-tile-wide {
+            grid-column: 1 / -1;
+        }
+
+        .dashboard-tile-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.15rem;
+            color: #2C3E50;
+            line-height: 1.2;
+        }
+
+        .dashboard-tile-label {
+            font-size: 0.65rem;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.35px;
+            margin-top: 4px;
+            line-height: 1.25;
+        }
+
+        .dashboard-section-weather .dashboard-weather {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: white;
+            border: 1px solid #e1e8ed;
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .dashboard-weather-icon {
+            font-size: 2rem;
+        }
+
+        .dashboard-weather-temp {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.4rem;
+            color: #2C3E50;
+        }
+
+        .dashboard-weather-desc {
+            font-size: 0.85rem;
+            color: #5d6d7e;
+        }
+
+        @media (max-width: 640px) {
+            .dashboard-panel {
+                inset: 8px;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
         .quality-metric {
             background: #f8f9fa;
             border-radius: 8px;

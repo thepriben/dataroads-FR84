@@ -630,6 +630,45 @@
                 btn?.classList.remove('is-active');
             }
         }
+        window.toggleQualityPanel = toggleQualityPanel;
+
+        function formatDashboardCacheVintage(generatedAt, prefix) {
+            if (!generatedAt) return prefix || '';
+            try {
+                const date = new Date(generatedAt);
+                if (Number.isNaN(date.getTime())) return prefix || '';
+                const label = date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+                return prefix ? `${prefix} · ${label}` : label;
+            } catch (_) {
+                return prefix || '';
+            }
+        }
+
+        function syncDashboardQualityMetrics() {
+            if (typeof window.patchDashboardMetrics !== 'function') return;
+            const total = qualityMetrics.totalRoutes || 0;
+            const wikidataPct = total ? Math.round((qualityMetrics.withWikidata / total) * 100) : 0;
+            const relationPct = total ? Math.round((qualityMetrics.withRelation / total) * 100) : 0;
+            window.patchDashboardMetrics({
+                quality: {
+                    wikidataPct,
+                    relationPct,
+                    segments: qualityMetrics.totalSegments || 0
+                }
+            });
+        }
+
+        function updateBisonFuteLegendCounts(eventsCount) {
+            const mapping = [
+                ['travaux', eventsCount.travaux],
+                ['bouchons', eventsCount.bouchons],
+                ['accidents', eventsCount.accidents]
+            ];
+            mapping.forEach(([key, value]) => {
+                const el = document.querySelector(`[data-bison-fute="${key}"] .legend-count`);
+                if (el) el.textContent = String(value);
+            });
+        }
 
         // === Map toolbar helpers ===
         // Each .map-tool carries data-accent="#xxxxxx" ; we mirror it into the
@@ -1012,6 +1051,16 @@
                 const element = document.getElementById(elementId);
                 if (element) element.textContent = String(value ?? 0);
             });
+
+            if (typeof window.patchDashboardMetrics === 'function') {
+                const structurantes = (counts.EV17 || 0) + (counts.EV8 || 0) + (counts.V861 || 0);
+                window.patchDashboardMetrics({
+                    bicycle: {
+                        structurantes,
+                        local: counts.local || 0
+                    }
+                });
+            }
         }
 
         function renderBicycleWayPolyline(way, relationIdToRef) {
@@ -2005,6 +2054,19 @@
                         local: counts.local.size
                     });
 
+                    if (typeof window.patchDashboardMetrics === 'function') {
+                        window.patchDashboardMetrics({
+                            hierarchy: {
+                                regional: counts.regional.size,
+                                territorial: counts.territorial.size,
+                                local: counts.local.size
+                            },
+                            vintages: {
+                                osm: formatDashboardCacheVintage(osmGeneratedAt, 'Cache OSM')
+                            }
+                        });
+                    }
+
                     // Initialize label display
                     updateRouteLabels();
                     
@@ -2440,6 +2502,7 @@
             displayQualityMetrics();
             updateWikidataSummary();
             updateNetworkStats();
+            syncDashboardQualityMetrics();
         }
 
         // Live computation of "Network Information" stats from loaded polylines.
@@ -2461,15 +2524,7 @@
             return total;
         }
 
-        function updateNetworkStats() {
-            const refsEl = document.getElementById('networkStat-refs');
-            const segmentsEl = document.getElementById('networkStat-segments');
-            const lengthEl = document.getElementById('networkStat-length');
-            const trafficEl = document.getElementById('networkStat-traffic');
-            const bridgesEl = document.getElementById('networkStat-bridges');
-            const tunnelsEl = document.getElementById('networkStat-tunnels');
-            if (!refsEl) return;
-
+        function collectNetworkStatsData() {
             const refs = Object.keys(window.routePolylines || {});
             let totalSegments = 0;
             let totalKm = 0;
@@ -2485,38 +2540,81 @@
                 });
             });
 
-            refsEl.textContent = refs.length.toLocaleString('fr-FR');
-            segmentsEl.textContent = totalSegments.toLocaleString('fr-FR');
-            lengthEl.textContent = totalKm >= 1
-                ? `${Math.round(totalKm).toLocaleString('fr-FR')} km`
-                : '—';
-            bridgesEl.textContent = bridgeCount.toLocaleString('fr-FR');
-            tunnelsEl.textContent = tunnelCount.toLocaleString('fr-FR');
-
-            // AADT traffic from loaded counting markers
             const mjaValues = [];
             (typeof trafficMarkers !== 'undefined' ? trafficMarkers : []).forEach(marker => {
                 const popup = marker.getPopup && marker.getPopup();
                 if (!popup) return;
                 const html = popup.getContent ? popup.getContent() : '';
-                // Accepte aussi le narrow no-break space (\u202f) que toLocaleString peut produire en fr-FR.
                 const match = String(html).match(/MJA[^:]*:[^>]*?([\d\u00a0\u202f,. ]+)\s*v[ée]h\/jour/i);
                 if (match) {
                     const num = Number.parseInt(match[1].replace(/[^0-9]/g, ''), 10);
                     if (Number.isFinite(num) && num > 0) mjaValues.push(num);
                 }
             });
-            const trafficTile = trafficEl ? trafficEl.closest('.network-tile') : null;
+
+            let mjaRange = null;
             if (mjaValues.length) {
                 const min = Math.min(...mjaValues);
                 const max = Math.max(...mjaValues);
                 const fmt = v => v >= 1000 ? `${Math.round(v / 1000)}k` : String(v);
-                trafficEl.textContent = `${fmt(min)} – ${fmt(max)} véh/j`;
+                mjaRange = `${fmt(min)} – ${fmt(max)} véh/j`;
+            }
+
+            return {
+                refs: refs.length,
+                totalSegments,
+                lengthKm: totalKm,
+                bridges: bridgeCount,
+                tunnels: tunnelCount,
+                mjaRange,
+                mjaStationCount: mjaValues.length
+            };
+        }
+
+        function syncDashboardNetworkStats() {
+            if (typeof window.patchDashboardMetrics !== 'function') return;
+            const stats = collectNetworkStatsData();
+            window.patchDashboardMetrics({
+                network: {
+                    refs: stats.refs,
+                    lengthKm: stats.lengthKm,
+                    bridges: stats.bridges,
+                    tunnels: stats.tunnels
+                }
+            });
+        }
+
+        function updateNetworkStats() {
+            const refsEl = document.getElementById('networkStat-refs');
+            const segmentsEl = document.getElementById('networkStat-segments');
+            const lengthEl = document.getElementById('networkStat-length');
+            const trafficEl = document.getElementById('networkStat-traffic');
+            const bridgesEl = document.getElementById('networkStat-bridges');
+            const tunnelsEl = document.getElementById('networkStat-tunnels');
+            if (!refsEl) {
+                syncDashboardNetworkStats();
+                return;
+            }
+
+            const stats = collectNetworkStatsData();
+
+            refsEl.textContent = stats.refs.toLocaleString('fr-FR');
+            segmentsEl.textContent = stats.totalSegments.toLocaleString('fr-FR');
+            lengthEl.textContent = stats.lengthKm >= 1
+                ? `${Math.round(stats.lengthKm).toLocaleString('fr-FR')} km`
+                : '—';
+            bridgesEl.textContent = stats.bridges.toLocaleString('fr-FR');
+            tunnelsEl.textContent = stats.tunnels.toLocaleString('fr-FR');
+
+            const trafficTile = trafficEl ? trafficEl.closest('.network-tile') : null;
+            if (stats.mjaRange) {
+                trafficEl.textContent = stats.mjaRange;
                 if (trafficTile) trafficTile.style.display = '';
             } else {
-                // Hide tile entirely until data is computable.
                 if (trafficTile) trafficTile.style.display = 'none';
             }
+
+            syncDashboardNetworkStats();
         }
 
         window.updateNetworkStats = updateNetworkStats;
@@ -3316,6 +3414,15 @@
                     document.getElementById('weatherIcon').textContent = icon;
                     document.getElementById('weatherTemp').textContent = `${temp}°C`;
                     document.getElementById('weatherDesc').textContent = `${desc} • ${details}`;
+
+                    if (typeof window.patchDashboardMetrics === 'function') {
+                        window.patchDashboardMetrics({
+                            weather: { icon, temp, desc: `${desc} · Avignon` },
+                            vintages: {
+                                weather: updatedAt ? `Temps réel · ${updatedAt}` : 'Temps réel · Avignon'
+                            }
+                        });
+                    }
                 }
             } catch (error) {
                 console.error('Erreur météo:', error);
@@ -3517,6 +3624,24 @@
             console.log(`✓ Total stations affichées: ${totalStations} (année max ${latestYear})`);
             console.log('🚦 === FIN CHARGEMENT STATIONS DE COMPTAGE ===');
 
+            if (typeof window.patchDashboardMetrics === 'function') {
+                const networkStats = collectNetworkStatsData();
+                window.patchDashboardMetrics({
+                    traffic: {
+                        stations: totalStations,
+                        high: trafficCounts.high,
+                        medium: trafficCounts.medium,
+                        low: trafficCounts.low,
+                        mjaRange: networkStats.mjaRange
+                    },
+                    vintages: {
+                        traffic: sourceYears
+                            ? `Dernière année par station · ${sourceYears}`
+                            : 'Dernière année par station'
+                    }
+                });
+            }
+
             // Refresh "Network Information" stats now that AADT values are known.
             if (typeof updateNetworkStats === 'function') updateNetworkStats();
         }
@@ -3627,6 +3752,20 @@
                 document.getElementById('count-light').textContent = counts.light;
                 
                 console.log('Répartition:', counts);
+
+                if (typeof window.patchDashboardMetrics === 'function') {
+                    window.patchDashboardMetrics({
+                        accidents: {
+                            total: counts.fatal + counts.hospitalized + counts.light,
+                            fatal: counts.fatal,
+                            hospitalized: counts.hospitalized,
+                            light: counts.light
+                        },
+                        vintages: {
+                            accidents: 'Millésime 2024 · BAAC'
+                        }
+                    });
+                }
                 
             } catch (error) {
                 console.error('Erreur lors du chargement de l\'accidentologie:', error);
@@ -3749,6 +3888,19 @@
 
                 document.getElementById('count-construction').textContent = String(constructionCount);
                 document.getElementById('count-proposed').textContent = String(proposedCount);
+
+                if (typeof window.patchDashboardMetrics === 'function') {
+                    window.patchDashboardMetrics({
+                        construction: {
+                            construction: constructionCount,
+                            proposed: proposedCount
+                        },
+                        vintages: {
+                            osm: formatDashboardCacheVintage(data._cache?.generated_at, 'Cache OSM')
+                        }
+                    });
+                }
+
                 applyConstructionVisibleUi();
             } catch (error) {
                 console.error('Erreur chargement routes en construction:', error);
@@ -3837,6 +3989,13 @@
                 
                 if (!data.features || data.features.length === 0) {
                     console.log('ℹ️ Aucun événement Info Routière dans le GeoJSON local');
+                    updateBisonFuteLegendCounts({ travaux: 0, bouchons: 0, accidents: 0, autres: 0 });
+                    if (typeof window.patchDashboardMetrics === 'function') {
+                        window.patchDashboardMetrics({
+                            bisonFute: { total: 0, travaux: 0, bouchons: 0, accidents: 0 },
+                            vintages: { bisonFute: 'Cache 3 h · Info Routière' }
+                        });
+                    }
                     return;
                 }
                 
@@ -3939,6 +4098,25 @@
                 });
                 
                 const totalEvents = eventsCount.travaux + eventsCount.bouchons + eventsCount.accidents + eventsCount.autres;
+                
+                updateBisonFuteLegendCounts(eventsCount);
+
+                if (typeof window.patchDashboardMetrics === 'function') {
+                    window.patchDashboardMetrics({
+                        bisonFute: {
+                            total: totalEvents,
+                            travaux: eventsCount.travaux,
+                            bouchons: eventsCount.bouchons,
+                            accidents: eventsCount.accidents
+                        },
+                        vintages: {
+                            bisonFute: formatDashboardCacheVintage(
+                                data._cache?.generated_at,
+                                'Cache 3 h · Info Routière'
+                            ) || 'Cache 3 h · Info Routière'
+                        }
+                    });
+                }
                 
                 if (totalEvents > 0) {
                     console.log(`✓ Événements Bison Futé affichés:`, eventsCount);
