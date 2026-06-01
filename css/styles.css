@@ -334,6 +334,13 @@
             background: #f5f5f5;
         }
 
+        .map-stage {
+            position: relative;
+            height: 100%;
+            min-height: 0;
+            overflow: hidden;
+        }
+
         /* Floating data quality button */
         /* === Unified toolbar (top-right) === */
         .map-toolbar {
@@ -479,27 +486,28 @@
             padding: 20px;
         }
 
-        /* === Department KPI dashboard (centered panel with tile grid) === */
+        /* === Department KPI dashboard (wide, low panel inside map) === */
         .dashboard-panel {
             position: absolute;
-            top: 68px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 56px;
+            left: 10px;
+            right: 10px;
             z-index: 999;
-            width: min(520px, calc(100% - 28px));
-            background: #f4f6f8;
+            width: auto;
+            max-height: calc(100% - 66px);
+            background: #fff;
             border-radius: 12px;
-            box-shadow: 0 10px 32px rgba(0, 0, 0, 0.18);
-            border: 1px solid #d5dde5;
+            box-shadow: 0 10px 36px rgba(22, 160, 133, 0.12), 0 4px 16px rgba(0, 0, 0, 0.1);
+            border: 1px solid #dce6ec;
             display: none;
             flex-direction: column;
-            overflow: visible;
+            overflow: hidden;
             animation: dashboardIn 0.22s ease;
         }
 
         @keyframes dashboardIn {
-            from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .dashboard-panel.active {
@@ -561,18 +569,17 @@
         .dashboard-header {
             background: linear-gradient(135deg, #16A085 0%, #1ABC9C 100%);
             color: white;
-            padding: 10px 14px;
+            padding: 7px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 8px;
             flex-shrink: 0;
-            border-radius: 11px 11px 0 0;
         }
 
         .dashboard-header h2 {
             margin: 0;
-            font-size: 0.92rem;
+            font-size: 0.85rem;
             font-weight: 700;
             letter-spacing: 0.2px;
         }
@@ -600,34 +607,40 @@
 
         .dashboard-content {
             padding: 10px 12px 12px;
-            overflow: visible;
+            overflow: hidden;
+            flex: 1;
+            min-height: 0;
+            background: #f7fafb;
         }
 
         .dashboard-sections {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 10px;
         }
 
         .dash-block {
             background: #fff;
-            border: 1px solid #e3e9ef;
+            border: 1px solid #e4ebf0;
             border-radius: 10px;
             padding: 8px 10px 10px;
+            min-width: 0;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
         }
 
         .dash-block-title {
-            margin: 0 0 8px;
-            font-size: 0.68rem;
+            margin: 0 0 7px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eef3f6;
+            font-size: 0.7rem;
             font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.45px;
+            letter-spacing: 0.02em;
             color: #16A085;
         }
 
         .dash-tiles {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
             gap: 6px;
         }
 
@@ -636,49 +649,59 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 64px;
-            padding: 8px 6px;
-            background: #f8fafb;
-            border: 1px solid #e8edf2;
+            gap: 3px;
+            min-height: 50px;
+            padding: 7px 6px;
+            background: #f9fbfc;
+            border: 1px solid #e8eef3;
             border-radius: 8px;
             text-align: center;
         }
 
-        .dash-tile-wide {
-            grid-column: span 2;
+        .dash-tile-full {
+            grid-column: 1 / -1;
         }
 
         .dash-tile-value {
             font-family: 'JetBrains Mono', monospace;
             font-weight: 700;
-            font-size: 0.88rem;
-            color: #2C3E50;
-            line-height: 1.2;
-            word-break: break-word;
+            font-size: 0.8rem;
+            color: #1e293b;
+            line-height: 1.25;
+            max-width: 100%;
+            overflow-wrap: normal;
+            word-break: normal;
+            hyphens: manual;
         }
 
         .dash-tile-label {
-            margin-top: 4px;
-            font-size: 0.58rem;
-            color: #7f8c8d;
+            font-size: 0.62rem;
+            font-weight: 500;
+            color: #64748b;
             line-height: 1.2;
-            text-transform: uppercase;
-            letter-spacing: 0.2px;
+            padding: 0 2px;
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 900px) {
+            .dashboard-sections {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 520px) {
+            .dashboard-sections {
+                grid-template-columns: 1fr;
+            }
+
             .dashboard-panel {
-                top: auto;
-                bottom: 12px;
-                width: min(520px, calc(100% - 24px));
+                top: 52px;
+                left: 8px;
+                right: 8px;
+                max-height: calc(100% - 60px);
             }
 
             .dash-tiles {
-                grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
-            }
-
-            .dash-tile-wide {
-                grid-column: span 2;
+                grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
             }
         }
 

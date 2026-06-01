@@ -25,7 +25,7 @@
             items: [
                 { metricsKey: 'network', key: 'refs', label: 'Routes' },
                 { metricsKey: 'network', key: 'lengthKm', label: 'Longueur' },
-                { metricsKey: 'network', key: 'hierarchySplit', label: 'Rég./terr./local' },
+                { metricsKey: 'network', key: 'hierarchySplit', label: 'R · T · L' },
                 { metricsKey: 'network', key: 'bridges', label: 'Ponts' },
                 { metricsKey: 'network', key: 'tunnels', label: 'Tunnels' }
             ]
@@ -34,8 +34,8 @@
             title: 'Trafic',
             items: [
                 { metricsKey: 'traffic', key: 'stations', label: 'Stations' },
-                { metricsKey: 'traffic', key: 'mjaRange', label: 'Fourchette MJA' },
-                { metricsKey: 'traffic', key: 'tierSplit', label: 'Fort/moy./faible' }
+                { metricsKey: 'traffic', key: 'mjaRange', label: 'MJA' },
+                { metricsKey: 'traffic', key: 'tierSplit', label: 'F · M · f' }
             ]
         },
         {
@@ -43,8 +43,8 @@
             items: [
                 { metricsKey: 'accidents', key: 'total', label: 'Accidents' },
                 { metricsKey: 'accidents', key: 'fatal', label: 'Mortels' },
-                { metricsKey: 'accidents', key: 'hospitalized', label: 'Hospitalisés' },
-                { metricsKey: 'accidents', key: 'light', label: 'Blessés légers' }
+                { metricsKey: 'accidents', key: 'hospitalized', label: 'Hosp.' },
+                { metricsKey: 'accidents', key: 'light', label: 'Légers' }
             ]
         },
         {
@@ -59,16 +59,16 @@
         {
             title: 'Mobilité',
             items: [
-                { metricsKey: 'bicycle', key: 'structurantes', label: 'Vélo structurant' },
-                { metricsKey: 'bicycle', key: 'local', label: 'Vélo local' },
-                { metricsKey: 'construction', key: 'constructionSplit', label: 'Chantiers/projets' }
+                { metricsKey: 'bicycle', key: 'structurantes', label: 'Vélo str.' },
+                { metricsKey: 'bicycle', key: 'local', label: 'Vélo loc.' },
+                { metricsKey: 'construction', key: 'constructionSplit', label: 'Chantiers' }
             ]
         },
         {
             title: 'Qualité',
             items: [
                 { metricsKey: 'quality', key: 'wikidataPct', label: 'Wikidata' },
-                { metricsKey: 'quality', key: 'relationPct', label: 'Relation OSM' },
+                { metricsKey: 'quality', key: 'relationPct', label: 'Relations' },
                 { metricsKey: 'quality', key: 'segments', label: 'Tronçons' }
             ]
         }
@@ -88,7 +88,7 @@
                 if (key === 'hierarchySplit') {
                     const h = metrics.hierarchy;
                     if (!h || h.regional == null || h.territorial == null || h.local == null) return null;
-                    return `${h.regional}/${h.territorial}/${h.local}`;
+                    return `${h.regional} · ${h.territorial} · ${h.local}`;
                 }
                 return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
 
@@ -100,7 +100,7 @@
                 }
                 if (key === 'tierSplit') {
                     if (section.high == null || section.medium == null || section.low == null) return null;
-                    return `${section.high}/${section.medium}/${section.low}`;
+                    return `${section.high} · ${section.medium} · ${section.low}`;
                 }
                 return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
 
@@ -112,7 +112,7 @@
             case 'construction':
                 if (key === 'constructionSplit') {
                     if (section.construction == null || section.proposed == null) return null;
-                    return `${section.construction}/${section.proposed}`;
+                    return `${section.construction} · ${section.proposed}`;
                 }
                 return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : null;
 
@@ -203,6 +203,8 @@
         `;
     };
 
+    const FULL_WIDTH_TILE_KEYS = new Set(['hierarchySplit', 'mjaRange', 'tierSplit', 'constructionSplit']);
+
     function renderDashboard() {
         const container = document.getElementById('dashboardContent');
         if (!container) return;
@@ -211,9 +213,9 @@
         const sectionsHtml = DASHBOARD_SECTIONS.map(section => {
             const tilesHtml = section.items.map(item => {
                 const value = formatDashboardValue(item.metricsKey, item.key, metrics);
-                const wideClass = item.key === 'mjaRange' || item.key === 'hierarchySplit' ? ' dash-tile-wide' : '';
+                const fullClass = FULL_WIDTH_TILE_KEYS.has(item.key) ? ' dash-tile-full' : '';
                 return `
-                    <div class="dash-tile${wideClass}">
+                    <div class="dash-tile${fullClass}">
                         <div class="dash-tile-value">${value}</div>
                         <div class="dash-tile-label">${item.label}</div>
                     </div>
