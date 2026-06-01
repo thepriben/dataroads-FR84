@@ -23,53 +23,53 @@
         {
             title: 'Réseau',
             items: [
-                { metricsKey: 'network', key: 'refs', label: 'routes' },
-                { metricsKey: 'network', key: 'lengthKm', label: 'km' },
-                { metricsKey: 'network', key: 'hierarchySplit', label: 'R/T/L' },
-                { metricsKey: 'network', key: 'bridges', label: 'ponts' },
-                { metricsKey: 'network', key: 'tunnels', label: 'tunnels' }
+                { metricsKey: 'network', key: 'refs', label: 'Routes' },
+                { metricsKey: 'network', key: 'lengthKm', label: 'Longueur' },
+                { metricsKey: 'network', key: 'hierarchySplit', label: 'Rég./terr./local' },
+                { metricsKey: 'network', key: 'bridges', label: 'Ponts' },
+                { metricsKey: 'network', key: 'tunnels', label: 'Tunnels' }
             ]
         },
         {
             title: 'Trafic',
             items: [
-                { metricsKey: 'traffic', key: 'stations', label: 'sta.' },
-                { metricsKey: 'traffic', key: 'mjaRange', label: 'MJA' },
-                { metricsKey: 'traffic', key: 'tierSplit', label: 'F/M/f' }
+                { metricsKey: 'traffic', key: 'stations', label: 'Stations' },
+                { metricsKey: 'traffic', key: 'mjaRange', label: 'Fourchette MJA' },
+                { metricsKey: 'traffic', key: 'tierSplit', label: 'Fort/moy./faible' }
             ]
         },
         {
             title: 'Sécurité',
             items: [
-                { metricsKey: 'accidents', key: 'total', label: 'acc.' },
-                { metricsKey: 'accidents', key: 'fatal', label: 'mortels' },
-                { metricsKey: 'accidents', key: 'hospitalized', label: 'hosp.' },
-                { metricsKey: 'accidents', key: 'light', label: 'légers' }
+                { metricsKey: 'accidents', key: 'total', label: 'Accidents' },
+                { metricsKey: 'accidents', key: 'fatal', label: 'Mortels' },
+                { metricsKey: 'accidents', key: 'hospitalized', label: 'Hospitalisés' },
+                { metricsKey: 'accidents', key: 'light', label: 'Blessés légers' }
             ]
         },
         {
             title: 'Live',
             items: [
-                { metricsKey: 'bisonFute', key: 'total', label: 'év.' },
-                { metricsKey: 'bisonFute', key: 'travaux', label: 'trav.' },
-                { metricsKey: 'bisonFute', key: 'bouchons', label: 'bouch.' },
-                { metricsKey: 'bisonFute', key: 'accidents', label: 'acc.' }
+                { metricsKey: 'bisonFute', key: 'total', label: 'Événements' },
+                { metricsKey: 'bisonFute', key: 'travaux', label: 'Travaux' },
+                { metricsKey: 'bisonFute', key: 'bouchons', label: 'Bouchons' },
+                { metricsKey: 'bisonFute', key: 'accidents', label: 'Accidents' }
             ]
         },
         {
             title: 'Mobilité',
             items: [
-                { metricsKey: 'bicycle', key: 'structurantes', label: 'vélo str.' },
-                { metricsKey: 'bicycle', key: 'local', label: 'vélo loc.' },
-                { metricsKey: 'construction', key: 'constructionSplit', label: 'chant./proj.' }
+                { metricsKey: 'bicycle', key: 'structurantes', label: 'Vélo structurant' },
+                { metricsKey: 'bicycle', key: 'local', label: 'Vélo local' },
+                { metricsKey: 'construction', key: 'constructionSplit', label: 'Chantiers/projets' }
             ]
         },
         {
             title: 'Qualité',
             items: [
                 { metricsKey: 'quality', key: 'wikidataPct', label: 'Wikidata' },
-                { metricsKey: 'quality', key: 'relationPct', label: 'relation' },
-                { metricsKey: 'quality', key: 'segments', label: 'tronçons' }
+                { metricsKey: 'quality', key: 'relationPct', label: 'Relation OSM' },
+                { metricsKey: 'quality', key: 'segments', label: 'Tronçons' }
             ]
         }
     ];
@@ -82,7 +82,7 @@
             case 'network':
                 if (key === 'lengthKm') {
                     return section.lengthKm >= 1
-                        ? Math.round(section.lengthKm).toLocaleString('fr-FR')
+                        ? `${Math.round(section.lengthKm).toLocaleString('fr-FR')} km`
                         : null;
                 }
                 if (key === 'hierarchySplit') {
@@ -208,21 +208,27 @@
         if (!container) return;
 
         const metrics = window.dashboardMetrics;
-        const rowsHtml = DASHBOARD_SECTIONS.map(section => {
-            const itemsHtml = section.items.map(item => {
+        const sectionsHtml = DASHBOARD_SECTIONS.map(section => {
+            const tilesHtml = section.items.map(item => {
                 const value = formatDashboardValue(item.metricsKey, item.key, metrics);
-                return `<span class="dash-item"><b>${value}</b> ${item.label}</span>`;
-            }).join('<span class="dash-sep">·</span>');
+                const wideClass = item.key === 'mjaRange' || item.key === 'hierarchySplit' ? ' dash-tile-wide' : '';
+                return `
+                    <div class="dash-tile${wideClass}">
+                        <div class="dash-tile-value">${value}</div>
+                        <div class="dash-tile-label">${item.label}</div>
+                    </div>
+                `;
+            }).join('');
 
             return `
-                <div class="dash-row">
-                    <span class="dash-k">${section.title}</span>
-                    <div class="dash-v">${itemsHtml}</div>
-                </div>
+                <section class="dash-block">
+                    <h3 class="dash-block-title">${section.title}</h3>
+                    <div class="dash-tiles">${tilesHtml}</div>
+                </section>
             `;
         }).join('');
 
-        container.innerHTML = `<div class="dashboard-card">${rowsHtml}</div>`;
+        container.innerHTML = `<div class="dashboard-sections">${sectionsHtml}</div>`;
     }
 
     window.patchDashboardMetrics = function patchDashboardMetrics(partial) {
