@@ -153,7 +153,7 @@
             position: relative;
         }
 
-        /* Séparateur draggable entre sidebar et carte */
+        /* Draggable divider between sidebar and map */
         .sidebar-resizer {
             position: relative;
             background: var(--border);
@@ -191,7 +191,7 @@
             background: #93c5fd;
         }
 
-        /* Curseur global pendant le drag pour éviter le clignotement */
+        /* Global cursor during drag to avoid flicker */
         body.is-resizing,
         body.is-resizing * {
             cursor: col-resize !important;
@@ -334,8 +334,8 @@
             background: #f5f5f5;
         }
 
-        /* Bouton flottant qualité des données */
-        /* === Barre d'outils unifiée (top-right) === */
+        /* Floating data quality button */
+        /* === Unified toolbar (top-right) === */
         .map-toolbar {
             position: absolute;
             top: 14px;
@@ -394,7 +394,7 @@
             font-size: 0.78rem;
         }
 
-        /* Sur écran étroit on n'affiche que les icônes pour rester compact */
+        /* On narrow screens show icons only to stay compact */
         @media (max-width: 1100px) {
             .map-tool .map-tool-label {
                 display: none;
@@ -404,14 +404,14 @@
             }
         }
 
-        /* Marqueurs Bison Futé */
+        /* Bison Futé markers */
         .bison-fute-marker {
             background: transparent !important;
             border: none !important;
             text-align: center;
         }
 
-        /* Panneau de qualité des données */
+        /* Data quality panel */
         .quality-panel {
             position: absolute;
             top: 14px;
@@ -634,7 +634,11 @@
             background: white;
         }
 
-        /* Étiquettes des routes */
+        /* Route labels */
+        .route-label-container {
+            transform: translate(-50%, -50%);
+        }
+
         .route-label {
             background: rgba(255, 255, 255, 0.95);
             border: 2px solid;
@@ -646,6 +650,33 @@
             white-space: nowrap;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             pointer-events: none;
+            text-align: center;
+        }
+
+        .route-label-cluster {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            align-items: stretch;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .route-label-cluster .route-label {
+            pointer-events: none;
+        }
+
+        .route-label-cluster-badge {
+            background: rgba(44, 62, 80, 0.92);
+            color: #fff;
+            border: 2px solid #2C3E50;
+            border-radius: 6px;
+            padding: 3px 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 11px;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
             text-align: center;
         }
 
@@ -664,7 +695,7 @@
             color: #3498DB;
         }
 
-        /* Scrollbar personnalisée */
+        /* Custom scrollbar */
         .sidebar::-webkit-scrollbar {
             width: 8px;
         }
@@ -823,7 +854,7 @@
             }
         }
 
-        /* Icône œil de visibilité des couches */
+        /* Layer visibility eye icon */
         .toggle-icon {
             display: inline-flex;
             align-items: center;
@@ -870,7 +901,7 @@
             background: #bdc3c7;
         }
 
-        /* Badge fraîcheur (date d'intégration + prochain rafraîchissement) */
+        /* Freshness badge (integration date + next refresh) */
         .freshness-badge {
             margin: 2px 0 8px 0;
             line-height: 1;
@@ -920,7 +951,7 @@
             opacity: 0.75;
         }
 
-        /* Panneau "Formule de rafraîchissement" */
+        /* "Refresh schedule" panel */
         .refresh-formula {
             display: grid;
             gap: 8px;
@@ -958,7 +989,7 @@
             font-size: 0.7rem;
         }
 
-        /* Infobox Wikidata intégrée au popup route (lecture seule, auto-chargée) */
+        /* Wikidata infobox in route popup (read-only, auto-loaded) */
         .route-popup .popup-infobox-section {
             margin-top: 12px;
             padding-top: 12px;
@@ -1154,7 +1185,7 @@
             line-height: 1;
         }
 
-        /* Légende dynamique limitations dans la sidebar */
+        /* Dynamic restrictions legend in sidebar */
         .limitations-legend-scale {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -1251,7 +1282,7 @@
             }
         }
 
-        /* === Tuiles "Informations Réseau" === */
+        /* === "Network Information" tiles === */
         .network-stats {
             display: grid;
             grid-template-columns: 1fr 1fr;

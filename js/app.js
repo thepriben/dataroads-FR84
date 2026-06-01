@@ -10,7 +10,7 @@
 
         // Global functions exposed to inline HTML handlers
 
-        // Icônes SVG pour les toggles œil ouvert / fermé (style Lucide)
+        // SVG icons for open/closed eye toggles (Lucide style)
         const EYE_OPEN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
         const EYE_CLOSED_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
 
@@ -22,7 +22,7 @@
             iconElement.setAttribute('title', visible ? 'Couche visible — cliquer pour masquer' : 'Couche masquée — cliquer pour afficher');
         }
 
-        // ========== FRESHNESS BADGES (date d'intégration + prochain rafraîchissement) ==========
+        // ========== FRESHNESS BADGES (integration date + next refresh) ==========
 
         const FRESHNESS_SCHEDULES = {
             osm: {
@@ -247,7 +247,7 @@
             });
         });
 
-        // ========== FAMILLES DE SECTIONS DE LA SIDEBAR (collapsibles) ==========
+        // ========== SIDEBAR SECTION FAMILIES (collapsible) ==========
 
         function syncFreshnessBadgeVisibility() {
             document.querySelectorAll('.freshness-badge[id]').forEach(element => {
@@ -305,8 +305,8 @@
                 });
             });
 
-            // Quand la section "Limitations" devient visible/invisible dynamiquement,
-            // on rafraîchit le compteur de la famille "factual".
+            // When the "Limitations" section becomes visible/hidden dynamically,
+            // refresh the "factual" family counter.
             const limitations = document.getElementById('limitationsLegend');
             if (limitations && typeof MutationObserver !== 'undefined') {
                 const observer = new MutationObserver(() => {
@@ -328,11 +328,11 @@
             syncLegendChrome();
         });
 
-        // ========== WIKIDATA INFOBOX (onglet dédié dans le popup route) ==========
+        // ========== WIKIDATA INFOBOX (dedicated tab in route popup) ==========
 
         const WIKIDATA_INFOBOX_CACHE = new Map();
 
-        // Propriétés Wikidata mises en avant dans l'infobox, dans l'ordre d'affichage.
+        // Wikidata properties highlighted in the infobox, in display order.
         const WIKIDATA_PROPS_TO_DISPLAY = [
             { id: 'P31',   label: 'Nature' },
             { id: 'P17',   label: 'Pays' },
@@ -648,10 +648,10 @@
 
         document.addEventListener('DOMContentLoaded', setupMapToolbar);
 
-        // === Sidebar resizer (drag horizontal) ===
-        // Permet à l'utilisateur d'élargir/réduire la sidebar en glissant le
-        // séparateur au centre. La taille est persistée dans localStorage et
-        // Leaflet est notifié pour redessiner la carte une fois le drag fini.
+        // === Sidebar resizer (horizontal drag) ===
+        // Lets the user widen/narrow the sidebar by dragging the
+        // centre divider. Width is persisted in localStorage and
+        // Leaflet is notified to redraw the map once dragging ends.
         function setupSidebarResizer() {
             const resizer = document.getElementById('sidebarResizer');
             const mainContent = document.querySelector('.main-content');
@@ -660,13 +660,13 @@
             const MIN_WIDTH = 220;
             const MAX_WIDTH = 560;
 
-            // Restaurer la largeur sauvegardée
+            // Restore saved width
             try {
                 const saved = Number.parseInt(localStorage.getItem('sidebarWidth') || '', 10);
                 if (Number.isFinite(saved) && saved >= MIN_WIDTH && saved <= MAX_WIDTH) {
                     mainContent.style.setProperty('--sidebar-width', `${saved}px`);
                 }
-            } catch (_) { /* localStorage indisponible (mode privé) */ }
+            } catch (_) { /* localStorage unavailable (private mode) */ }
 
             let dragging = false;
             let pendingWidth = null;
@@ -704,7 +704,7 @@
                 window.addEventListener('pointerup', onPointerUp);
             });
 
-            // Double-clic : remettre la largeur par défaut
+            // Double-click: reset to default width
             resizer.addEventListener('dblclick', () => {
                 mainContent.style.removeProperty('--sidebar-width');
                 try { localStorage.removeItem('sidebarWidth'); } catch (_) {}
@@ -713,7 +713,7 @@
                 }
             });
 
-            // Flèches clavier quand le séparateur a le focus
+            // Arrow keys when the divider has focus
             resizer.addEventListener('keydown', (event) => {
                 if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
                 event.preventDefault();
@@ -747,7 +747,7 @@
         let citiesVisible = true;
         const dataRefreshState = {};
         
-        // État de visibilité par hiérarchie
+        // Visibility state per hierarchy level
         let hierarchyVisibility = {
             regional: true,
             territorial: true,
@@ -879,9 +879,9 @@
             ].join('<br>');
         }
 
-        // ========== ROUTES EN CONSTRUCTION ==========
+        // ========== ROADS UNDER CONSTRUCTION ==========
         
-        // Helper qui applique l'état "couche visible" sur les éléments de l'UI.
+        // Helper that applies the "layer visible" state to UI elements.
         function applyConstructionVisibleUi() {
             const icon = document.getElementById('constructionToggleIcon');
             const title = document.querySelector('.legend-section:has([id="constructionToggleIcon"]) .legend-title');
@@ -922,8 +922,8 @@
                 return;
             }
 
-            // À afficher : si on n'a jamais chargé, on lance le fetch local (instantané).
-            // Pas de faux timer 30 s : c'est juste une lecture de GeoJSON local.
+            // To show: if never loaded, start local fetch (instant).
+            // No fake 30 s timer: this is just a local GeoJSON read.
             if (constructionPolylines.length === 0) {
                 const icon = document.getElementById('constructionToggleIcon');
                 if (icon) icon.style.opacity = '0.5';
@@ -939,7 +939,7 @@
             console.log(`✓ ${constructionPolylines.length} polyline(s) construction affichée(s)`);
         };
 
-        // ========== VÉLOROUTES (relations OSM route=bicycle) ==========
+        // ========== BIKE ROUTES (OSM route=bicycle relations) ==========
 
         const BICYCLE_STRUCTURANTES = {
             EV17: { label: 'Via Rhôna', colour: '#DCD431', weight: 6 },
@@ -1124,7 +1124,7 @@
             syncLegendChrome();
         };
 
-        // ========== CONVOIS EXCEPTIONNELS ==========
+        // ========== EXCEPTIONAL CONVOYS ==========
         
         window.toggleConvoisExceptionnels = function() {
             convoiMode = !convoiMode;
@@ -1132,10 +1132,10 @@
 
             if (convoiMode) {
                 console.log('🚛 Mode Convois Exceptionnels activé');
-                // Filtrer et mettre en évidence les routes adaptées
+                // Filter and highlight suitable routes
                 filterRoutesForConvois();
 
-                // Petit toast discret (~2,5 s) : la légende complète est dans l'aide sidebar
+                // Small discreet toast (~2.5 s): full legend is in sidebar help
                 L.popup({ closeButton: false, autoClose: true, closeOnClick: true })
                     .setLatLng(window.map.getCenter())
                     .setContent(`
@@ -1149,17 +1149,17 @@
 
             } else {
                 console.log('✗ Mode Convois Exceptionnels désactivé');
-                // Restaurer toutes les routes
+                // Restore all routes
                 restoreAllRoutes();
                 window.map.closePopup();
             }
         };
 
         function filterRoutesForConvois() {
-            // Critères pour convois exceptionnels :
-            // - Réseau régional : toujours adapté (axes principaux, largeur suffisante)
-            // - Réseau territorial : généralement adapté
-            // - Réseau local : à éviter (trop étroit, virages serrés)
+            // Criteria for exceptional convoys:
+            // - Regional network: always suitable (main axes, sufficient width)
+            // - Territorial network: generally suitable
+            // - Local network: avoid (too narrow, tight bends)
             
             Object.keys(window.routePolylines).forEach(ref => {
                 const polylines = window.routePolylines[ref];
@@ -1168,22 +1168,22 @@
                     const hierarchy = polyline.options.roadHierarchy;
                     
                     if (hierarchy === 'regional') {
-                        // Routes régionales : OPTIMAL pour convois
+                        // Regional routes: OPTIMAL for convoys
                         polyline.setStyle({
-                            color: '#27AE60',  // Vert = adapté
+                            color: '#27AE60',  // Green = suitable
                             weight: 8,
                             opacity: 1
                         });
                         polyline.bringToFront();
                     } else if (hierarchy === 'territorial') {
-                        // Routes territoriales : ADAPTÉ avec précautions
+                        // Territorial routes: SUITABLE with caution
                         polyline.setStyle({
-                            color: '#F39C12',  // Orange = adapté avec précaution
+                            color: '#F39C12',  // Orange = suitable with caution
                             weight: 6,
                             opacity: 0.9
                         });
                     } else if (hierarchy === 'local') {
-                        // Routes locales : À ÉVITER (masquer)
+                        // Local routes: AVOID (hide)
                         polyline.setStyle({
                             opacity: 0.15,
                             weight: 2
@@ -1192,7 +1192,7 @@
                 });
             });
             
-            // Compter les routes adaptées
+            // Count suitable routes
             const routesRegionales = Object.keys(window.routePolylines).filter(ref => {
                 const hierarchy = window.routePolylines[ref][0].options.roadHierarchy;
                 return hierarchy === 'regional';
@@ -1208,7 +1208,7 @@
         }
 
         function restoreAllRoutes() {
-            // Restaurer l'apparence normale de toutes les routes
+            // Restore normal appearance for all routes
             Object.keys(window.routePolylines).forEach(ref => {
                 const polylines = window.routePolylines[ref];
                 
@@ -1224,20 +1224,20 @@
         }
 
 
-        // Toggle global de toute la hiérarchie
+        // Toggle entire hierarchy globally
         window.toggleAllHierarchy = function() {
             const allVisible = hierarchyVisibility.regional && hierarchyVisibility.territorial && hierarchyVisibility.local;
             const newState = !allVisible;
             
-            // Appliquer le même état à tous les niveaux
+            // Apply the same state to all levels
             hierarchyVisibility.regional = newState;
             hierarchyVisibility.territorial = newState;
             hierarchyVisibility.local = newState;
             
-            // Mettre à jour l'affichage
+            // Update display
             updateHierarchyDisplay();
             
-            // Icône et titre
+            // Icon and title
             const icon = document.getElementById('hierarchyToggleIcon');
             const title = document.querySelector('.legend-section:has([id="hierarchyToggleIcon"]) .legend-title');
             
@@ -1252,7 +1252,7 @@
             }
         };
 
-        // Toggle d'un niveau spécifique de hiérarchie
+        // Toggle a specific hierarchy level
         window.toggleHierarchy = function(hierarchy) {
             if (!Object.prototype.hasOwnProperty.call(hierarchyVisibility, hierarchy)) {
                 console.warn('Hiérarchie inconnue:', hierarchy);
@@ -1271,24 +1271,24 @@
             console.log(`${hierarchyVisibility[hierarchy] ? '✓' : '✗'} ${label} ${hierarchyVisibility[hierarchy] ? 'affiché' : 'masqué'}`);
         };
 
-        // Mettre à jour l'affichage des routes selon la hiérarchie
+        // Update route display according to hierarchy
         window.updateHierarchyDisplay = function() {
-            if (!window.map || !window.routePolylines) return; // Attendre que la carte soit prête
+            if (!window.map || !window.routePolylines) return; // Wait until the map is ready
             
-            // Parcourir toutes les polylines de routes
+            // Iterate over all route polylines
             Object.keys(window.routePolylines).forEach(ref => {
                 const polylines = window.routePolylines[ref];
                 polylines.forEach(polyline => {
                     const hierarchy = polyline.options.roadHierarchy;
                     
                     if (hierarchyVisibility[hierarchy]) {
-                        // Afficher la route
+                        // Show route
                         if (!window.map.hasLayer(polyline)) {
                             polyline.addTo(window.map);
                         }
                         polyline.setStyle({ opacity: 0.8 });
                     } else {
-                        // Masquer la route
+                        // Hide route
                         if (window.map.hasLayer(polyline)) {
                             window.map.removeLayer(polyline);
                         }
@@ -1296,7 +1296,7 @@
                 });
             });
             
-            // Mettre à jour les ombres si une route est sélectionnée
+            // Update shadows if a route is selected
             if (window.highlightedRoute && window.shadowPolylines[window.highlightedRoute]) {
                 window.shadowPolylines[window.highlightedRoute].forEach(shadow => {
                     const hierarchy = shadow.options.roadHierarchy;
@@ -1312,7 +1312,7 @@
                 });
             }
             
-            // Mettre à jour le style des items de légende
+            // Update legend item styles
             ['regional', 'territorial', 'local'].forEach(hierarchy => {
                 const item = document.querySelector(`[data-hierarchy="${hierarchy}"]`);
                 if (item) {
@@ -1326,7 +1326,7 @@
                 }
             });
             
-            // Mettre à jour l'icône globale selon l'état
+            // Update global icon according to state
             const icon = document.getElementById('hierarchyToggleIcon');
             const title = document.querySelector('.legend-section:has([id="hierarchyToggleIcon"]) .legend-title');
             const allVisible = hierarchyVisibility.regional && hierarchyVisibility.territorial && hierarchyVisibility.local;
@@ -1350,7 +1350,7 @@
         };
 
 
-        // Fonction pour afficher/masquer les accidents
+        // Show/hide accidents
         window.toggleAccidents = function() {
             accidentsVisible = !accidentsVisible;
             
@@ -1359,14 +1359,14 @@
             const title = document.querySelector('.legend-section:has([id="accidentToggleIcon"]) .legend-title');
             
             if (accidentsVisible) {
-                // Afficher les accidents
+                // Show accidents
                 accidentMarkers.forEach(marker => marker.addTo(window.map));
                 setToggleIcon(icon, true);
                 
-                // Titre en gras
+                // Bold title
                 if (title) title.style.fontWeight = '700';
                 
-                // Activer visuellement les items de légende
+                // Visually activate legend items
                 legendItems.forEach(item => {
                     item.style.opacity = '1';
                     item.style.pointerEvents = 'auto';
@@ -1374,14 +1374,14 @@
                 
                 console.log(`✓ ${accidentMarkers.length} accidents affichés`);
             } else {
-                // Masquer les accidents
+                // Hide accidents
                 accidentMarkers.forEach(marker => window.map.removeLayer(marker));
                 setToggleIcon(icon, false);
                 
-                // Titre en poids normal
+                // Normal-weight title
                 if (title) title.style.fontWeight = '600';
                 
-                // Désactiver visuellement les items de légende
+                // Visually deactivate legend items
                 legendItems.forEach(item => {
                     item.style.opacity = '0.5';
                     item.style.pointerEvents = 'none';
@@ -1392,7 +1392,7 @@
             syncLegendChrome();
         }
 
-        // ========== STATIONS DE COMPTAGE ==========
+        // ========== TRAFFIC COUNTING STATIONS ==========
 
         const TRAFFIC_STYLES = {
             high: { fill: '#34495E', stroke: '#FFFFFF', size: 12 },
@@ -1436,7 +1436,7 @@
             syncLegendChrome();
         };
 
-        // ========== ÉVÉNEMENTS ROUTIERS / BISON FUTÉ ==========
+        // ========== ROAD EVENTS / BISON FUTÉ ==========
 
         window.toggleBisonFute = function() {
             bisonFuteVisible = !bisonFuteVisible;
@@ -1469,7 +1469,7 @@
             syncLegendChrome();
         };
 
-        // ========== VILLES PRINCIPALES ==========
+        // ========== MAIN CITIES ==========
 
         window.toggleCities = function() {
             citiesVisible = !citiesVisible;
@@ -1509,7 +1509,7 @@
             syncTrafficMarkersOnMap();
 
             if (wazeEnabled) {
-                // Mettre en évidence les stations de comptage CD84 (données de trafic réelles)
+                // Highlight CD84 counting stations (real traffic data)
                 console.log('🚗 Mise en évidence des stations de comptage CD84');
 
                 trafficMarkers.forEach(marker => {
@@ -1549,20 +1549,20 @@
             syncLegendChrome();
         }
 
-        // Attendre que tout soit chargé (DOM + Leaflet)
+        // Wait until everything is loaded (DOM + Leaflet)
         window.addEventListener('DOMContentLoaded', function() {
         
-        // Initialisation de la carte centrée sur le Vaucluse
+        // Initialize map centered on Vaucluse
         window.map = L.map('map').setView([44.0, 5.1], 10);
 
-        // Fond de carte sobre CartoDB Positron
+        // Plain CartoDB Positron basemap
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '© OpenStreetMap contributors © CARTO',
             subdomains: 'abcd',
             maxZoom: 20
         }).addTo(window.map);
 
-        // Liste officielle des communes du Vaucluse (pour filtrage)
+        // Official list of Vaucluse municipalities (for filtering)
         const communesVaucluse = [
             "Althen-des-Paluds", "Ansouis", "Apt", "Aubignan", "Auribeau", "Avignon",
             "Beaumes-de-Venise", "Beaumont-de-Pertuis", "Beaumont-du-Ventoux", "Blauvac",
@@ -1592,17 +1592,17 @@
             "Villes-sur-Auzon", "Violès", "Visan", "Vitrolles-en-Lubéron"
         ];
 
-        // Fonction pour vérifier si un texte correspond à une commune du Vaucluse
+        // Check whether text matches a Vaucluse municipality
         function isValidCommune(text) {
             if (!text || text.length < 3) return false;
             
             // Normaliser le texte
             const normalized = text.trim();
             
-            // Vérifier si c'est une commune exacte
+            // Check for exact municipality match
             if (communesVaucluse.includes(normalized)) return true;
             
-            // Vérifier avec correspondance partielle (insensible à la casse)
+            // Check with partial match (case-insensitive)
             const lowerText = normalized.toLowerCase();
             return communesVaucluse.some(c => 
                 c.toLowerCase() === lowerText ||
@@ -1611,7 +1611,7 @@
             );
         }
 
-        // Charger la limite departementale du Vaucluse depuis le GeoJSON statique local
+        // Load Vaucluse departmental boundary from local static GeoJSON
         async function loadVaucluseBoundary() {
             try {
                 const geojsonData = await window.InforouteApi.fetchGeoJson('vaucluse-boundary');
@@ -1620,7 +1620,7 @@
                     scheduleKey: 'static'
                 });
                 
-                // Ajouter la limite départementale avec Leaflet
+                // Add departmental boundary with Leaflet
                 const boundaryLayer = L.geoJSON(geojsonData, {
                     style: {
                         color: '#2C3E50',
@@ -1632,7 +1632,7 @@
                     }
                 }).addTo(window.map);
                 
-                // Ajuster la vue sur le département
+                // Fit view to the department
                 map.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20] });
                 
                 console.log('✓ Limite départementale chargée depuis le GeoJSON local');
@@ -1649,29 +1649,29 @@
             }
         }
         
-        // Charger la limite départementale en premier
+        // Load departmental boundary first
         loadVaucluseBoundary();
 
-        // Classification hiérarchique des routes départementales du Vaucluse
+        // Hierarchical classification of Vaucluse departmental roads
         const routeClassification = {
             regional: ['D900', 'D942', 'D950', 'D973', 'D974', 'D975', 'D938', 'D907', 'D225'],
             territorial: ['D901', 'D28', 'D4', 'D2', 'D36', 'D943', 'D22', 'D8', 'D177', 'D108', 'D15', 'D31'],
             local: ['D1', 'D7', 'D6', 'D5', 'D3', 'D10', 'D11', 'D12', 'D13', 'D14', 'D16', 'D17', 'D18', 'D19', 'D20']
         };
 
-        // Message de chargement des routes
+        // Road loading message
         const routesLoadingPopup = L.popup()
             .setLatLng([43.95, 5.1])
             .setContent('<div style="text-align: center; padding: 10px;"><strong>Chargement des routes départementales...</strong><br><small>Lecture du GeoJSON local issu d’OpenStreetMap</small></div>')
             .openOn(window.map);
 
-        // Fonction pour charger les routes par catégorie hiérarchique
-        let roadLabels = []; // Stocker les étiquettes pour gestion du zoom
-        let routesByHierarchy = { regional: [], territorial: [], local: [] }; // Stocker les routes par hiérarchie
-        window.routePolylines = {}; // Stocker les polylines par référence de route (global pour toggleHierarchy)
-        let allRoadsList = []; // Liste complète des routes pour la recherche
-        window.highlightedRoute = null; // Route actuellement mise en évidence (global pour toggleHierarchy)
-        window.shadowPolylines = {}; // Polylines d'ombre pour les routes mises en évidence (par ref, global)
+        // Load roads by hierarchy category
+        let roadLabels = []; // Store labels for zoom management
+        let routesByHierarchy = { regional: [], territorial: [], local: [] }; // Store routes by hierarchy
+        window.routePolylines = {}; // Store polylines by route ref (global for toggleHierarchy)
+        let allRoadsList = []; // Full route list for search
+        window.highlightedRoute = null; // Currently highlighted route (global for toggleHierarchy)
+        window.shadowPolylines = {}; // Shadow polylines for highlighted routes (by ref, global)
 
         async function loadDepartmentalRoads() {
             try {
@@ -1698,11 +1698,11 @@
                     console.log(`  - ${ways.length} ways (tronçons)`);
                     console.log(`  - relations attachées aux propriétés GeoJSON`);
 
-                    // Organiser les routes par référence
+                    // Group routes by reference
                     const routesByRef = {};
                     ways.forEach(way => {
                         if (way.tags && way.tags.ref) {
-                            // Normaliser la référence (enlever les espaces, mettre en majuscule)
+                            // Normalize reference (strip spaces, uppercase)
                             const ref = way.tags.ref.replace(/\s+/g, '').replace(/^D/, 'D');
                             
                             if (!routesByRef[ref]) {
@@ -1712,12 +1712,12 @@
                         }
                     });
 
-                    // Afficher les routes avec leur hiérarchie
+                    // Render routes with their hierarchy
                     Object.keys(routesByRef).forEach(ref => {
                         const ways = routesByRef[ref];
                         
-                        // Déterminer la hiérarchie de cette route
-                        let hierarchy = 'local'; // Par défaut
+                        // Determine this route's hierarchy
+                        let hierarchy = 'local'; // Default
                         const refClean = ref.replace(/\s+/g, '');
                         
                         if (routeClassification.regional.some(r => refClean.includes(r.replace('D', '')))) {
@@ -1726,7 +1726,7 @@
                             hierarchy = 'territorial';
                         }
 
-                        // Créer une ligne pour chaque segment
+                        // Create a line for each segment
                         ways.forEach(way => {
                             if (way.geometry && way.geometry.length > 0) {
                                 const coords = way.geometry.map(point => [point.lat, point.lon]);
@@ -1742,13 +1742,13 @@
                                     wayId: way.id
                                 }).addTo(window.map);
 
-                                // Stocker la polyline par référence de route
+                                // Store polyline by route reference
                                 if (!routePolylines[ref]) {
                                     routePolylines[ref] = [];
                                 }
                                 routePolylines[ref].push(polyline);
 
-                                // Stocker la référence pour les étiquettes et informations
+                                // Store reference for labels and info
                                 if (!routesByHierarchy[hierarchy].find(r => r.ref === ref)) {
                                     routesByHierarchy[hierarchy].push({
                                         ref: ref,
@@ -1768,7 +1768,7 @@
                                 // Collecter les informations de la route
                                 const routeInfo = routesByHierarchy[hierarchy].find(r => r.ref === ref);
                                 
-                                // Communes traversées (analyser plusieurs sources et filtrer)
+                                // Crossed municipalities (parse several sources and filter)
                                 // 1. Tag 'destination' (destinations principales)
                                 if (way.tags.destination) {
                                     way.tags.destination.split(';').forEach(c => {
@@ -1798,7 +1798,7 @@
                                     }
                                 }
                                 
-                                // Calculer la longueur du segment
+                                // Compute segment length
                                 let segmentLength = 0;
                                 for (let i = 0; i < coords.length - 1; i++) {
                                     segmentLength += map.distance(coords[i], coords[i + 1]);
@@ -1815,7 +1815,7 @@
                                     routeInfo.maxspeeds.add(way.tags.maxspeed);
                                 }
                                 
-                                // Stocker le premier et dernier point pour déterminer les communes extrêmes
+                                // Store first/last point to determine endpoint municipalities
                                 if (!routeInfo.firstPoint) {
                                     routeInfo.firstPoint = coords[0];
                                 }
@@ -1963,7 +1963,7 @@
                                     }
                                 });
                                 
-                                // Clic pour mettre en évidence
+                                // Click to highlight
                                 polyline.on('click', function() {
                                     highlightRoute(ref);
                                 });
@@ -1971,7 +1971,7 @@
                         });
                     });
 
-                    // Mettre à jour les compteurs dans la légende
+                    // Update legend counters
                     const counts = {
                         regional: new Set(),
                         territorial: new Set(),
@@ -1989,7 +1989,7 @@
                         }
                     });
 
-                    // Mettre à jour les compteurs dans la légende
+                    // Update legend counters
                     const regionalItems = document.querySelectorAll('.legend-item[data-hierarchy="regional"] .legend-count');
                     regionalItems.forEach(item => item.textContent = counts.regional.size);
                     
@@ -2005,13 +2005,13 @@
                         local: counts.local.size
                     });
 
-                    // Initialiser l'affichage des étiquettes
+                    // Initialize label display
                     updateRouteLabels();
                     
-                    // Créer la liste des routes
+                    // Build route list
                     createRoadList();
 
-                    // Calculer les métriques de qualité OSM/Wikidata et alimenter le résumé sidebar
+                    // Compute OSM/Wikidata quality metrics and feed sidebar summary
                     calculateQualityMetrics();
                     updateWikidataSummary();
                 }
@@ -2028,62 +2028,321 @@
             }
         }
 
-        // Fonction pour mettre à jour l'affichage des étiquettes selon le zoom
-        function updateRouteLabels() {
-            // Supprimer toutes les étiquettes existantes
-            roadLabels.forEach(label => map.removeLayer(label));
-            roadLabels = [];
+        // --- RD labels: anti-collision ---
+        // UX: light offset (spiral + points along the route); localized stack if ≥4 refs
+        //       remain in conflict after max offset.
+        // Priority: regional (3) > territorial (2) > local (1) — highest keeps ideal position.
+        // Recommended test area: Avignon [43.9493, 4.8055], zoom 12–13 (D900/D943/D15 junction…).
+        const ROUTE_LABEL_ZOOM_THRESHOLDS = {
+            regional: 9,
+            territorial: 11,
+            local: 13
+        };
+        const ROUTE_LABEL_PRIORITY = { regional: 3, territorial: 2, local: 1 };
+        const ROUTE_HIERARCHY_LABELS = {
+            regional: 'Intérêt régional',
+            territorial: 'Développement territorial',
+            local: 'Intérêt local'
+        };
+        const ROUTE_LABEL_COLLISION_PADDING = 4;
+        const ROUTE_LABEL_SPIRAL_STEP_PX = 10;
+        const ROUTE_LABEL_MAX_SPIRAL_STEPS = 24;
+        const ROUTE_LABEL_CLUSTER_MIN = 4;
 
-            const zoom = map.getZoom();
-            
-            // Définir les seuils de zoom pour chaque hiérarchie
-            // Plus la route est importante, plus tôt elle apparaît
-            const zoomThresholds = {
-                regional: 9,    // Apparaissent dès le zoom 9
-                territorial: 11, // Apparaissent au zoom 11
-                local: 13       // Apparaissent au zoom 13
-            };
+        function getRouteLabelCandidates(route) {
+            const candidates = [];
+            if (!route.ways || route.ways.length === 0) return candidates;
+            const way = route.ways[0];
+            if (!way.geometry || way.geometry.length === 0) return candidates;
 
-            // Fonction pour calculer le centre d'une route (moyenne des coordonnées)
-            function getRouteCenter(route) {
-                // Utiliser le premier segment pour trouver un point représentatif
-                if (route.ways && route.ways.length > 0) {
-                    const way = route.ways[0];
-                    if (way.geometry && way.geometry.length > 0) {
-                        const midIndex = Math.floor(way.geometry.length / 2);
-                        return [way.geometry[midIndex].lat, way.geometry[midIndex].lon];
-                    }
-                }
-                return null;
+            const len = way.geometry.length;
+            const fractions = len === 1 ? [0] : [0.25, 0.5, 0.75];
+            fractions.forEach(fraction => {
+                const index = Math.min(len - 1, Math.max(0, Math.round((len - 1) * fraction)));
+                const point = way.geometry[index];
+                candidates.push(L.latLng(point.lat, point.lon));
+            });
+            return candidates;
+        }
+
+        function getRouteLabelAnchor(route) {
+            const candidates = getRouteLabelCandidates(route);
+            return candidates.length > 0 ? candidates[Math.floor(candidates.length / 2)] : null;
+        }
+
+        function offsetLatLngByPixels(latlng, dx, dy) {
+            const point = map.latLngToContainerPoint(latlng);
+            return map.containerPointToLatLng(L.point(point.x + dx, point.y + dy));
+        }
+
+        function getRouteLabelScreenRect(marker) {
+            const element = marker.getElement();
+            if (!element) return null;
+            const labelEl = element.querySelector('.route-label, .route-label-cluster, .route-label-cluster-badge');
+            return (labelEl || element).getBoundingClientRect();
+        }
+
+        function routeLabelRectsOverlap(a, b, padding) {
+            return !(
+                a.right + padding <= b.left ||
+                b.right + padding <= a.left ||
+                a.bottom + padding <= b.top ||
+                b.bottom + padding <= a.top
+            );
+        }
+
+        function buildRouteLabelSpiralOffsets(maxSteps, stepPx) {
+            const offsets = [[0, 0]];
+            for (let ring = 1; ring <= maxSteps; ring += 1) {
+                const distance = ring * stepPx;
+                offsets.push([distance, 0], [-distance, 0], [0, distance], [0, -distance]);
+                offsets.push([distance, distance], [-distance, distance], [distance, -distance], [-distance, -distance]);
             }
+            return offsets;
+        }
 
-            // Afficher les étiquettes selon le niveau de zoom et la visibilité hiérarchique
+        const routeLabelSpiralOffsets = buildRouteLabelSpiralOffsets(
+            ROUTE_LABEL_MAX_SPIRAL_STEPS,
+            ROUTE_LABEL_SPIRAL_STEP_PX
+        );
+
+        function collectVisibleRouteLabels(zoom) {
+            const entries = [];
             ['regional', 'territorial', 'local'].forEach(hierarchy => {
                 if (!hierarchyVisibility[hierarchy]) return;
-                if (zoom >= zoomThresholds[hierarchy]) {
-                    routesByHierarchy[hierarchy].forEach(route => {
-                        const center = getRouteCenter(route);
-                        if (center) {
-                            const label = L.marker(center, {
-                                icon: L.divIcon({
-                                    className: 'route-label-container',
-                                    html: `<div class="route-label ${hierarchy}">${route.ref}</div>`,
-                                    iconSize: null
-                                }),
-                                interactive: false
-                            }).addTo(window.map);
-
-                            roadLabels.push(label);
-                        }
+                if (zoom < ROUTE_LABEL_ZOOM_THRESHOLDS[hierarchy]) return;
+                routesByHierarchy[hierarchy].forEach(route => {
+                    const anchor = getRouteLabelAnchor(route);
+                    if (!anchor) return;
+                    entries.push({
+                        route,
+                        hierarchy,
+                        ref: route.ref,
+                        priority: ROUTE_LABEL_PRIORITY[hierarchy],
+                        anchor,
+                        candidates: getRouteLabelCandidates(route)
                     });
+                });
+            });
+            entries.sort((a, b) => {
+                if (b.priority !== a.priority) return b.priority - a.priority;
+                return a.ref.localeCompare(b.ref, 'fr');
+            });
+            return entries;
+        }
+
+        function createRouteLabelMarker(entry, html, interactive) {
+            return L.marker(entry.anchor, {
+                icon: L.divIcon({
+                    className: 'route-label-container',
+                    html,
+                    iconSize: null
+                }),
+                interactive: !!interactive
+            }).addTo(window.map);
+        }
+
+        function resolveRouteLabelCollisions(placedEntries) {
+            const resolvedRects = [];
+
+            placedEntries.forEach(entry => {
+                if (entry.isCluster) {
+                    const rect = getRouteLabelScreenRect(entry.marker);
+                    if (rect) resolvedRects.push(rect);
+                    return;
+                }
+
+                const anchorPoints = entry.candidates.length > 0 ? entry.candidates : [entry.anchor];
+                let placed = false;
+
+                for (const anchor of anchorPoints) {
+                    for (const [dx, dy] of routeLabelSpiralOffsets) {
+                        const position = offsetLatLngByPixels(anchor, dx, dy);
+                        entry.marker.setLatLng(position);
+                        const rect = getRouteLabelScreenRect(entry.marker);
+                        if (!rect) continue;
+
+                        const overlaps = resolvedRects.some(other =>
+                            routeLabelRectsOverlap(rect, other, ROUTE_LABEL_COLLISION_PADDING)
+                        );
+                        if (!overlaps) {
+                            entry.resolvedLatLng = position;
+                            entry.resolvedRect = rect;
+                            resolvedRects.push(rect);
+                            placed = true;
+                            break;
+                        }
+                    }
+                    if (placed) break;
+                }
+
+                if (!placed) {
+                    const rect = getRouteLabelScreenRect(entry.marker);
+                    if (rect) {
+                        entry.resolvedLatLng = entry.marker.getLatLng();
+                        entry.resolvedRect = rect;
+                        entry.unresolved = true;
+                        resolvedRects.push(rect);
+                    }
                 }
             });
         }
 
-        // Écouter les changements de zoom
+        function findRouteLabelOverlapGroups(entries) {
+            const unresolved = entries.filter(entry => entry.unresolved && !entry.isCluster);
+            const parent = unresolved.map((_, index) => index);
+
+            function find(index) {
+                if (parent[index] !== index) parent[index] = find(parent[index]);
+                return parent[index];
+            }
+
+            function union(a, b) {
+                parent[find(a)] = find(b);
+            }
+
+            for (let i = 0; i < unresolved.length; i += 1) {
+                for (let j = i + 1; j < unresolved.length; j += 1) {
+                    if (routeLabelRectsOverlap(
+                        unresolved[i].resolvedRect,
+                        unresolved[j].resolvedRect,
+                        ROUTE_LABEL_COLLISION_PADDING
+                    )) {
+                        union(i, j);
+                    }
+                }
+            }
+
+            const groups = new Map();
+            unresolved.forEach((entry, index) => {
+                const root = find(index);
+                if (!groups.has(root)) groups.set(root, []);
+                groups.get(root).push(entry);
+            });
+            return [...groups.values()].filter(group => group.length >= ROUTE_LABEL_CLUSTER_MIN);
+        }
+
+        function buildRouteLabelClusterHtml(group) {
+            group.sort((a, b) => {
+                if (b.priority !== a.priority) return b.priority - a.priority;
+                return a.ref.localeCompare(b.ref, 'fr');
+            });
+            const labelsHtml = group
+                .map(entry => `<div class="route-label ${entry.hierarchy}">${entry.ref}</div>`)
+                .join('');
+            return `<div class="route-label-cluster" title="${group.map(e => e.ref).join(', ')}">${labelsHtml}</div>`;
+        }
+
+        function buildRouteLabelClusterPopup(group) {
+            const items = group
+                .slice()
+                .sort((a, b) => {
+                    if (b.priority !== a.priority) return b.priority - a.priority;
+                    return a.ref.localeCompare(b.ref, 'fr');
+                })
+                .map(entry => `<li><strong>${entry.ref}</strong> — ${ROUTE_HIERARCHY_LABELS[entry.hierarchy] || entry.hierarchy}</li>`)
+                .join('');
+            return `<div class="route-popup"><strong>${group.length} routes</strong><ul style="margin:6px 0 0;padding-left:18px;">${items}</ul></div>`;
+        }
+
+        function mergeRouteLabelClusters(placedEntries, overlapGroups) {
+            overlapGroups.forEach(group => {
+                group.forEach(entry => {
+                    map.removeLayer(entry.marker);
+                    const index = placedEntries.indexOf(entry);
+                    if (index !== -1) placedEntries.splice(index, 1);
+                });
+
+                const centerLatLng = group.reduce((sum, entry) => {
+                    const ll = entry.resolvedLatLng || entry.anchor;
+                    return L.latLng(sum.lat + ll.lat, sum.lng + ll.lng);
+                }, L.latLng(0, 0));
+                centerLatLng.lat /= group.length;
+                centerLatLng.lng /= group.length;
+
+                const clusterEntry = {
+                    isCluster: true,
+                    ref: `+${group.length}`,
+                    group,
+                    anchor: centerLatLng,
+                    candidates: [centerLatLng],
+                    priority: Math.max(...group.map(e => e.priority))
+                };
+                clusterEntry.marker = createRouteLabelMarker(
+                    clusterEntry,
+                    buildRouteLabelClusterHtml(group),
+                    true
+                );
+                clusterEntry.marker.bindPopup(buildRouteLabelClusterPopup(group));
+                placedEntries.push(clusterEntry);
+            });
+
+            if (overlapGroups.length === 0) return;
+
+            const existingRects = placedEntries
+                .filter(entry => !entry.isCluster && entry.resolvedRect)
+                .map(entry => entry.resolvedRect);
+
+            placedEntries.filter(entry => entry.isCluster).forEach(entry => {
+                let placed = false;
+                for (const [dx, dy] of routeLabelSpiralOffsets) {
+                    const position = offsetLatLngByPixels(entry.anchor, dx, dy);
+                    entry.marker.setLatLng(position);
+                    const rect = getRouteLabelScreenRect(entry.marker);
+                    if (!rect) continue;
+                    const overlaps = existingRects.some(other =>
+                        routeLabelRectsOverlap(rect, other, ROUTE_LABEL_COLLISION_PADDING)
+                    );
+                    if (!overlaps) {
+                        entry.resolvedLatLng = position;
+                        entry.resolvedRect = rect;
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    const rect = getRouteLabelScreenRect(entry.marker);
+                    if (rect) {
+                        entry.resolvedLatLng = entry.marker.getLatLng();
+                        entry.resolvedRect = rect;
+                    }
+                }
+            });
+        }
+
+        function updateRouteLabels() {
+            roadLabels.forEach(label => map.removeLayer(label));
+            roadLabels = [];
+
+            const zoom = map.getZoom();
+            const entries = collectVisibleRouteLabels(zoom);
+            const placedEntries = entries.map(entry => {
+                const placed = {
+                    ...entry,
+                    marker: createRouteLabelMarker(
+                        entry,
+                        `<div class="route-label ${entry.hierarchy}">${entry.ref}</div>`,
+                        false
+                    )
+                };
+                return placed;
+            });
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    resolveRouteLabelCollisions(placedEntries);
+                    const overlapGroups = findRouteLabelOverlapGroups(placedEntries);
+                    if (overlapGroups.length > 0) {
+                        mergeRouteLabelClusters(placedEntries, overlapGroups);
+                    }
+                    roadLabels = placedEntries.map(entry => entry.marker);
+                });
+            });
+        }
+
         map.on('zoomend', updateRouteLabels);
 
-        // ========== GESTION QUALITÉ OSM ==========
+        // ========== OSM QUALITY MANAGEMENT ==========
         
         let qualityMetrics = {
             totalRoutes: 0,
@@ -2092,7 +2351,7 @@
             totalSegments: 0
         };
 
-        // Met à jour la mini-carte Wikidata visible en permanence dans la sidebar
+        // Update Wikidata mini-summary permanently visible in sidebar
         function updateWikidataSummary() {
             const container = document.getElementById('wikidataSummary');
             if (!container) return;
@@ -2146,10 +2405,10 @@
                     .find(r => r.ref === ref);
                 
                 if (routeData && routeData.ways) {
-                    // Vérifier Wikidata : priorité à la relation, sinon vérifier si TOUS les ways l'ont
+                    // Check Wikidata: relation first, otherwise check if ALL ways have it
                     let hasWikidata = false;
                     
-                    // 1. Vérifier si la relation a un Wikidata
+                    // 1. Check whether the relation has Wikidata
                     const relationWithWikidata = routeData.ways.find(way => 
                         way.relationTags && way.relationTags.wikidata
                     );
@@ -2157,17 +2416,17 @@
                     if (relationWithWikidata) {
                         hasWikidata = true;
                     } else {
-                        // 2. Sinon, vérifier si tous les ways ont un wikidata (rare mais possible)
+                        // 2. Otherwise check whether all ways have wikidata (rare but possible)
                         const totalWays = routeData.ways.length;
                         const waysWithWikidata = routeData.ways.filter(way => 
                             way.tags && way.tags.wikidata
                         ).length;
                         
-                        // Si au moins 80% des tronçons ont wikidata, on considère que c'est OK
+                        // If at least 80% of segments have wikidata, consider it OK
                         hasWikidata = waysWithWikidata > 0 && (waysWithWikidata / totalWays) >= 0.8;
                     }
                     
-                    // Vérifier Relation
+                    // Check relation
                     const hasRelation = routeData.ways.some(way => 
                         way.hasRelation === true || way.relationId
                     );
@@ -2183,7 +2442,7 @@
             updateNetworkStats();
         }
 
-        // Calcul live des statistiques "Informations Réseau" depuis les polylines chargées.
+        // Live computation of "Network Information" stats from loaded polylines.
         function haversineKm(a, b) {
             const R = 6371;
             const toRad = d => d * Math.PI / 180;
@@ -2234,7 +2493,7 @@
             bridgesEl.textContent = bridgeCount.toLocaleString('fr-FR');
             tunnelsEl.textContent = tunnelCount.toLocaleString('fr-FR');
 
-            // Trafic MJA depuis les marqueurs de comptage chargés
+            // AADT traffic from loaded counting markers
             const mjaValues = [];
             (typeof trafficMarkers !== 'undefined' ? trafficMarkers : []).forEach(marker => {
                 const popup = marker.getPopup && marker.getPopup();
@@ -2255,7 +2514,7 @@
                 trafficEl.textContent = `${fmt(min)} – ${fmt(max)} véh/j`;
                 if (trafficTile) trafficTile.style.display = '';
             } else {
-                // On masque entièrement la tuile tant que la donnée n'est pas calculable.
+                // Hide tile entirely until data is computable.
                 if (trafficTile) trafficTile.style.display = 'none';
             }
         }
@@ -2371,12 +2630,12 @@
             `;
         }
 
-        // ========== FONCTIONS DE FILTRAGE PAR QUALITÉ ==========
+        // ========== QUALITY FILTER FUNCTIONS ==========
         
         window.highlightRoutesByWikidata = function(hasWikidata) {
             console.log('🎯 Filtrage routes avec Wikidata:', hasWikidata);
             
-            // Réinitialiser toutes les routes
+            // Reset all routes
             Object.keys(routePolylines).forEach(ref => {
                 const polylines = routePolylines[ref];
                 polylines.forEach(polyline => {
@@ -2384,16 +2643,16 @@
                 });
             });
             
-            // Mettre en évidence les routes correspondantes
+            // Highlight matching routes
             Object.keys(routePolylines).forEach(ref => {
                 const routeData = [...routesByHierarchy.regional, ...routesByHierarchy.territorial, ...routesByHierarchy.local]
                     .find(r => r.ref === ref);
                 
                 if (routeData && routeData.ways) {
-                    // Même logique que calculateQualityMetrics
+                    // Same logic as calculateQualityMetrics
                     let routeHasWikidata = false;
                     
-                    // 1. Vérifier si la relation a un Wikidata
+                    // 1. Check whether the relation has Wikidata
                     const relationWithWikidata = routeData.ways.find(way => 
                         way.relationTags && way.relationTags.wikidata
                     );
@@ -2401,7 +2660,7 @@
                     if (relationWithWikidata) {
                         routeHasWikidata = true;
                     } else {
-                        // 2. Sinon, vérifier si tous les ways ont un wikidata
+                        // 2. Otherwise check whether all ways have wikidata
                         const totalWays = routeData.ways.length;
                         const waysWithWikidata = routeData.ways.filter(way => 
                             way.tags && way.tags.wikidata
@@ -2454,7 +2713,7 @@
         window.highlightRoutesByRelation = function(hasRelation) {
             console.log('🎯 Filtrage routes avec Relation:', hasRelation);
             
-            // Réinitialiser toutes les routes
+            // Reset all routes
             Object.keys(routePolylines).forEach(ref => {
                 const polylines = routePolylines[ref];
                 polylines.forEach(polyline => {
@@ -2462,7 +2721,7 @@
                 });
             });
             
-            // Mettre en évidence les routes correspondantes
+            // Highlight matching routes
             Object.keys(routePolylines).forEach(ref => {
                 const routeData = [...routesByHierarchy.regional, ...routesByHierarchy.territorial, ...routesByHierarchy.local]
                     .find(r => r.ref === ref);
@@ -2501,7 +2760,7 @@
         window.clearHighlight = function() {
             console.log('🔄 Réinitialisation de l\'affichage');
             
-            // Restaurer l'apparence normale de toutes les routes
+            // Restore normal appearance for all routes
             Object.keys(routePolylines).forEach(ref => {
                 const polylines = routePolylines[ref];
                 polylines.forEach(polyline => {
@@ -2517,7 +2776,7 @@
             window.map.closePopup();
         }
 
-        // Fonction pour créer la liste des routes
+        // Build the route list
         function createRoadList() {
             // Compiler toutes les routes
             allRoadsList = [];
@@ -2539,7 +2798,7 @@
                 });
             });
             
-            // Trier par hiérarchie puis par numéro
+            // Sort by hierarchy then number
             allRoadsList.sort((a, b) => {
                 const hierarchyOrder = { regional: 0, territorial: 1, local: 2 };
                 if (hierarchyOrder[a.hierarchy] !== hierarchyOrder[b.hierarchy]) {
@@ -2590,7 +2849,7 @@
                 </div>
             `).join('');
             
-            // Ajouter les événements de clic
+            // Attach click handlers
             listContainer.querySelectorAll('.road-item').forEach(item => {
                 item.addEventListener('click', function() {
                     const ref = this.getAttribute('data-ref');
@@ -2599,15 +2858,15 @@
             });
         }
         
-        // Fonction pour mettre en évidence une route
+        // Highlight a route
         function highlightRoute(ref) {
-            // Supprimer les ombres précédentes
+            // Remove previous shadows
             Object.values(shadowPolylines).forEach(shadows => {
                 shadows.forEach(shadow => map.removeLayer(shadow));
             });
             window.shadowPolylines = {};
             
-            // Réinitialiser la route précédente
+            // Reset previous route
             if (window.highlightedRoute && routePolylines[window.highlightedRoute]) {
                 routePolylines[window.highlightedRoute].forEach(polyline => {
                     const hierarchy = polyline.options.roadHierarchy;
@@ -2619,7 +2878,7 @@
                 });
             }
             
-            // Mettre en évidence la nouvelle route
+            // Highlight the new route
             if (routePolylines[ref]) {
                 window.highlightedRoute = ref;
                 
@@ -2631,7 +2890,7 @@
                     window.shadowPolylines[ref] = [];
                 }
                 
-                // Créer les ombres (3 couches pour un effet de glow)
+                // Create shadows (3 layers for glow effect)
                 polylines.forEach(polyline => {
                     const coords = polyline.getLatLngs();
                     
@@ -2646,7 +2905,7 @@
                     }).addTo(window.map);
                     window.shadowPolylines[ref].push(shadow1);
                     
-                    // Ombre intermédiaire
+                    // Middle shadow layer
                     const shadow2 = L.polyline(coords, {
                         color: '#000000',
                         weight: hierarchyWeights[hierarchy] + 8,
@@ -2669,7 +2928,7 @@
                     window.shadowPolylines[ref].push(shadow3);
                 });
                 
-                // Mettre en évidence la route elle-même
+                // Highlight the route itself
                 polylines.forEach(polyline => {
                     polyline.setStyle({
                         color: hierarchyColors[hierarchy],
@@ -2683,7 +2942,7 @@
                 const bounds = L.latLngBounds(polylines.map(p => p.getBounds()));
                 map.fitBounds(bounds, { padding: [50, 50] });
                 
-                // Mettre à jour la liste visuelle
+                // Update visual list
                 document.querySelectorAll('.road-item').forEach(item => {
                     if (item.getAttribute('data-ref') === ref) {
                         item.classList.add('active');
@@ -2693,12 +2952,12 @@
                     }
                 });
                 
-                // Afficher les informations détaillées de la route
+                // Show detailed route information
                 displayRoadInfo(ref, hierarchy);
             }
         }
         
-        // Fonction pour afficher les informations détaillées d'une route
+        // Show detailed information for a route
         function displayRoadInfo(ref, hierarchy) {
             // Trouver les informations de la route
             let routeData = null;
@@ -2716,7 +2975,7 @@
             const lengthKm = (routeData.totalLength / 1000).toFixed(2);
             const nbSegments = routeData.ways.length;
             
-            // Déterminer le type de hiérarchie
+            // Determine hierarchy type
             const hierarchyLabels = {
                 regional: { label: 'Intérêt régional', color: '#E74C3C' },
                 territorial: { label: 'Développement territorial', color: '#F39C12' },
@@ -2725,7 +2984,7 @@
             
             const hierInfo = hierarchyLabels[hierarchy];
             
-            // Construire le HTML du panneau d'informations
+            // Build information panel HTML
             const infoPanel = document.getElementById('road-info-panel');
             const infoSection = document.getElementById('road-info-section');
             
@@ -2791,13 +3050,13 @@
             }, 100);
         }
         
-        // Fonction pour zoomer sur une commune spécifique d'une route
+        // Zoom to a specific municipality on a route
         let currentCommuneMarker = null; // Stocker le marqueur actuel pour le supprimer
         
         async function zoomToCommune(communeName, roadRef) {
             console.log(`Chargement du tronçon de ${roadRef} sur ${communeName}...`);
             
-            // Supprimer le marqueur précédent s'il existe
+            // Remove previous marker if any
             if (currentCommuneMarker) {
                 map.removeLayer(currentCommuneMarker);
                 currentCommuneMarker = null;
@@ -2810,7 +3069,7 @@
                     const communeRings = geoJsonPolygonGeometryToLatLngRings(communeFeature.geometry);
                     
                     if (communeRings.length > 0) {
-                        // Créer le polygone de la commune (temporaire, invisible)
+                        // Create municipality polygon (temporary, invisible)
                         const communePolygon = L.polygon(communeRings, {
                             color: 'transparent',
                             fillOpacity: 0
@@ -2824,7 +3083,7 @@
                             roadPolylines.forEach(polyline => {
                                 const coords = polyline.getLatLngs();
                                 
-                                // Vérifier si au moins un point de la polyline est dans la commune
+                                // Check whether at least one polyline point is in the municipality
                                 const hasIntersection = coords.some(coord => {
                                     const point = L.latLng(coord);
                                     return communeRings.some(ring => isPointInPolygon(point, ring));
@@ -2840,17 +3099,17 @@
                             // Calculer les bounds des segments qui traversent la commune
                             const bounds = L.latLngBounds(intersectingSegments.map(p => p.getBounds()));
                             
-                            // Zoomer sur cette zone
+                            // Zoom to this area
                             map.fitBounds(bounds, { 
                                 padding: [80, 80],
                                 animate: true,
                                 duration: 1
                             });
                             
-                            // Créer un effet flash sur les segments concernés
+                            // Flash effect on affected segments
                             const hierarchy = intersectingSegments[0].options.roadHierarchy;
                             const originalColor = hierarchyColors[hierarchy];
-                            const originalWeight = hierarchyWeights[hierarchy] + 4; // Poids mis en évidence
+                            const originalWeight = hierarchyWeights[hierarchy] + 4; // Highlight weight
                             
                             // Animation flash
                             let flashCount = 0;
@@ -2867,7 +3126,7 @@
                                     
                                     if (flashCount >= 6) {
                                         clearInterval(flashInterval);
-                                        // Restaurer le style mis en évidence
+                                        // Restore highlight style
                                         intersectingSegments.forEach(seg => {
                                             if (seg._map) {
                                                 seg.setStyle({
@@ -2893,7 +3152,7 @@
                                 })
                             }).addTo(window.map);
                             
-                            // Retirer le marqueur après 4 secondes
+                            // Remove marker after 4 seconds
                             setTimeout(() => {
                                 if (currentCommuneMarker) {
                                     map.removeLayer(currentCommuneMarker);
@@ -2904,12 +3163,12 @@
                             console.log(`✓ Tronçon de ${roadRef} sur ${communeName} affiché (${intersectingSegments.length} segments)`);
                         } else {
                             console.warn(`Aucun segment de ${roadRef} trouvé sur ${communeName}`);
-                            // Fallback : zoom sur la commune quand même
+                            // Fallback: zoom to municipality anyway
                             zoomToCommuneFallback(communeName);
                         }
                     }
                 } else {
-                    // Fallback si la commune n'est pas trouvée dans le GeoJSON
+                    // Fallback if municipality not found in GeoJSON
                     console.warn(`Commune ${communeName} non trouvée dans le GeoJSON`);
                     zoomToCommuneFallback(communeName);
                 }
@@ -2939,7 +3198,7 @@
             }
         }
         
-        // Fonction pour vérifier si un point est dans un polygone (algorithme ray-casting)
+        // Point-in-polygon test (ray-casting algorithm)
         function isPointInPolygon(point, polygon) {
             let inside = false;
             const x = point.lat;
@@ -2957,16 +3216,16 @@
             return inside;
         }
         
-        // Fonction pour formater la liste des communes avec les extrémités en gras
+        // Format municipality list with endpoints in bold
         function formatCommunesList(communes) {
             if (communes.length === 0) return 'Non disponible';
             if (communes.length === 1) return `<strong>${communes[0]}</strong>`;
             if (communes.length === 2) return `<strong>${communes[0]}</strong>, <strong>${communes[1]}</strong>`;
             
-            // Trier les communes par ordre alphabétique
+            // Sort municipalities alphabetically
             const sorted = communes.sort((a, b) => a.localeCompare(b, 'fr'));
             
-            // Créer des liens cliquables pour chaque commune
+            // Create clickable links for each municipality
             const communeLinks = sorted.map((commune, index) => {
                 const isExtremity = index === 0 || index === sorted.length - 1;
                 const style = isExtremity ? 'font-weight: bold;' : '';
@@ -2976,10 +3235,10 @@
             return communeLinks.join(', ');
         }
 
-        // Charger les routes après un court délai pour laisser la carte s'initialiser
+        // Load routes after a short delay so the map can initialize
         setTimeout(loadDepartmentalRoads, 1000);
 
-        // ========== MÉTÉO ==========
+        // ========== WEATHER ==========
 
         function formatWeatherTime(value) {
             const match = String(value || '').match(/T(\d{2}:\d{2})/);
@@ -2994,32 +3253,32 @@
                     const temp = Math.round(data.current.temperature_2m);
                     const weatherCode = data.current.weather_code;
                     
-                    // Icônes météo selon le code WMO
+                    // Weather icons by WMO code
                     const weatherIcons = {
-                        0: '☀️',    // Ciel dégagé
-                        1: '🌤️',   // Principalement dégagé
+                        0: '☀️',    // Clear sky
+                        1: '🌤️',   // Mainly clear
                         2: '⛅',   // Partiellement nuageux
                         3: '☁️',   // Couvert
                         45: '🌫️',  // Brouillard
                         48: '🌫️',  // Brouillard givrant
-                        51: '🌦️',  // Bruine légère
-                        53: '🌦️',  // Bruine modérée
+                        51: '🌦️',  // Light drizzle
+                        53: '🌦️',  // Moderate drizzle
                         55: '🌧️',  // Bruine dense
-                        61: '🌧️',  // Pluie légère
-                        63: '🌧️',  // Pluie modérée
+                        61: '🌧️',  // Light rain
+                        63: '🌧️',  // Moderate rain
                         65: '🌧️',  // Pluie forte
-                        71: '🌨️',  // Neige légère
-                        73: '🌨️',  // Neige modérée
+                        71: '🌨️',  // Light snow
+                        73: '🌨️',  // Moderate snow
                         75: '🌨️',  // Neige forte
-                        77: '🌨️',  // Grésil
-                        80: '🌧️',  // Averses légères
-                        81: '🌧️',  // Averses modérées
+                        77: '🌨️',  // Snow grains
+                        80: '🌧️',  // Light showers
+                        81: '🌧️',  // Moderate showers
                         82: '🌧️',  // Averses violentes
-                        85: '🌨️',  // Averses de neige légères
+                        85: '🌨️',  // Light snow showers
                         86: '🌨️',  // Averses de neige fortes
                         95: '⛈️',  // Orage
-                        96: '⛈️',  // Orage avec grêle légère
-                        99: '⛈️'   // Orage avec grêle forte
+                        96: '⛈️',  // Thunderstorm with light hail
+                        99: '⛈️'   // Thunderstorm with heavy hail
                     };
                     
                     const weatherDescriptions = {
@@ -3066,7 +3325,7 @@
             }
         }
         
-        // Charger la météo au démarrage
+        // Load weather on startup
         loadWeather();
         window.setInterval(
             loadWeather,
@@ -3074,9 +3333,9 @@
         );
 
         // ========== WAZE TRAFFIC ==========
-        // (fonction définie globalement en haut du script)
+        // (function defined globally at top of script)
 
-        // Charger les données de comptage depuis le GeoJSON local actualisé par script
+        // Load counting data from script-updated local GeoJSON
         async function loadTrafficCountingData() {
             console.log('🚦 === DÉBUT CHARGEMENT STATIONS DE COMPTAGE ===');
             
@@ -3128,7 +3387,7 @@
             // Compteurs pour les statistiques
             const trafficCounts = { high: 0, medium: 0, low: 0 };
             
-            // Filtrer pour obtenir les données les plus récentes par station
+            // Filter to most recent data per station
             const latestDataByStation = {};
             geojsonData.features.forEach(feature => {
                 const props = feature.properties;
@@ -3150,13 +3409,13 @@
                 const feature = data.feature;
                 const props = feature.properties;
                 
-                // Coordonnées de la station
+                // Station coordinates
                 const lat = props.latitude || (feature.geometry ? feature.geometry.coordinates[1] : null);
                 const lon = props.longitude || (feature.geometry ? feature.geometry.coordinates[0] : null);
                 
                 if (!lat || !lon) return;
 
-                // MJA (Moyenne Journalière Annuelle)
+                // AADT (Annual Average Daily Traffic)
                 const mja = Number(props.mja_tv ?? props.mja ?? props.mja_jour ?? 0);
                 const tauxPL = Number(props.taux_pl ?? props.tauxpl ?? props.taux_pl_pc ?? 0);
                 const debitPL = Number(props.debit_pl ?? props.debitpl ?? props.pl_jour ?? 0);
@@ -3167,7 +3426,7 @@
                 
                 const formatNumber = (value, suffix = '') => Number.isFinite(value) ? `${value.toLocaleString()}${suffix}` : 'N/A';
                 
-                // Déterminer la catégorie de trafic (gris clair → gris foncé)
+                // Determine traffic category (light gray → dark gray)
                 let style, category;
                 if (mja >= 20000) {
                     style = TRAFFIC_STYLES.high;
@@ -3183,7 +3442,7 @@
                     trafficCounts.low++;
                 }
 
-                // Créer le marqueur (masqué par défaut — voir trafficVisible)
+                // Create marker (hidden by default — see trafficVisible)
                 const marker = L.circleMarker([lat, lon], {
                     radius: style.size,
                     fillColor: style.fill,
@@ -3191,13 +3450,13 @@
                     weight: 2,
                     opacity: 1,
                     fillOpacity: 0.9,
-                    stationType: 'counting'  // Pour identification lors du toggle trafic
+                    stationType: 'counting'  // For identification when toggling traffic
                 });
 
-                // Stocker pour le toggle de visibilité
+                // Store for visibility toggle
                 trafficMarkers.push(marker);
 
-                // Popup avec les informations de comptage
+                // Popup with counting information
                 const popupContent = `
                     <div class="route-popup">
                         <h3>📊 Station de comptage</h3>
@@ -3236,14 +3495,14 @@
                 });
             });
 
-            // Mettre à jour les compteurs dans la légende
+            // Update legend counters
             document.getElementById('count-high').textContent = trafficCounts.high;
             document.getElementById('count-medium').textContent = trafficCounts.medium;
             document.getElementById('count-low').textContent = trafficCounts.low;
             
             console.log(`✓ Marqueurs créés:`, trafficCounts);
 
-            // Mettre à jour les statistiques
+            // Update statistics
             const totalStations = trafficCounts.high + trafficCounts.medium + trafficCounts.low;
             const years = Object.values(latestDataByStation).map(d => d.year).filter(Number.isFinite);
             const latestYear = years.length ? Math.max(...years) : 'N/A';
@@ -3258,11 +3517,11 @@
             console.log(`✓ Total stations affichées: ${totalStations} (année max ${latestYear})`);
             console.log('🚦 === FIN CHARGEMENT STATIONS DE COMPTAGE ===');
 
-            // Rafraîchir les statistiques "Informations Réseau" maintenant que les MJA sont connus.
+            // Refresh "Network Information" stats now that AADT values are known.
             if (typeof updateNetworkStats === 'function') updateNetworkStats();
         }
 
-        // Charger les données d'accidentologie depuis le GeoJSON statique local
+        // Load accident data from local static GeoJSON
         async function loadAccidentData() {
             try {
                 console.log('📊 Chargement des données d\'accidentologie...');
@@ -3279,7 +3538,7 @@
                 console.log(`✓ ${features.length} accidents chargés pour le Vaucluse`);
                 console.log('Statistiques:', stats);
                 
-                // Compteurs par catégorie
+                // Counters by category
                 const counts = { fatal: 0, hospitalized: 0, light: 0 };
                 
                 // Afficher chaque accident sur la carte
@@ -3289,7 +3548,7 @@
                     const lat = coords[1];
                     const lon = coords[0];
                     
-                    // Déterminer la couleur et la taille selon la gravité
+                    // Determine color and size by severity
                     let color, size, category, label;
                     if (props.gravite === 'mortel') {
                         color = '#000000';
@@ -3311,7 +3570,7 @@
                         counts.light++;
                     }
                     
-                    // Créer le marqueur (ne PAS l'ajouter à la carte par défaut)
+                    // Create marker (do NOT add to map by default)
                     const marker = L.circleMarker([lat, lon], {
                         radius: size,
                         fillColor: color,
@@ -3324,7 +3583,7 @@
                     // Stocker le marqueur pour le toggle
                     accidentMarkers.push(marker);
                     
-                    // Popup avec les informations
+                    // Popup with information
                     const victimesInfo = [];
                     if (props.tues > 0) victimesInfo.push(`${props.tues} tué(s)`);
                     if (props.hospitalises > 0) victimesInfo.push(`${props.hospitalises} hospitalisé(s)`);
@@ -3362,7 +3621,7 @@
                     });
                 });
                 
-                // Mettre à jour les compteurs
+                // Update counters
                 document.getElementById('count-fatal').textContent = counts.fatal;
                 document.getElementById('count-hospitalized').textContent = counts.hospitalized;
                 document.getElementById('count-light').textContent = counts.light;
@@ -3374,16 +3633,16 @@
             }
         }
         
-        // Charger les données de comptage après les routes
+        // Load counting data after routes
         setTimeout(loadTrafficCountingData, 2000);
         
-        // Charger l'accidentologie après le comptage
+        // Load accident data after counting
         setTimeout(loadAccidentData, 3000);
         
-        // Charger les données Bison Futé (Info Routière)
+        // Load Bison Futé data (Info Routière)
         setTimeout(loadBisonFuteData, 4000);
         
-        // ========== ROUTES EN CONSTRUCTION ==========
+        // ========== ROADS UNDER CONSTRUCTION ==========
 
         function classifyConstructionWay(tags) {
             if (!tags) return null;
@@ -3583,7 +3842,7 @@
                 
                 console.log(`✓ ${data.features.length} événements routiers chargés`);
                 
-                // Filtrer les événements dans ou proche du Vaucluse (bbox approximatif)
+                // Filter events in or near Vaucluse (approximate bbox)
                 const vaucluseBbox = {
                     minLat: 43.6,
                     maxLat: 44.5,
@@ -3599,13 +3858,13 @@
                     
                     if (!geom || !geom.coordinates) return;
                     
-                    // Extraire les coordonnées selon le type de géométrie
+                    // Extract coordinates by geometry type
                     let lat, lon;
                     if (geom.type === 'Point') {
                         lon = geom.coordinates[0];
                         lat = geom.coordinates[1];
                     } else if (geom.type === 'LineString') {
-                        // Prendre le point médian
+                        // Take midpoint
                         const midIndex = Math.floor(geom.coordinates.length / 2);
                         lon = geom.coordinates[midIndex][0];
                         lat = geom.coordinates[midIndex][1];
@@ -3613,13 +3872,13 @@
                         return; // Ignorer les autres types
                     }
                     
-                    // Vérifier si dans le Vaucluse ou proche
+                    // Check whether inside or near Vaucluse
                     if (lat < vaucluseBbox.minLat || lat > vaucluseBbox.maxLat ||
                         lon < vaucluseBbox.minLon || lon > vaucluseBbox.maxLon) {
                         return; // Hors zone
                     }
                     
-                    // Déterminer le type d'événement
+                    // Determine event type
                     const eventType = props.event_type || props.type || 'autre';
                     let icon, color, category;
                     
@@ -3645,7 +3904,7 @@
                         eventsCount.autres++;
                     }
                     
-                    // Créer le marqueur (masqué par défaut — voir bisonFuteVisible)
+                    // Create marker (hidden by default — see bisonFuteVisible)
                     const marker = L.marker([lat, lon], {
                         icon: L.divIcon({
                             html: `<div style="font-size: 1.5rem; text-shadow: 0 0 3px white;">${icon}</div>`,
@@ -3655,10 +3914,10 @@
                         })
                     });
 
-                    // Stocker pour le toggle de visibilité
+                    // Store for visibility toggle
                     bisonFuteMarkers.push(marker);
                     
-                    // Popup avec les informations
+                    // Popup with information
                     const startDate = props.start_time ? new Date(props.start_time).toLocaleString('fr-FR') : 'N/A';
                     const endDate = props.end_time ? new Date(props.end_time).toLocaleString('fr-FR') : 'N/A';
                     
@@ -3716,11 +3975,11 @@
                 fillOpacity: 0.9
             }).addTo(window.map).bindPopup(`<strong>${city.name}</strong>`);
 
-            // Stocker pour le toggle de visibilité
+            // Store for visibility toggle
             cityMarkers.push(cityMarker);
         });
 
-        // Gestion des clics sur la légende (hiérarchie uniquement, si pas de handler inline)
+        // Legend click handling (hierarchy only, if no inline handler)
         document.querySelectorAll('.legend-item[data-hierarchy]').forEach(item => {
             item.addEventListener('click', function() {
                 const hierarchy = this.dataset.hierarchy;
@@ -3739,8 +3998,8 @@
         const restrictionLayer = L.layerGroup();
         let limitationsZoomHandler = null;
 
-        // Échelle de couleurs chaud/froid pour les limites de vitesse (km/h).
-        // Convention : froid (bleu) = lent / sécurisé, chaud (rouge) = rapide.
+        // Hot/cold color scale for speed limits (km/h).
+        // Convention: cold (blue) = slow / safe, hot (red) = fast.
         const SPEED_COLOR_SCALE = [
             { max: 30,  color: '#2980B9', label: '≤30' },
             { max: 50,  color: '#5DADE2', label: '50' },
@@ -3792,7 +4051,7 @@
             });
         }
 
-        // Inverse de applySpeedGradient : restaure les couleurs hiérarchie normales.
+        // Inverse of applySpeedGradient: restore normal hierarchy colors.
         function restoreHierarchyStyles() {
             Object.keys(window.routePolylines).forEach(ref => {
                 window.routePolylines[ref].forEach(polyline => {
@@ -3806,14 +4065,14 @@
             });
         }
 
-        // Point médian d'une polyline (utilisé comme ancre des pictos).
+        // Polyline midpoint (used as pictogram anchor).
         function polylineMidLatLng(polyline) {
             const latlngs = polyline.getLatLngs();
             if (!latlngs.length) return null;
             return latlngs[Math.floor(latlngs.length / 2)];
         }
 
-        // Pictogramme rond style panneau de vitesse français.
+        // Round pictogram in French speed-limit sign style.
         function makeSpeedPictoMarker(latlng, kmh) {
             return L.marker(latlng, {
                 icon: L.divIcon({
@@ -3828,7 +4087,7 @@
         }
 
         // Pictogramme rectangulaire pour les restrictions (hauteur, poids, longueur, largeur).
-        // Box assez large (90px) pour absorber "🚛 12.5t" sans rognage, ancrée centrée.
+        // Wide enough box (90px) for "🚛 12.5t" without clipping, center-anchored.
         function makeRestrictionPictoMarker(latlng, icon, value, color) {
             return L.marker(latlng, {
                 icon: L.divIcon({
@@ -3840,12 +4099,12 @@
             });
         }
 
-        // Normalise une valeur OSM type "3.5", "4.0", "3.5 m" ou "12 t" en chaîne compacte
-        // sans espace et sans décimale superflue ("4.0m" → "4m", "3.50m" → "3.5m").
+        // Normalize OSM value like "3.5", "4.0", "3.5 m" or "12 t" to compact string
+        // without spaces or trailing zeros ("4.0m" → "4m", "3.50m" → "3.5m").
         function compactUnit(raw, unit) {
             if (raw === null || raw === undefined) return '';
             const trimmed = String(raw).trim();
-            // Si la valeur contient déjà une unité, on garde l'unité mais on nettoie.
+            // If value already includes a unit, keep it but clean formatting.
             if (/[a-zA-Z]/.test(trimmed)) {
                 const m = trimmed.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z/]+)$/);
                 if (m) {
@@ -3859,7 +4118,7 @@
             return `${display}${unit}`;
         }
 
-        // Décide quelles restrictions on rend pour un way donné (hauteur, poids, longueur, largeur).
+        // Decide which restrictions to render for a given way (height, weight, length, width).
         function restrictionEntriesFromTags(tags) {
             const entries = [];
             const heightRaw = tags.maxheight;
@@ -3886,8 +4145,8 @@
         }
 
         // Affiche les pictos vitesse / restrictions visibles dans la vue actuelle.
-        // Stratégie zoom :
-        //   - zoom <  11 : dégradé seul, aucun picto (carto-overview)
+        // Zoom strategy:
+        //   - zoom <  11: gradient only, no pictograms (carto overview)
         //   - zoom 11-12: restrictions des ponts/PL seulement
         //   - zoom ≥ 13 : pictos vitesse + restrictions
         function renderPictograms() {
@@ -3901,8 +4160,8 @@
             const showRestrictions = zoom >= 11;
             if (!showSpeed && !showRestrictions) return;
 
-            // Pour éviter la surcharge, on évite plusieurs pictos vitesse pour une même route
-            // identifiée par sa valeur de maxspeed dans un petit rayon.
+            // Avoid overload: skip duplicate speed pictograms for the same route
+            // identified by maxspeed value within a small radius.
             const speedKeysSeen = new Set();
 
             Object.keys(window.routePolylines).forEach(ref => {
@@ -3914,7 +4173,7 @@
                     if (showSpeed) {
                         const kmh = parseMaxspeed(tags.maxspeed);
                         if (kmh !== null) {
-                            // Clé approximative (réf + vitesse + 0.005° ~ 500 m) pour limiter les doublons.
+                            // Approximate key (ref + speed + 0.005° ~ 500 m) to limit duplicates.
                             const key = `${ref}|${kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
                             if (!speedKeysSeen.has(key)) {
                                 speedKeysSeen.add(key);
@@ -3924,8 +4183,8 @@
                     }
 
                     if (showRestrictions) {
-                        // On restreint les restrictions visuelles aux tronçons "remarquables"
-                        // pour rester lisible : ponts, tunnels, ou tronçons restreints en zone large.
+                        // Limit visual restrictions to "notable" segments
+                        // for readability: bridges, tunnels, or restricted segments in wide view.
                         const isBridge = tags.bridge && tags.bridge !== 'no';
                         const isTunnel = tags.tunnel === 'yes';
                         const entries = restrictionEntriesFromTags(tags);

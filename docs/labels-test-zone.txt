@@ -1,0 +1,21 @@
+RD label anti-collision test area (Inforoute CD84)
+==================================================
+
+Coordinates: Avignon centre — lat 43.9493, lon 4.8055
+Recommended zoom: 12 to 13 (regional, territorial and local routes visible)
+
+Typical nearby routes in this area:
+  D900, D943, D15, D2, D28, D901…
+
+Manual verification:
+  1. Run: python3 -m http.server 8080
+  2. Open http://localhost:8080/
+  3. Center the map on Avignon and zoom to 13
+  4. Confirm D labels no longer hide each other
+  5. If ≥4 refs remain in conflict after offset, a localized vertical stack
+     appears (click for the full list)
+
+Expected behaviour:
+  - Priority regional > territorial > local (structurantes keep ideal position)
+  - Spiral offset (~10 px) along candidate points on the segment
+  - Localized stack only when ≥4 labels remain in conflict
