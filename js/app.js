@@ -3638,20 +3638,10 @@
             console.log('🚦 === FIN CHARGEMENT STATIONS DE COMPTAGE ===');
 
             if (typeof window.patchDashboardMetrics === 'function') {
-                const networkStats = collectNetworkStatsData();
+                const trafficMetrics = computeTrafficMetricsFromGeoJson(geojsonData);
                 window.patchDashboardMetrics({
-                    traffic: {
-                        stations: totalStations,
-                        high: trafficCounts.high,
-                        medium: trafficCounts.medium,
-                        low: trafficCounts.low,
-                        mjaRange: networkStats.mjaRange
-                    },
-                    vintages: {
-                        traffic: sourceYears
-                            ? `Dernière année par station · ${sourceYears}`
-                            : 'Dernière année par station'
-                    }
+                    traffic: trafficMetrics.traffic,
+                    vintages: trafficMetrics.vintages
                 });
             }
 
@@ -4447,6 +4437,485 @@
             }
             updateLimitationsLegend();
             syncLegendChrome();
+        };
+
+        // ========== DASHBOARD DATA REFRESH ==========
+
+        function hierarchyForRef(ref) {
+            const refClean = String(ref).replace(/\s+/g, '');
+            if (routeClassification.regional.some(r => refClean.includes(r.replace('D', '')))) return 'regional';
+            if (routeClassification.territorial.some(r => refClean.includes(r.replace('D', '')))) return 'territorial';
+            return 'local';
+        }
+
+        function wayLengthKmFromGeometry(geometry) {
+            let total = 0;
+            for (let i = 1; i < geometry.length; i++) {
+                total += haversineKm(
+                    { lat: geometry[i - 1].lat, lng: geometry[i - 1].lon },
+                    { lat: geometry[i].lat, lng: geometry[i].lon }
+                );
+            }
+            return total;
+        }
+
+        function computeRouteQualityFlags(routeWays) {
+            const relationWithWikidata = routeWays.find(way =>
+                way.relationTags && way.relationTags.wikidata
+            );
+            let hasWikidata = Boolean(relationWithWikidata);
+            if (!hasWikidata) {
+                const totalWays = routeWays.length;
+                const waysWithWikidata = routeWays.filter(way => way.tags && way.tags.wikidata).length;
+                hasWikidata = waysWithWikidata > 0 && (waysWithWikidata / totalWays) >= 0.8;
+            }
+            const hasRelation = routeWays.some(way => way.hasRelation === true || way.relationId);
+            return { hasWikidata, hasRelation };
+        }
+
+        function formatMjaRange(mjaValues) {
+            if (!mjaValues.length) return null;
+            const min = Math.min(...mjaValues);
+            const max = Math.max(...mjaValues);
+            const fmt = v => v >= 1000 ? `${Math.round(v / 1000)}k` : String(v);
+            return `${fmt(min)} – ${fmt(max)} véh/j`;
+        }
+
+        function computeNetworkMetricsFromGeoJson(data) {
+            const ways = (data.features || []).map(geoJsonLineFeatureToWay).filter(Boolean);
+            const routesByRef = {};
+            ways.forEach(way => {
+                const ref = way.tags?.ref?.replace(/\s+/g, '').replace(/^D/, 'D');
+                if (!ref) return;
+                if (!routesByRef[ref]) routesByRef[ref] = [];
+                routesByRef[ref].push(way);
+            });
+
+            const hierarchy = { regional: 0, territorial: 0, local: 0 };
+            let totalKm = 0;
+            let bridges = 0;
+            let tunnels = 0;
+            let totalSegments = 0;
+            let withWikidata = 0;
+            let withRelation = 0;
+            const refs = Object.keys(routesByRef);
+
+            refs.forEach(ref => {
+                hierarchy[hierarchyForRef(ref)]++;
+                const routeWays = routesByRef[ref];
+                const quality = computeRouteQualityFlags(routeWays);
+                if (quality.hasWikidata) withWikidata++;
+                if (quality.hasRelation) withRelation++;
+
+                routeWays.forEach(way => {
+                    totalSegments++;
+                    if (way.geometry?.length) totalKm += wayLengthKmFromGeometry(way.geometry);
+                    const tags = way.tags || {};
+                    if (tags.bridge && tags.bridge !== 'no') bridges++;
+                    if (tags.tunnel === 'yes') tunnels++;
+                });
+            });
+
+            return {
+                network: { refs: refs.length, lengthKm: totalKm, bridges, tunnels },
+                hierarchy,
+                quality: {
+                    wikidataPct: refs.length ? Math.round((withWikidata / refs.length) * 100) : 0,
+                    relationPct: refs.length ? Math.round((withRelation / refs.length) * 100) : 0,
+                    segments: totalSegments
+                }
+            };
+        }
+
+        function computeTrafficMetricsFromGeoJson(geojsonData) {
+            const trafficCounts = { high: 0, medium: 0, low: 0 };
+            const mjaValues = [];
+            const latestDataByStation = {};
+
+            (geojsonData.features || []).forEach(feature => {
+                const props = feature.properties || {};
+                const stationId = props.section_compteur ?? props.section_co ?? props.identifian ?? props.id_station ?? props.id;
+                const year = Number.parseInt(props.annee ?? props.year ?? props.an, 10);
+                if (!stationId || !Number.isFinite(year)) return;
+                if (!latestDataByStation[stationId] || year > latestDataByStation[stationId].year) {
+                    latestDataByStation[stationId] = { feature, year };
+                }
+            });
+
+            Object.values(latestDataByStation).forEach(({ feature }) => {
+                const props = feature.properties || {};
+                const lat = props.latitude || feature.geometry?.coordinates?.[1];
+                const lon = props.longitude || feature.geometry?.coordinates?.[0];
+                if (!lat || !lon) return;
+
+                const mja = Number(props.mja_tv ?? props.mja ?? props.mja_jour ?? 0);
+                if (mja >= 20000) trafficCounts.high++;
+                else if (mja >= 5000) trafficCounts.medium++;
+                else trafficCounts.low++;
+                if (Number.isFinite(mja) && mja > 0) mjaValues.push(mja);
+            });
+
+            const totalStations = trafficCounts.high + trafficCounts.medium + trafficCounts.low;
+            const sourceYears = formatYearRange(collectYears(geojsonData.features || [], ['annee', 'year', 'an']));
+
+            return {
+                traffic: {
+                    stations: totalStations,
+                    high: trafficCounts.high,
+                    medium: trafficCounts.medium,
+                    low: trafficCounts.low,
+                    mjaRange: formatMjaRange(mjaValues)
+                },
+                vintages: {
+                    traffic: sourceYears
+                        ? `Dernière année par station · ${sourceYears}`
+                        : 'Dernière année par station'
+                }
+            };
+        }
+
+        function computeAccidentsMetricsFromGeoJson(data) {
+            const counts = { fatal: 0, hospitalized: 0, light: 0 };
+            (data.features || []).forEach(feature => {
+                const gravite = feature.properties?.gravite;
+                if (gravite === 'mortel') counts.fatal++;
+                else if (gravite === 'grave') counts.hospitalized++;
+                else counts.light++;
+            });
+            return {
+                accidents: {
+                    total: counts.fatal + counts.hospitalized + counts.light,
+                    fatal: counts.fatal,
+                    hospitalized: counts.hospitalized,
+                    light: counts.light
+                },
+                vintages: { accidents: 'Millésime 2024 · BAAC' }
+            };
+        }
+
+        function computeBisonMetricsFromGeoJson(data) {
+            const vaucluseBbox = { minLat: 43.6, maxLat: 44.5, minLon: 4.6, maxLon: 5.8 };
+            const eventsCount = { travaux: 0, bouchons: 0, accidents: 0, autres: 0 };
+
+            (data.features || []).forEach(feature => {
+                const geom = feature.geometry;
+                const props = feature.properties || {};
+                if (!geom?.coordinates) return;
+
+                let lat;
+                let lon;
+                if (geom.type === 'Point') {
+                    lon = geom.coordinates[0];
+                    lat = geom.coordinates[1];
+                } else if (geom.type === 'LineString') {
+                    const midIndex = Math.floor(geom.coordinates.length / 2);
+                    lon = geom.coordinates[midIndex][0];
+                    lat = geom.coordinates[midIndex][1];
+                } else {
+                    return;
+                }
+
+                if (lat < vaucluseBbox.minLat || lat > vaucluseBbox.maxLat
+                    || lon < vaucluseBbox.minLon || lon > vaucluseBbox.maxLon) {
+                    return;
+                }
+
+                const eventType = props.event_type || props.type || 'autre';
+                if (eventType.includes('roadwork') || eventType.includes('travaux')) eventsCount.travaux++;
+                else if (eventType.includes('congestion') || eventType.includes('bouchon')) eventsCount.bouchons++;
+                else if (eventType.includes('accident')) eventsCount.accidents++;
+                else eventsCount.autres++;
+            });
+
+            const totalEvents = eventsCount.travaux + eventsCount.bouchons + eventsCount.accidents + eventsCount.autres;
+            return {
+                bisonFute: {
+                    total: totalEvents,
+                    travaux: eventsCount.travaux,
+                    bouchons: eventsCount.bouchons,
+                    accidents: eventsCount.accidents
+                },
+                vintages: {
+                    bisonFute: formatDashboardCacheVintage(
+                        data._cache?.generated_at,
+                        'Cache 3 h · Info Routière'
+                    ) || 'Cache 3 h · Info Routière'
+                }
+            };
+        }
+
+        function computeBicycleMetricsFromGeoJson(data) {
+            const bicycleWays = (data.features || []).map(geoJsonLineFeatureToWay).filter(Boolean);
+            const relationIdToRef = buildBicycleRelationIdToRef(bicycleWays);
+            const segmentCounts = { EV17: 0, EV8: 0, V861: 0, local: 0 };
+
+            bicycleWays.forEach(way => {
+                const style = getBicycleRouteStyle(way.tags || {}, relationIdToRef);
+                if (style.structuranteRef) segmentCounts[style.structuranteRef] += 1;
+                else segmentCounts.local += 1;
+            });
+
+            return {
+                bicycle: {
+                    structurantes: (segmentCounts.EV17 || 0) + (segmentCounts.EV8 || 0) + (segmentCounts.V861 || 0),
+                    local: segmentCounts.local || 0
+                }
+            };
+        }
+
+        function computeConstructionMetricsFromGeoJson(data) {
+            let constructionCount = 0;
+            let proposedCount = 0;
+
+            (data.features || []).forEach(feature => {
+                const way = geoJsonLineFeatureToWay(feature);
+                if (!way?.geometry?.length) return;
+                const status = classifyConstructionWay(way.tags || {});
+                if (status === 'construction') constructionCount++;
+                else if (status === 'proposed') proposedCount++;
+            });
+
+            return {
+                construction: { construction: constructionCount, proposed: proposedCount },
+                vintages: {
+                    osm: formatDashboardCacheVintage(data._cache?.generated_at, 'Cache OSM')
+                }
+            };
+        }
+
+        function computeWeatherMetricsFromLiveJson(data) {
+            if (!data?.current) return null;
+
+            const temp = Math.round(data.current.temperature_2m);
+            const weatherCode = data.current.weather_code;
+            const weatherIcons = {
+                0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️',
+                51: '🌦️', 53: '🌦️', 55: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️',
+                71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️', 80: '🌧️', 81: '🌧️',
+                82: '🌧️', 85: '🌨️', 86: '🌨️', 95: '⛈️', 96: '⛈️', 99: '⛈️'
+            };
+            const weatherDescriptions = {
+                0: 'Ciel dégagé', 1: 'Dégagé', 2: 'Nuageux', 3: 'Couvert',
+                45: 'Brouillard', 48: 'Brouillard', 51: 'Bruine', 53: 'Bruine', 55: 'Bruine',
+                61: 'Pluie légère', 63: 'Pluie', 65: 'Forte pluie', 71: 'Neige légère',
+                73: 'Neige', 75: 'Forte neige', 77: 'Grésil', 80: 'Averses', 81: 'Averses',
+                82: 'Fortes averses', 85: 'Averses de neige', 86: 'Averses de neige',
+                95: 'Orage', 96: 'Orage', 99: 'Orage violent'
+            };
+
+            const icon = weatherIcons[weatherCode] || '🌡️';
+            const desc = weatherDescriptions[weatherCode] || 'Variable';
+            return {
+                weather: { icon, temp, desc: `${desc} · Avignon` },
+                vintages: { weather: 'Temps réel · Open-Meteo' }
+            };
+        }
+
+        async function fetchTrafficGeoJsonForDashboard() {
+            try {
+                return await window.InforouteApi.fetchGeoJson('traffic-counting');
+            } catch {
+                return window.InforouteApi.fetchGeoJson('traffic-counting-demo');
+            }
+        }
+
+        let dashboardRefreshPromise = null;
+
+        window.refreshDashboardData = async function refreshDashboardData(options = {}) {
+            const forceRefresh = options.force === true;
+
+            if (!forceRefresh && typeof window.isDashboardDataCached === 'function' && window.isDashboardDataCached()) {
+                if (typeof window.renderDashboard === 'function') {
+                    window.renderDashboard();
+                }
+                return;
+            }
+
+            if (typeof window.resetDashboardMetrics === 'function') {
+                window.resetDashboardMetrics();
+            }
+            if (typeof window.clearDashboardCache === 'function') {
+                window.clearDashboardCache();
+            }
+            if (typeof window.showDashboardSpinner === 'function') {
+                window.showDashboardSpinner();
+            }
+
+            if (dashboardRefreshPromise) return dashboardRefreshPromise;
+
+            window.dashboardRefreshInProgress = true;
+
+            dashboardRefreshPromise = (async () => {
+                try {
+                    const sourceLabels = [
+                        'departmental-roads',
+                        'traffic-counting',
+                        'accidents',
+                        'road-events',
+                        'bicycle-routes',
+                        'construction-roads',
+                        'weather'
+                    ];
+                    const [
+                        roadsResult,
+                        trafficResult,
+                        accidentsResult,
+                        eventsResult,
+                        bicycleResult,
+                        constructionResult,
+                        weatherResult
+                    ] = await Promise.allSettled([
+                        window.InforouteApi.fetchGeoJson('departmental-roads'),
+                        fetchTrafficGeoJsonForDashboard(),
+                        window.InforouteApi.fetchGeoJson('accidents'),
+                        window.InforouteApi.fetchGeoJson('road-events'),
+                        window.InforouteApi.fetchGeoJson('bicycle-routes'),
+                        window.InforouteApi.fetchGeoJson('construction-roads'),
+                        window.InforouteApi.fetchLiveJson('weather')
+                    ]);
+
+                    [
+                        roadsResult,
+                        trafficResult,
+                        accidentsResult,
+                        eventsResult,
+                        bicycleResult,
+                        constructionResult,
+                        weatherResult
+                    ].forEach((result, index) => {
+                        if (result.status === 'rejected') {
+                            console.warn(
+                                `Tableau de bord — source indisponible (${sourceLabels[index]}):`,
+                                result.reason?.message || result.reason
+                            );
+                        }
+                    });
+
+                    const patch = { vintages: {} };
+                    const routesOnMap = Object.keys(window.routePolylines || {}).length > 0;
+
+                    if (routesOnMap) {
+                        const stats = collectNetworkStatsData();
+                        patch.network = {
+                            refs: stats.refs,
+                            lengthKm: stats.lengthKm,
+                            bridges: stats.bridges,
+                            tunnels: stats.tunnels
+                        };
+                        patch.hierarchy = {
+                            regional: routesByHierarchy.regional.length,
+                            territorial: routesByHierarchy.territorial.length,
+                            local: routesByHierarchy.local.length
+                        };
+                        if (typeof window.calculateQualityMetrics === 'function') {
+                            window.calculateQualityMetrics();
+                        }
+                        const total = qualityMetrics.totalRoutes || 0;
+                        patch.quality = {
+                            wikidataPct: total ? Math.round((qualityMetrics.withWikidata / total) * 100) : 0,
+                            relationPct: total ? Math.round((qualityMetrics.withRelation / total) * 100) : 0,
+                            segments: qualityMetrics.totalSegments || 0
+                        };
+                    } else if (roadsResult.status === 'fulfilled') {
+                        Object.assign(patch, computeNetworkMetricsFromGeoJson(roadsResult.value));
+                        if (roadsResult.value._cache?.generated_at) {
+                            patch.vintages.osm = formatDashboardCacheVintage(
+                                roadsResult.value._cache.generated_at,
+                                'Cache OSM'
+                            );
+                        }
+                    }
+
+                    if (trafficResult.status === 'fulfilled') {
+                        const trafficPatch = computeTrafficMetricsFromGeoJson(trafficResult.value);
+                        patch.traffic = trafficPatch.traffic;
+                        Object.assign(patch.vintages, trafficPatch.vintages);
+                        if (routesOnMap && patch.network && !patch.traffic.mjaRange) {
+                            const mjaRange = collectNetworkStatsData().mjaRange;
+                            if (mjaRange) patch.traffic.mjaRange = mjaRange;
+                        }
+                    }
+
+                    if (accidentsResult.status === 'fulfilled') {
+                        const accidentsPatch = computeAccidentsMetricsFromGeoJson(accidentsResult.value);
+                        patch.accidents = accidentsPatch.accidents;
+                        Object.assign(patch.vintages, accidentsPatch.vintages);
+                    }
+
+                    if (eventsResult.status === 'fulfilled') {
+                        const bisonPatch = computeBisonMetricsFromGeoJson(eventsResult.value);
+                        patch.bisonFute = bisonPatch.bisonFute;
+                        Object.assign(patch.vintages, bisonPatch.vintages);
+                    }
+
+                    if (bicycleResult.status === 'fulfilled') {
+                        patch.bicycle = computeBicycleMetricsFromGeoJson(bicycleResult.value).bicycle;
+                    }
+
+                    if (constructionResult.status === 'fulfilled') {
+                        const constructionPatch = computeConstructionMetricsFromGeoJson(constructionResult.value);
+                        patch.construction = constructionPatch.construction;
+                        if (!patch.vintages.osm) {
+                            Object.assign(patch.vintages, constructionPatch.vintages);
+                        }
+                    }
+
+                    if (weatherResult.status === 'fulfilled') {
+                        const weatherPatch = computeWeatherMetricsFromLiveJson(weatherResult.value);
+                        if (weatherPatch) {
+                            patch.weather = weatherPatch.weather;
+                            Object.assign(patch.vintages, weatherPatch.vintages);
+                        }
+                    }
+
+                    window.dashboardRefreshInProgress = false;
+
+                    const fetchResults = [
+                        roadsResult,
+                        trafficResult,
+                        accidentsResult,
+                        eventsResult,
+                        bicycleResult,
+                        constructionResult,
+                        weatherResult
+                    ];
+                    const allSourcesOk = fetchResults.every(result => result.status === 'fulfilled');
+                    const mergedMetrics = { ...window.dashboardMetrics, ...patch };
+                    const metricsComplete = typeof window.isDashboardDataComplete === 'function'
+                        && window.isDashboardDataComplete(mergedMetrics);
+
+                    if (allSourcesOk && metricsComplete) {
+                        if (typeof window.patchDashboardMetrics === 'function') {
+                            window.patchDashboardMetrics(patch);
+                        }
+                        if (typeof window.markDashboardCacheReady === 'function') {
+                            window.markDashboardCacheReady();
+                        }
+                    } else {
+                        if (typeof window.clearDashboardCache === 'function') {
+                            window.clearDashboardCache();
+                        }
+                        if (typeof window.showDashboardLoadError === 'function') {
+                            window.showDashboardLoadError(
+                                'Chargement incomplet. Toutes les sources n\'ont pas répondu — réessayez dans un instant.'
+                            );
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erreur lors du rafraîchissement du tableau de bord:', error);
+                    window.dashboardRefreshInProgress = false;
+                    if (typeof window.clearDashboardCache === 'function') {
+                        window.clearDashboardCache();
+                    }
+                    if (typeof window.showDashboardLoadError === 'function') {
+                        window.showDashboardLoadError('Erreur lors du chargement des indicateurs.');
+                    }
+                } finally {
+                    dashboardRefreshPromise = null;
+                }
+            })();
+
+            return dashboardRefreshPromise;
         };
 
         }); // Fin DOMContentLoaded

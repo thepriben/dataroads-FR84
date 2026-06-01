@@ -1,11 +1,11 @@
 /**
  * @file Department-level KPI dashboard (phase 1).
- * @description Full-screen overlay fed by window.dashboardMetrics (patched from app.js).
+ * @description Compact floating panel fed by window.dashboardMetrics (patched from app.js).
  */
 (function (window) {
     'use strict';
 
-    window.dashboardMetrics = {
+    const EMPTY_DASHBOARD_METRICS = {
         network: null,
         hierarchy: null,
         traffic: null,
@@ -18,63 +18,132 @@
         vintages: {}
     };
 
+    window.dashboardMetrics = { ...EMPTY_DASHBOARD_METRICS, vintages: {} };
+
+    function isDashboardDataComplete(metrics) {
+        return Boolean(
+            metrics?.network
+            && metrics?.hierarchy
+            && metrics?.traffic
+            && metrics?.accidents
+            && metrics?.bisonFute
+            && metrics?.bicycle
+            && metrics?.construction
+            && metrics?.quality
+            && metrics?.weather
+        );
+    }
+
+    let dashboardCacheReady = false;
+    window.dashboardRefreshInProgress = false;
+
+    window.isDashboardDataComplete = isDashboardDataComplete;
+
+    window.isDashboardDataCached = function isDashboardDataCached() {
+        return dashboardCacheReady;
+    };
+
+    window.markDashboardCacheReady = function markDashboardCacheReady() {
+        if (!isDashboardDataComplete(window.dashboardMetrics)) {
+            dashboardCacheReady = false;
+            return;
+        }
+        dashboardCacheReady = true;
+    };
+
+    window.clearDashboardCache = function clearDashboardCache() {
+        dashboardCacheReady = false;
+    };
+
+    window.resetDashboardMetrics = function resetDashboardMetrics() {
+        window.dashboardMetrics = {
+            ...EMPTY_DASHBOARD_METRICS,
+            vintages: {}
+        };
+        dashboardCacheReady = false;
+    };
+
+    window.showDashboardSpinner = function showDashboardSpinner(message) {
+        const container = document.getElementById('dashboardContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div class="dashboard-loading" role="status" aria-live="polite">
+                <div class="dashboard-spinner" aria-hidden="true"></div>
+                <p>${message || 'Chargement des indicateurs…'}</p>
+            </div>
+        `;
+    };
+
+    window.showDashboardLoadError = function showDashboardLoadError(message) {
+        const container = document.getElementById('dashboardContent');
+        if (!container) return;
+        container.innerHTML = `
+            <div class="dashboard-loading dashboard-loading-error" role="alert">
+                <p>${message || 'Impossible de charger tous les indicateurs.'}</p>
+                <button type="button" class="dashboard-retry-btn" onclick="refreshDashboardData({ force: true })">
+                    Réessayer
+                </button>
+            </div>
+        `;
+    };
+
     const DASHBOARD_SECTIONS = [
         {
             id: 'network',
-            title: 'Réseau départemental',
+            title: 'Réseau',
             tiles: [
-                { key: 'refs', label: 'Routes uniques' },
-                { key: 'lengthKm', label: 'Longueur cumulée' },
-                { key: 'hierarchySplit', label: 'Régional / terr. / local', wide: true },
-                { key: 'bridges', label: 'Ponts' },
-                { key: 'tunnels', label: 'Tunnels' }
+                { key: 'refs', label: 'routes' },
+                { key: 'lengthKm', label: 'km' },
+                { key: 'hierarchySplit', label: 'R/T/L' },
+                { key: 'bridges', label: 'ponts' },
+                { key: 'tunnels', label: 'tunnels' }
             ]
         },
         {
             id: 'traffic',
-            title: 'Trafic & comptages',
+            title: 'Trafic',
             tiles: [
-                { key: 'stations', label: 'Stations actives' },
-                { key: 'mjaRange', label: 'Fourchette MJA', wide: true },
-                { key: 'tierSplit', label: 'Fort / moyen / faible', wide: true }
+                { key: 'stations', label: 'sta.' },
+                { key: 'mjaRange', label: 'MJA' },
+                { key: 'tierSplit', label: 'F/M/f' }
             ]
         },
         {
             id: 'safety',
-            title: 'Sécurité routière',
+            title: 'Sécurité',
             tiles: [
-                { key: 'total', label: 'Accidents recensés' },
-                { key: 'fatal', label: 'Accidents mortels' },
-                { key: 'hospitalized', label: 'Blessés hospitalisés' },
-                { key: 'light', label: 'Blessés légers' }
+                { key: 'total', label: 'acc.' },
+                { key: 'fatal', label: 'mortels' },
+                { key: 'hospitalized', label: 'hosp.' },
+                { key: 'light', label: 'légers' }
             ]
         },
         {
             id: 'realtime',
-            title: 'Temps réel',
+            title: 'Live',
             tiles: [
-                { key: 'total', label: 'Événements actifs' },
-                { key: 'travaux', label: 'Travaux' },
-                { key: 'bouchons', label: 'Bouchons' },
-                { key: 'accidents', label: 'Accidents en cours' }
+                { key: 'total', label: 'év.' },
+                { key: 'travaux', label: 'trav.' },
+                { key: 'bouchons', label: 'bouch.' },
+                { key: 'accidents', label: 'acc.' }
             ]
         },
         {
             id: 'mobility',
-            title: 'Véloroutes & chantiers',
+            title: 'Mobilité',
             tiles: [
-                { key: 'structurantes', label: 'Segments structurants' },
-                { key: 'local', label: 'Segments réseau local' },
-                { key: 'constructionSplit', label: 'Chantiers / projets', wide: true }
+                { key: 'structurantes', label: 'vélo str.' },
+                { key: 'local', label: 'vélo loc.' },
+                { key: 'constructionSplit', label: 'chant./proj.' }
             ]
         },
         {
             id: 'quality',
-            title: 'Qualité des données',
+            title: 'Qualité',
             tiles: [
-                { key: 'wikidataPct', label: 'Routes liées Wikidata' },
-                { key: 'relationPct', label: 'Routes avec relation OSM' },
-                { key: 'segments', label: 'Tronçons OSM' }
+                { key: 'wikidataPct', label: 'Wikidata' },
+                { key: 'relationPct', label: 'relation' },
+                { key: 'segments', label: 'tronçons' }
             ]
         }
     ];
@@ -98,7 +167,9 @@
                 return section[key] != null ? Number(section[key]).toLocaleString('fr-FR') : '—';
 
             case 'traffic':
-                if (key === 'mjaRange') return section.mjaRange || '—';
+                if (key === 'mjaRange') {
+                    return (section.mjaRange || '—').replace(/\s*v[ée]h\/j/i, '');
+                }
                 if (key === 'tierSplit') {
                     return `${section.high} / ${section.medium} / ${section.low}`;
                 }
@@ -127,52 +198,52 @@
         }
     }
 
+    function resolveSectionMetricsKey(sectionId, tileKey) {
+        if (sectionId === 'safety') return 'accidents';
+        if (sectionId === 'realtime') return 'bisonFute';
+        if (sectionId === 'mobility' && tileKey.startsWith('construction')) return 'construction';
+        if (sectionId === 'mobility') return 'bicycle';
+        return sectionId;
+    }
+
     function renderDashboard() {
         const container = document.getElementById('dashboardContent');
         if (!container) return;
 
         const metrics = window.dashboardMetrics;
         const sectionsHtml = DASHBOARD_SECTIONS.map(section => {
-            const tilesHtml = section.tiles.map(tile => {
+            const statsHtml = section.tiles.map(tile => {
                 const value = formatDashboardValue(
-                    section.id === 'safety' ? 'accidents'
-                        : section.id === 'realtime' ? 'bisonFute'
-                            : section.id === 'mobility' && tile.key.startsWith('construction') ? 'construction'
-                                : section.id === 'mobility' ? 'bicycle'
-                                    : section.id,
+                    resolveSectionMetricsKey(section.id, tile.key),
                     tile.key,
                     metrics
                 );
-                const wideClass = tile.wide ? ' dashboard-tile-wide' : '';
-                return `
-                    <div class="dashboard-tile${wideClass}">
-                        <div class="dashboard-tile-value">${value}</div>
-                        <div class="dashboard-tile-label">${tile.label}</div>
-                    </div>
-                `;
+                return `<span class="dashboard-stat"><strong>${value}</strong> ${tile.label}</span>`;
             }).join('');
 
             return `
-                <section class="dashboard-section">
-                    <h3 class="dashboard-section-title">${section.title}</h3>
-                    <div class="dashboard-grid">${tilesHtml}</div>
+                <section class="dashboard-row">
+                    <span class="dashboard-row-label">${section.title}</span>
+                    <div class="dashboard-row-values">${statsHtml}</div>
                 </section>
             `;
         }).join('');
 
         const weather = metrics.weather;
         const weatherBlock = weather ? `
-            <section class="dashboard-section dashboard-section-weather">
-                <h3 class="dashboard-section-title">Météo · Avignon</h3>
-                <div class="dashboard-weather">
-                    <span class="dashboard-weather-icon">${weather.icon || '⏳'}</span>
-                    <span class="dashboard-weather-temp">${weather.temp != null ? `${weather.temp}°C` : '—'}</span>
-                    <span class="dashboard-weather-desc">${weather.desc || ''}</span>
+            <section class="dashboard-row dashboard-row-weather">
+                <span class="dashboard-row-label">Météo</span>
+                <div class="dashboard-row-values">
+                    <span class="dashboard-stat">
+                        <span class="dashboard-weather-icon">${weather.icon || '⏳'}</span>
+                        <strong>${weather.temp != null ? `${weather.temp}°C` : '—'}</strong>
+                        ${weather.desc || ''}
+                    </span>
                 </div>
             </section>
         ` : '';
 
-        container.innerHTML = `${sectionsHtml}${weatherBlock}`;
+        container.innerHTML = `<div class="dashboard-dense">${sectionsHtml}${weatherBlock}</div>`;
     }
 
     window.patchDashboardMetrics = function patchDashboardMetrics(partial) {
@@ -185,7 +256,7 @@
             };
         }
         const panel = document.getElementById('dashboardPanel');
-        if (panel?.classList.contains('active')) {
+        if (panel?.classList.contains('active') && !window.dashboardRefreshInProgress) {
             renderDashboard();
         }
     };
@@ -200,7 +271,11 @@
         btn?.classList.toggle('is-active', shouldOpen);
 
         if (shouldOpen) {
-            renderDashboard();
+            if (typeof window.refreshDashboardData === 'function') {
+                window.refreshDashboardData();
+            } else {
+                renderDashboard();
+            }
         }
     };
 
