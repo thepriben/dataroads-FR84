@@ -790,6 +790,27 @@
         let constructionVisible = false;
         let bicyclePolylines = [];
         let bicycleVisible = false;
+        let bridgeGeometryLayerGroup = null;
+        let bridgePhotoLayerGroup = null;
+        let bridgeDataLoaded = false;
+        let bridgeLoadPromise = null;
+        let bridgeVisible = false;
+        let bridgeGroups = [];
+        let bridgePhotoMarkers = [];
+        let bridgeGroupById = new Map();
+        let bridgeFeatureInfoById = new Map();
+        let bridgeFeatureLayersById = new Map();
+        let activeBridgeGroupId = null;
+        let bridgeMapChangeHandler = null;
+        const BRIDGE_PHOTO_MIN_ZOOM = 18;
+        const bridgePhotoProviderVisibility = {
+            panoramax: true,
+            mapillary: true
+        };
+
+        function bridgeProviderLabel(provider) {
+            return provider === 'panoramax' ? 'Panoramax' : 'Mapillary';
+        }
         let bisonFuteMarkers = [];
         let bisonFuteVisible = false;
         let cityMarkers = [];
@@ -835,6 +856,13 @@
                         visible: bisonFuteVisible ? 1 : 0,
                         total: 1
                     };
+                case 'bridges': {
+                    let visible = bridgeVisible ? 1 : 0;
+                    const total = 3;
+                    if (bridgeVisible && bridgePhotoProviderVisibility.panoramax) visible++;
+                    if (bridgeVisible && bridgePhotoProviderVisibility.mapillary) visible++;
+                    return { visible, total };
+                }
                 default:
                     return null;
             }
@@ -851,6 +879,8 @@
                     return constructionVisible;
                 case 'freshness-bicycle':
                     return bicycleVisible;
+                case 'freshness-bridges':
+                    return bridgeVisible;
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
@@ -927,6 +957,179 @@
                 ...lines
             ].join('<br>');
         }
+
+        // ========== BRIDGES / ENGINEERING STRUCTURES ==========
+
+        function applyBridgesVisibleUi() {
+            const icon = document.getElementById('bridgesToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="bridgesToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-bridge]');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '700';
+            legendItems.forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+            syncBridgeSourceToggleUi();
+        }
+
+        function applyBridgesHiddenUi() {
+            const icon = document.getElementById('bridgesToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="bridgesToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-bridge]');
+            setToggleIcon(icon, false);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '600';
+            legendItems.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+            syncBridgeSourceToggleUi();
+            updateBridgeZoomHint(0);
+        }
+
+        function syncBridgeSourceToggleUi() {
+            [
+                ['panoramax', 'bridgeSourcePanoramax'],
+                ['mapillary', 'bridgeSourceMapillary']
+            ].forEach(([provider, elementId]) => {
+                const button = document.getElementById(elementId);
+                if (!button) return;
+                const active = bridgePhotoProviderVisibility[provider] !== false;
+                button.classList.toggle('is-active', active);
+                button.classList.toggle('is-disabled-by-layer', !bridgeVisible);
+                button.setAttribute('aria-pressed', String(active));
+                button.title = active
+                    ? `${bridgeProviderLabel(provider)} actif`
+                    : `${bridgeProviderLabel(provider)} masqué`;
+            });
+        }
+
+        function updateBridgeZoomHint(visiblePhotoCount) {
+            const hint = document.getElementById('bridgeZoomHint');
+            if (!hint || !window.map) return;
+
+            if (!bridgeVisible) {
+                hint.textContent = `Activez la couche, puis zoomez au niveau ${BRIDGE_PHOTO_MIN_ZOOM}+ pour afficher les photos.`;
+                return;
+            }
+
+            const zoom = window.map.getZoom();
+            if (zoom < BRIDGE_PHOTO_MIN_ZOOM) {
+                hint.textContent = `Photos masquées à ce zoom · zoomez au niveau ${BRIDGE_PHOTO_MIN_ZOOM}+ près d'un pont.`;
+                return;
+            }
+
+            const providers = Object.entries(bridgePhotoProviderVisibility)
+                .filter(([, active]) => active)
+                .map(([provider]) => bridgeProviderLabel(provider))
+                .join(' + ');
+            hint.textContent = visiblePhotoCount > 0
+                ? `${visiblePhotoCount} photo${visiblePhotoCount > 1 ? 's' : ''} visible${visiblePhotoCount > 1 ? 's' : ''} · ${providers || 'aucune source active'}`
+                : `Aucune photo visible dans l'emprise actuelle · ${providers || 'aucune source active'}`;
+        }
+
+        function updateBridgePhotoLayerVisibility() {
+            if (!bridgePhotoLayerGroup || !window.map) return;
+            bridgePhotoLayerGroup.clearLayers();
+
+            if (!bridgeVisible || window.map.getZoom() < BRIDGE_PHOTO_MIN_ZOOM) {
+                updateBridgeZoomHint(0);
+                return;
+            }
+
+            const bounds = window.map.getBounds().pad(0.15);
+            let visiblePhotoCount = 0;
+            bridgePhotoMarkers.forEach(entry => {
+                if (bridgePhotoProviderVisibility[entry.photo.provider] === false) return;
+                if (!bounds.contains(entry.marker.getLatLng()) && !bounds.intersects(entry.group.bounds)) return;
+                entry.marker.addTo(bridgePhotoLayerGroup);
+                visiblePhotoCount++;
+            });
+
+            updateBridgeZoomHint(visiblePhotoCount);
+        }
+
+        function bindBridgeMapChangeHandler() {
+            if (!window.map || bridgeMapChangeHandler) return;
+            bridgeMapChangeHandler = () => updateBridgePhotoLayerVisibility();
+            window.map.on('zoomend moveend', bridgeMapChangeHandler);
+        }
+
+        function unbindBridgeMapChangeHandler() {
+            if (!window.map || !bridgeMapChangeHandler) return;
+            window.map.off('zoomend moveend', bridgeMapChangeHandler);
+            bridgeMapChangeHandler = null;
+        }
+
+        function fitBridgeOverview() {
+            const validBounds = bridgeGroups
+                .map(group => group.bounds)
+                .filter(bounds => bounds?.isValid?.());
+            if (!validBounds.length) return;
+
+            const bounds = validBounds.reduce((acc, item) => {
+                acc.extend(item);
+                return acc;
+            }, L.latLngBounds(validBounds[0].getSouthWest(), validBounds[0].getNorthEast()));
+
+            window.map.fitBounds(bounds, {
+                padding: [40, 40],
+                maxZoom: 12,
+                animate: true
+            });
+        }
+
+        function syncBridgeLayersOnMap() {
+            if (!window.map || !bridgeGeometryLayerGroup || !bridgePhotoLayerGroup) return;
+
+            if (bridgeVisible) {
+                if (!window.map.hasLayer(bridgeGeometryLayerGroup)) bridgeGeometryLayerGroup.addTo(window.map);
+                if (!window.map.hasLayer(bridgePhotoLayerGroup)) bridgePhotoLayerGroup.addTo(window.map);
+                bindBridgeMapChangeHandler();
+                applyBridgesVisibleUi();
+                updateBridgePhotoLayerVisibility();
+            } else {
+                if (window.map.hasLayer(bridgeGeometryLayerGroup)) window.map.removeLayer(bridgeGeometryLayerGroup);
+                bridgePhotoLayerGroup.clearLayers();
+                if (window.map.hasLayer(bridgePhotoLayerGroup)) window.map.removeLayer(bridgePhotoLayerGroup);
+                unbindBridgeMapChangeHandler();
+                applyBridgesHiddenUi();
+                if (typeof window.closeBridgeViewer === 'function') window.closeBridgeViewer({ keepHighlight: false });
+            }
+
+            syncLegendChrome();
+        }
+
+        window.toggleBridges = function() {
+            bridgeVisible = !bridgeVisible;
+
+            if (!bridgeVisible) {
+                syncBridgeLayersOnMap();
+                return;
+            }
+
+            if (!bridgeDataLoaded) {
+                const icon = document.getElementById('bridgesToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                if (typeof window.loadBridges === 'function') {
+                    window.loadBridges({ show: true });
+                }
+                return;
+            }
+
+            syncBridgeLayersOnMap();
+            fitBridgeOverview();
+        };
+
+        window.toggleBridgePhotoProvider = function(provider) {
+            if (!Object.prototype.hasOwnProperty.call(bridgePhotoProviderVisibility, provider)) return;
+            bridgePhotoProviderVisibility[provider] = !bridgePhotoProviderVisibility[provider];
+            syncBridgeSourceToggleUi();
+            updateBridgePhotoLayerVisibility();
+            syncLegendChrome();
+        };
 
         // ========== ROADS UNDER CONSTRUCTION ==========
         
@@ -3422,6 +3625,656 @@
             return communeLinks.join(', ');
         }
 
+        const BRIDGE_ROLE_STYLES = {
+            deck: { label: 'Tablier / ouvrage', color: '#2C3E50', weight: 3, fillOpacity: 0.12 },
+            structure: { label: 'Structure', color: '#16A085', weight: 3, fillOpacity: 0.14, dashArray: '8, 5' },
+            pillar: { label: 'Pile', color: '#8E44AD', weight: 2, fillOpacity: 0.22 },
+            abutment: { label: 'Culée', color: '#E67E22', weight: 2, fillOpacity: 0.22 },
+            bridge: { label: 'Élément de pont', color: '#7F8C8D', weight: 2, fillOpacity: 0.14 }
+        };
+
+        const BRIDGE_DIRECTION_LABELS = {
+            N: 'nord',
+            NE: 'nord-est',
+            E: 'est',
+            SE: 'sud-est',
+            S: 'sud',
+            SW: 'sud-ouest',
+            W: 'ouest',
+            NW: 'nord-ouest'
+        };
+
+        function normalizeBridgeRole(rawRole) {
+            const role = String(rawRole || '').trim().toLowerCase();
+            if (role === 'pier') return 'pillar';
+            if (role === 'abutement' || role === 'abutted' || role === 'abucted') return 'abutment';
+            if (BRIDGE_ROLE_STYLES[role]) return role;
+            return role || 'bridge';
+        }
+
+        function bridgeRoleFromTags(tags = {}) {
+            if (tags.bridge_role) return normalizeBridgeRole(tags.bridge_role);
+            if (tags['bridge:support']) return normalizeBridgeRole(tags['bridge:support']);
+            if (tags.man_made === 'bridge') return 'deck';
+            if (tags['bridge:structure']) return 'structure';
+            return 'bridge';
+        }
+
+        function bridgeRoleStyle(role) {
+            return BRIDGE_ROLE_STYLES[normalizeBridgeRole(role)] || BRIDGE_ROLE_STYLES.bridge;
+        }
+
+        function flattenGeoJsonCoordinatePairs(value, out = []) {
+            if (!Array.isArray(value)) return out;
+            if (value.length >= 2 && typeof value[0] === 'number' && typeof value[1] === 'number') {
+                out.push(value);
+                return out;
+            }
+            value.forEach(item => flattenGeoJsonCoordinatePairs(item, out));
+            return out;
+        }
+
+        function bridgeFeatureLatLngs(feature) {
+            return flattenGeoJsonCoordinatePairs(feature?.geometry?.coordinates || [])
+                .map(([lon, lat]) => L.latLng(lat, lon))
+                .filter(latlng => Number.isFinite(latlng.lat) && Number.isFinite(latlng.lng));
+        }
+
+        function bridgeFeatureBounds(feature) {
+            const latlngs = bridgeFeatureLatLngs(feature);
+            return latlngs.length ? L.latLngBounds(latlngs) : null;
+        }
+
+        function bridgeFeatureInfo(feature) {
+            const props = feature.properties || {};
+            const bounds = bridgeFeatureBounds(feature);
+            if (!bounds?.isValid()) return null;
+
+            const id = feature.id || props['@id'] || `${props.osm_type || 'osm'}/${props.osm_id || Math.random().toString(36).slice(2)}`;
+            const role = bridgeRoleFromTags(props);
+            return {
+                id,
+                feature,
+                tags: props,
+                role,
+                roleLabel: bridgeRoleStyle(role).label,
+                color: bridgeRoleStyle(role).color,
+                bounds,
+                center: bounds.getCenter(),
+                isMainBridge: props.man_made === 'bridge',
+                photos: [],
+                groupId: null
+            };
+        }
+
+        function bridgeGroupTitle(info) {
+            const tags = info?.tags || {};
+            if (tags.name) return tags.name;
+            if (tags.ref) return `Pont ${tags.ref}`;
+            if (tags.wikidata) return `Pont ${tags.wikidata}`;
+            return `Pont OSM ${info?.id || ''}`.trim();
+        }
+
+        function nearestMainBridge(info, mainInfos) {
+            if (!info || info.isMainBridge || mainInfos.length === 0) return info?.isMainBridge ? info : null;
+
+            const spatialMatches = mainInfos.filter(main => (
+                main.bounds.intersects(info.bounds) || main.bounds.pad(0.25).contains(info.center)
+            ));
+            const candidates = spatialMatches.length ? spatialMatches : mainInfos;
+
+            let best = null;
+            let bestDistance = Infinity;
+            candidates.forEach(main => {
+                const distance = window.map.distance(info.center, main.center);
+                if (distance < bestDistance) {
+                    best = main;
+                    bestDistance = distance;
+                }
+            });
+
+            return bestDistance <= 160 ? best : null;
+        }
+
+        function splitBridgePhotoTagValue(value) {
+            return String(value || '')
+                .split(/[;,]/)
+                .map(item => item.trim())
+                .filter(item => item && !/^(no|none|fixme)$/i.test(item));
+        }
+
+        function normalizeBridgePhotoId(provider, value) {
+            const raw = String(value || '').trim();
+            if (!raw) return '';
+
+            try {
+                const url = new URL(raw);
+                const param = url.searchParams.get('pKey') || url.searchParams.get('image_key') || url.searchParams.get('pic');
+                if (param) return param;
+                const pathId = url.pathname.split('/').filter(Boolean).pop();
+                if (pathId) return pathId.replace(/\.(jpg|jpeg|png)$/i, '');
+            } catch (_) {
+                // Plain OSM tag value.
+            }
+
+            if (provider === 'panoramax') {
+                const uuid = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+                return uuid ? uuid[0] : raw;
+            }
+
+            return raw;
+        }
+
+        function parseBridgePhotoTagContext(provider, tagKey) {
+            const suffix = tagKey === provider ? '' : tagKey.slice(provider.length + 1);
+            const parts = suffix.split(':').filter(Boolean);
+            const directionKey = parts
+                .map(part => part.toUpperCase())
+                .find(part => BRIDGE_DIRECTION_LABELS[part]);
+            const year = parts.find(part => /^\d{4}$/.test(part)) || '';
+            const detail = parts.some(part => part.toLowerCase() === 'detail');
+
+            return {
+                direction: directionKey || '',
+                directionLabel: directionKey ? BRIDGE_DIRECTION_LABELS[directionKey] : '',
+                year,
+                detail
+            };
+        }
+
+        function collectBridgePhotos(info) {
+            const tags = info.tags || {};
+            const photos = [];
+
+            Object.entries(tags).forEach(([tagKey, rawValue]) => {
+                const provider = tagKey === 'panoramax' || tagKey.startsWith('panoramax:')
+                    ? 'panoramax'
+                    : tagKey === 'mapillary' || tagKey.startsWith('mapillary:')
+                        ? 'mapillary'
+                        : null;
+                if (!provider) return;
+
+                const context = parseBridgePhotoTagContext(provider, tagKey);
+                splitBridgePhotoTagValue(rawValue).forEach(value => {
+                    const id = normalizeBridgePhotoId(provider, value);
+                    if (!id) return;
+                    photos.push({
+                        key: `${provider}:${id}`,
+                        provider,
+                        id,
+                        tagKey,
+                        context,
+                        role: info.role,
+                        roleLabel: info.roleLabel,
+                        color: info.color,
+                        partId: info.id,
+                        partLabel: info.roleLabel,
+                        center: info.center,
+                        groupId: info.groupId
+                    });
+                });
+            });
+
+            return photos;
+        }
+
+        function buildBridgeGroups(features) {
+            const infos = (features || [])
+                .map(bridgeFeatureInfo)
+                .filter(Boolean);
+            const mainInfos = infos.filter(info => info.isMainBridge);
+            const groupsById = new Map();
+
+            bridgeFeatureInfoById = new Map();
+            infos.forEach(info => bridgeFeatureInfoById.set(info.id, info));
+
+            function ensureGroup(anchorInfo) {
+                const groupId = anchorInfo.id;
+                if (!groupsById.has(groupId)) {
+                    groupsById.set(groupId, {
+                        id: groupId,
+                        title: bridgeGroupTitle(anchorInfo),
+                        anchorInfo,
+                        features: [],
+                        photos: [],
+                        photoKeys: new Set(),
+                        bounds: anchorInfo.bounds,
+                        hasMainBridge: anchorInfo.isMainBridge
+                    });
+                }
+                return groupsById.get(groupId);
+            }
+
+            infos.forEach(info => {
+                const mainInfo = info.isMainBridge ? info : nearestMainBridge(info, mainInfos);
+                const group = ensureGroup(mainInfo || info);
+                info.groupId = group.id;
+                group.features.push(info);
+                group.hasMainBridge = group.hasMainBridge || info.isMainBridge;
+                group.bounds.extend(info.bounds);
+            });
+
+            infos.forEach(info => {
+                const group = groupsById.get(info.groupId);
+                if (!group) return;
+                collectBridgePhotos(info).forEach(photo => {
+                    photo.groupId = group.id;
+                    if (group.photoKeys.has(photo.key)) return;
+                    group.photoKeys.add(photo.key);
+                    group.photos.push(photo);
+                    info.photos.push(photo);
+                });
+            });
+
+            const groups = [...groupsById.values()]
+                .filter(group => group.hasMainBridge);
+            const acceptedFeatureIds = new Set(
+                groups.flatMap(group => group.features.map(info => info.id))
+            );
+            bridgeFeatureInfoById = new Map(
+                infos
+                    .filter(info => acceptedFeatureIds.has(info.id))
+                    .map(info => [info.id, info])
+            );
+
+            return groups.sort((a, b) => {
+                if (b.photos.length !== a.photos.length) return b.photos.length - a.photos.length;
+                return a.title.localeCompare(b.title, 'fr');
+            });
+        }
+
+        function bridgeFeatureStyle(feature, selected = false) {
+            const role = bridgeRoleFromTags(feature.properties || {});
+            const style = bridgeRoleStyle(role);
+            const isPolygon = /Polygon$/.test(feature.geometry?.type || '');
+
+            return {
+                color: selected ? '#111827' : style.color,
+                weight: selected ? Math.max(style.weight + 2, 5) : style.weight,
+                opacity: selected ? 1 : 0.9,
+                fillColor: style.color,
+                fillOpacity: isPolygon ? (selected ? 0.32 : style.fillOpacity) : 0,
+                dashArray: selected ? '' : (style.dashArray || ''),
+                interactive: true
+            };
+        }
+
+        function providerLabel(provider) {
+            return provider === 'panoramax' ? 'Panoramax' : 'Mapillary';
+        }
+
+        function panoramaxImageUrl(id, size = 'sd') {
+            return `https://api.panoramax.xyz/api/pictures/${encodeURIComponent(id)}/${size}.jpg`;
+        }
+
+        function panoramaxPageUrl(id) {
+            return `https://panoramax.openstreetmap.fr/#focus=pic&pic=${encodeURIComponent(id)}`;
+        }
+
+        function mapillaryPageUrl(id) {
+            return `https://www.mapillary.com/app/?pKey=${encodeURIComponent(id)}`;
+        }
+
+        function mapillaryEmbedUrl(id) {
+            return `https://www.mapillary.com/embed?image_key=${encodeURIComponent(id)}&style=photo`;
+        }
+
+        function bridgePhotoExternalUrl(photo) {
+            return photo.provider === 'panoramax' ? panoramaxPageUrl(photo.id) : mapillaryPageUrl(photo.id);
+        }
+
+        function bridgePhotoMetaLabel(photo) {
+            const bits = [
+                providerLabel(photo.provider),
+                photo.roleLabel,
+                photo.context?.directionLabel ? `vue ${photo.context.directionLabel}` : '',
+                photo.context?.year || '',
+                photo.context?.detail ? 'détail' : ''
+            ].filter(Boolean);
+            return bits.join(' · ');
+        }
+
+        function bridgePhotoMarkerLatLng(photo, index, total) {
+            if (total <= 1) return photo.center;
+            const angle = (Math.PI * 2 * index) / total;
+            const ring = Math.floor(index / 8) + 1;
+            const radius = 0.000035 * ring;
+            return L.latLng(
+                photo.center.lat + Math.sin(angle) * radius,
+                photo.center.lng + Math.cos(angle) * radius
+            );
+        }
+
+        function buildBridgePopup(group, info) {
+            const tags = info.tags || {};
+            const photosLabel = group.photos.length
+                ? `${group.photos.length} photo${group.photos.length > 1 ? 's' : ''}`
+                : 'aucune photo taguée';
+            const osmType = tags.osm_type || String(info.id).split('/')[0];
+            const osmId = tags.osm_id || String(info.id).split('/')[1];
+            const osmLink = osmType && osmId ? `https://www.openstreetmap.org/${osmType}/${osmId}` : '';
+
+            return `
+                <div class="route-popup bridge-popup">
+                    <h3>Ouvrage d'art</h3>
+                    <div class="detail"><strong>Groupe&nbsp;:</strong> ${escapeHtml(group.title)}</div>
+                    <div class="detail"><strong>Élément&nbsp;:</strong> <span class="bridge-part-pill" style="--bridge-part-color:${info.color};">${escapeHtml(info.roleLabel)}</span></div>
+                    ${tags['bridge:structure'] ? `<div class="detail"><strong>Structure&nbsp;:</strong> ${escapeHtml(tags['bridge:structure'])}</div>` : ''}
+                    ${tags.material ? `<div class="detail"><strong>Matériau&nbsp;:</strong> ${escapeHtml(tags.material)}</div>` : ''}
+                    ${tags.operator || tags.owner ? `<div class="detail"><strong>Gestionnaire&nbsp;:</strong> ${escapeHtml(tags.operator || tags.owner)}</div>` : ''}
+                    <div class="detail"><strong>Photos&nbsp;:</strong> ${photosLabel}</div>
+                    ${osmLink ? `
+                        <div class="detail" style="margin-top: 10px;">
+                            <a href="${osmLink}" target="_blank" rel="noopener noreferrer" style="color: #3498DB; font-weight: 600; text-decoration: none;">Voir l'élément OSM →</a>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function buildBridgePhotoPopup(photo, group) {
+            const preview = photo.provider === 'panoramax'
+                ? `<img class="bridge-photo-popup-img" src="${panoramaxImageUrl(photo.id, 'thumb')}" alt="" loading="lazy">`
+                : `<div class="bridge-photo-popup-placeholder">Mapillary</div>`;
+
+            return `
+                <div class="route-popup bridge-popup">
+                    <h3>${escapeHtml(providerLabel(photo.provider))}</h3>
+                    ${preview}
+                    <div class="detail"><strong>Pont&nbsp;:</strong> ${escapeHtml(group.title)}</div>
+                    <div class="detail"><strong>Élément&nbsp;:</strong> <span class="bridge-part-pill" style="--bridge-part-color:${photo.color};">${escapeHtml(photo.partLabel)}</span></div>
+                    ${photo.context?.directionLabel ? `<div class="detail"><strong>Orientation&nbsp;:</strong> ${escapeHtml(photo.context.directionLabel)}</div>` : ''}
+                    ${photo.context?.year ? `<div class="detail"><strong>Année taguée&nbsp;:</strong> ${escapeHtml(photo.context.year)}</div>` : ''}
+                    <div class="detail" style="font-size:0.76rem;"><strong>Tag&nbsp;:</strong> ${escapeHtml(photo.tagKey)}=${escapeHtml(photo.id)}</div>
+                    <div class="detail" style="margin-top: 10px;">
+                        <a href="${bridgePhotoExternalUrl(photo)}" target="_blank" rel="noopener noreferrer" style="color: #3498DB; font-weight: 600; text-decoration: none;">Ouvrir la photo source →</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function makeBridgePhotoMarker(photo, group, index) {
+            const latlng = bridgePhotoMarkerLatLng(photo, index, group.photos.length);
+            const providerClass = photo.provider === 'panoramax' ? 'is-panoramax' : 'is-mapillary';
+            const marker = L.marker(latlng, {
+                icon: L.divIcon({
+                    className: 'bridge-photo-marker-wrapper',
+                    html: `<div class="bridge-photo-marker ${providerClass}" style="--bridge-part-color:${photo.color};"><span>${photo.provider === 'panoramax' ? 'P' : 'M'}</span></div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                }),
+                zIndexOffset: 650
+            });
+
+            marker.bindTooltip(bridgePhotoMetaLabel(photo), { direction: 'top', offset: [0, -10] });
+            marker.bindPopup(buildBridgePhotoPopup(photo, group));
+            marker.on('click', () => {
+                openBridgeViewer(group.id, { photoKey: photo.key, fit: true });
+            });
+
+            return marker;
+        }
+
+        function setBridgeLegendCounts(groups) {
+            const summary = {
+                total: groups.filter(group => group.hasMainBridge).length,
+                panoramax: 0,
+                mapillary: 0,
+                pillar: 0,
+                abutment: 0
+            };
+
+            groups.forEach(group => {
+                group.photos.forEach(photo => {
+                    if (photo.provider === 'panoramax') summary.panoramax++;
+                    if (photo.provider === 'mapillary') summary.mapillary++;
+                });
+                group.features.forEach(info => {
+                    if (info.role === 'pillar') summary.pillar++;
+                    if (info.role === 'abutment') summary.abutment++;
+                });
+            });
+
+            const mapping = {
+                'count-bridges-total': summary.total,
+                'count-bridges-panoramax': summary.panoramax,
+                'count-bridges-mapillary': summary.mapillary,
+                'count-bridges-pillar': summary.pillar,
+                'count-bridges-abutment': summary.abutment
+            };
+            Object.entries(mapping).forEach(([elementId, value]) => {
+                const element = document.getElementById(elementId);
+                if (element) element.textContent = Number(value || 0).toLocaleString('fr-FR');
+            });
+        }
+
+        function resetBridgeFeatureHighlight() {
+            bridgeFeatureLayersById.forEach((layer, featureId) => {
+                const info = bridgeFeatureInfoById.get(featureId);
+                if (info && layer.setStyle) layer.setStyle(bridgeFeatureStyle(info.feature, false));
+            });
+            activeBridgeGroupId = null;
+        }
+
+        function highlightBridgeGroup(groupId) {
+            resetBridgeFeatureHighlight();
+            const group = bridgeGroupById.get(groupId);
+            if (!group) return;
+
+            group.features.forEach(info => {
+                const layer = bridgeFeatureLayersById.get(info.id);
+                if (!layer?.setStyle) return;
+                layer.setStyle(bridgeFeatureStyle(info.feature, true));
+                if (layer.bringToFront) layer.bringToFront();
+            });
+            activeBridgeGroupId = groupId;
+        }
+
+        function fitBridgeGroup(group) {
+            if (!group?.bounds?.isValid()) return;
+            window.map.fitBounds(group.bounds, {
+                padding: [70, 70],
+                maxZoom: 20,
+                animate: true
+            });
+        }
+
+        function buildBridgeViewerHero(photo) {
+            if (!photo) {
+                return '<div class="bridge-viewer-empty">Aucune photo Panoramax ou Mapillary n\'est taguée sur cet ouvrage.</div>';
+            }
+
+            if (photo.provider === 'panoramax') {
+                return `
+                    <a class="bridge-viewer-hero-link" href="${panoramaxPageUrl(photo.id)}" target="_blank" rel="noopener noreferrer">
+                        <img class="bridge-viewer-hero-img" src="${panoramaxImageUrl(photo.id, 'sd')}" alt="${escapeHtml(bridgePhotoMetaLabel(photo))}" loading="lazy">
+                    </a>
+                `;
+            }
+
+            return `
+                <iframe class="bridge-viewer-hero-frame" src="${mapillaryEmbedUrl(photo.id)}" title="${escapeHtml(bridgePhotoMetaLabel(photo))}" allowfullscreen loading="lazy"></iframe>
+            `;
+        }
+
+        function renderBridgeViewer(group, selectedPhotoKey) {
+            const panel = document.getElementById('bridgeViewerPanel');
+            const title = document.getElementById('bridgeViewerTitle');
+            const subtitle = document.getElementById('bridgeViewerSubtitle');
+            const content = document.getElementById('bridgeViewerContent');
+            if (!panel || !title || !subtitle || !content) return;
+
+            const selectedPhoto = group.photos.find(photo => photo.key === selectedPhotoKey) || group.photos[0] || null;
+            const roleBadges = group.features
+                .map(info => info.role)
+                .filter((role, index, roles) => roles.indexOf(role) === index)
+                .map(role => bridgeRoleStyle(role))
+                .map(style => `<span class="bridge-part-pill" style="--bridge-part-color:${style.color};">${escapeHtml(style.label)}</span>`)
+                .join('');
+
+            title.textContent = group.title;
+            subtitle.textContent = `${group.photos.length} photo${group.photos.length > 1 ? 's' : ''} · ${group.features.length} élément${group.features.length > 1 ? 's' : ''} OSM`;
+
+            const cards = group.photos.map(photo => `
+                <button type="button" class="bridge-photo-card${selectedPhoto?.key === photo.key ? ' is-active' : ''}" data-bridge-photo-key="${escapeHtml(photo.key)}">
+                    ${photo.provider === 'panoramax'
+                        ? `<img src="${panoramaxImageUrl(photo.id, 'thumb')}" alt="" loading="lazy">`
+                        : `<span class="bridge-photo-card-placeholder">Mapillary</span>`}
+                    <span class="bridge-photo-card-meta">
+                        <span class="bridge-photo-card-source">${escapeHtml(providerLabel(photo.provider))}</span>
+                        <span class="bridge-photo-card-part" style="--bridge-part-color:${photo.color};">${escapeHtml(photo.partLabel)}</span>
+                    </span>
+                </button>
+            `).join('');
+
+            content.innerHTML = `
+                <div class="bridge-viewer-hero">
+                    ${buildBridgeViewerHero(selectedPhoto)}
+                </div>
+                ${selectedPhoto ? `
+                    <div class="bridge-viewer-selected">
+                        <span class="bridge-part-pill" style="--bridge-part-color:${selectedPhoto.color};">${escapeHtml(selectedPhoto.partLabel)}</span>
+                        <span>${escapeHtml(bridgePhotoMetaLabel(selectedPhoto))}</span>
+                        <a href="${bridgePhotoExternalUrl(selectedPhoto)}" target="_blank" rel="noopener noreferrer">Source →</a>
+                    </div>
+                ` : ''}
+                <div class="bridge-viewer-parts">${roleBadges}</div>
+                ${cards ? `<div class="bridge-photo-grid">${cards}</div>` : ''}
+            `;
+
+            content.querySelectorAll('[data-bridge-photo-key]').forEach(button => {
+                button.addEventListener('click', () => {
+                    renderBridgeViewer(group, button.dataset.bridgePhotoKey);
+                });
+            });
+
+            panel.classList.add('active');
+        }
+
+        function openBridgeViewer(groupId, options = {}) {
+            const group = bridgeGroupById.get(groupId);
+            if (!group) return;
+
+            if (!bridgeVisible) {
+                bridgeVisible = true;
+                syncBridgeLayersOnMap();
+            }
+
+            highlightBridgeGroup(group.id);
+            if (options.fit !== false) fitBridgeGroup(group);
+            renderBridgeViewer(group, options.photoKey);
+        }
+
+        window.openBridgeViewer = openBridgeViewer;
+
+        window.closeBridgeViewer = function(options = {}) {
+            const panel = document.getElementById('bridgeViewerPanel');
+            if (panel) panel.classList.remove('active');
+            if (!options.keepHighlight) resetBridgeFeatureHighlight();
+        };
+
+        function createBridgeLayers(data) {
+            bridgeFeatureLayersById = new Map();
+            const acceptedFeatureIds = new Set(bridgeFeatureInfoById.keys());
+            const filteredData = {
+                ...data,
+                features: (data.features || []).filter(feature => (
+                    acceptedFeatureIds.has(feature.id || feature.properties?.['@id'])
+                ))
+            };
+
+            bridgeGeometryLayerGroup = L.geoJSON(filteredData, {
+                style: feature => bridgeFeatureStyle(feature, false),
+                onEachFeature: (feature, layer) => {
+                    const featureId = feature.id || feature.properties?.['@id'];
+                    const info = bridgeFeatureInfoById.get(featureId);
+                    if (!info) return;
+                    const group = bridgeGroupById.get(info.groupId);
+                    if (!group) return;
+
+                    bridgeFeatureLayersById.set(info.id, layer);
+                    layer.bindPopup(buildBridgePopup(group, info));
+                    layer.on('click', () => openBridgeViewer(group.id, { fit: true }));
+                    layer.on('mouseover', () => {
+                        if (activeBridgeGroupId !== group.id && layer.setStyle) {
+                            layer.setStyle(bridgeFeatureStyle(feature, true));
+                        }
+                    });
+                    layer.on('mouseout', () => {
+                        if (activeBridgeGroupId !== group.id && layer.setStyle) {
+                            layer.setStyle(bridgeFeatureStyle(feature, false));
+                        }
+                    });
+                }
+            });
+
+            bridgePhotoLayerGroup = L.layerGroup();
+            bridgePhotoMarkers = [];
+            bridgeGroups.forEach(group => {
+                group.photos.forEach((photo, index) => {
+                    bridgePhotoMarkers.push({
+                        photo,
+                        group,
+                        marker: makeBridgePhotoMarker(photo, group, index)
+                    });
+                });
+            });
+        }
+
+        window.loadBridges = async function(options = {}) {
+            const show = options.show === true;
+            if (bridgeDataLoaded) {
+                if (show) bridgeVisible = true;
+                syncBridgeLayersOnMap();
+                if (show) fitBridgeOverview();
+                return bridgeGroups;
+            }
+
+            if (bridgeLoadPromise) {
+                await bridgeLoadPromise;
+                if (show) bridgeVisible = true;
+                syncBridgeLayersOnMap();
+                if (show) fitBridgeOverview();
+                return bridgeGroups;
+            }
+
+            bridgeLoadPromise = (async () => {
+                try {
+                    const data = await window.InforouteApi.fetchGeoJson('bridges');
+                    renderFreshnessBadge(document.getElementById('freshness-bridges'), {
+                        generatedAt: data._cache?.generated_at,
+                        scheduleKey: 'osm'
+                    });
+
+                    bridgeGroups = buildBridgeGroups(data.features || []);
+                    bridgeGroupById = new Map(bridgeGroups.map(group => [group.id, group]));
+                    createBridgeLayers(data);
+                    setBridgeLegendCounts(bridgeGroups);
+                    bridgeDataLoaded = true;
+
+                    if (show) bridgeVisible = true;
+                    syncBridgeLayersOnMap();
+                    if (show) fitBridgeOverview();
+                    console.log(`✓ ${bridgeGroups.length} groupe(s) de ponts chargés`);
+                    return bridgeGroups;
+                } catch (error) {
+                    console.error('Erreur chargement ponts:', error);
+                    setBridgeLegendCounts([]);
+                    renderFreshnessBadge(document.getElementById('freshness-bridges'), {
+                        scheduleKey: 'osm',
+                        errorMsg: error.message
+                    });
+                    applyBridgesHiddenUi();
+                    syncLegendChrome();
+                    return [];
+                } finally {
+                    bridgeLoadPromise = null;
+                }
+            })();
+
+            return bridgeLoadPromise;
+        };
+
         // Load routes after a short delay so the map can initialize
         setTimeout(loadDepartmentalRoads, 1000);
 
@@ -3850,6 +4703,11 @@
         
         // Load Bison Futé data (Info Routière)
         setTimeout(loadBisonFuteData, 4000);
+
+        // Preload bridge metadata for sidebar counters without displaying the layer.
+        setTimeout(() => {
+            if (window.loadBridges) window.loadBridges({ show: false });
+        }, 4500);
         
         // ========== ROADS UNDER CONSTRUCTION ==========
 

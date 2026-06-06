@@ -19,6 +19,7 @@
             --family-factual: #2C3E50;
             --family-stats: #8E44AD;
             --family-realtime: #E67E22;
+            --family-bridges: #0E7490;
             --family-tools: #16A085;
         }
 
@@ -473,6 +474,327 @@
             display: block;
         }
 
+        .bridge-viewer-panel {
+            position: absolute;
+            right: 14px;
+            bottom: 14px;
+            z-index: 1001;
+            width: min(440px, calc(100% - 28px));
+            max-height: min(620px, calc(100% - 92px));
+            background: #ffffff;
+            border: 1px solid rgba(44, 62, 80, 0.16);
+            border-radius: 8px;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+            display: none;
+            overflow: hidden;
+        }
+
+        .bridge-viewer-panel.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bridge-viewer-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            background: #ffffff;
+            border-bottom: 1px solid #e5eaee;
+        }
+
+        .bridge-viewer-header h2 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 1rem;
+            line-height: 1.2;
+        }
+
+        .bridge-viewer-header p {
+            margin: 3px 0 0;
+            color: #7f8c8d;
+            font-size: 0.76rem;
+            line-height: 1.25;
+        }
+
+        .bridge-viewer-close {
+            width: 28px;
+            height: 28px;
+            flex: 0 0 28px;
+            border: 1px solid #dfe6e9;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #2C3E50;
+            cursor: pointer;
+            font-size: 1.15rem;
+            line-height: 1;
+        }
+
+        .bridge-viewer-close:hover {
+            background: #f4f7f8;
+        }
+
+        .bridge-viewer-content {
+            padding: 12px 14px 14px;
+            overflow-y: auto;
+        }
+
+        .bridge-viewer-hero {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #eef2f5;
+            border: 1px solid #dfe6e9;
+        }
+
+        .bridge-viewer-hero-link {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .bridge-viewer-hero-img,
+        .bridge-viewer-hero-frame {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            object-fit: cover;
+        }
+
+        .bridge-viewer-empty {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            text-align: center;
+            color: #60717c;
+            font-size: 0.86rem;
+            line-height: 1.35;
+        }
+
+        .bridge-viewer-selected {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            font-size: 0.76rem;
+            color: #5b6770;
+        }
+
+        .bridge-viewer-selected a {
+            margin-left: auto;
+            color: #3498DB;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .bridge-viewer-parts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .bridge-photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .bridge-photo-card {
+            min-width: 0;
+            border: 1px solid #dfe6e9;
+            border-radius: 6px;
+            background: #ffffff;
+            padding: 0;
+            overflow: hidden;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.16s, box-shadow 0.16s, transform 0.16s;
+        }
+
+        .bridge-photo-card:hover,
+        .bridge-photo-card.is-active {
+            border-color: #2C3E50;
+            box-shadow: 0 2px 8px rgba(44, 62, 80, 0.18);
+        }
+
+        .bridge-photo-card:active {
+            transform: translateY(1px);
+        }
+
+        .bridge-photo-card img,
+        .bridge-photo-card-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            background: #eef2f5;
+            color: #2C3E50;
+            font-size: 0.76rem;
+            font-weight: 700;
+        }
+
+        .bridge-photo-card-meta {
+            display: grid;
+            gap: 3px;
+            padding: 7px;
+            font-size: 0.68rem;
+            line-height: 1.2;
+            color: #5b6770;
+        }
+
+        .bridge-photo-card-source {
+            font-weight: 700;
+            color: #2C3E50;
+        }
+
+        .bridge-photo-card-part {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .bridge-photo-card-part::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--bridge-part-color, #7F8C8D);
+        }
+
+        .bridge-part-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--bridge-part-color, #7F8C8D) 14%, white);
+            color: #2C3E50;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .bridge-part-pill::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--bridge-part-color, #7F8C8D);
+        }
+
+        .bridge-photo-marker-wrapper {
+            background: transparent !important;
+            border: none !important;
+        }
+
+        .bridge-photo-marker {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid var(--bridge-part-color, #7F8C8D);
+            background: #ffffff;
+            color: #2C3E50;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 800;
+            box-shadow: 0 2px 7px rgba(0, 0, 0, 0.28);
+        }
+
+        .bridge-photo-marker.is-panoramax span {
+            color: #16A085;
+        }
+
+        .bridge-photo-marker.is-mapillary span {
+            color: #2ECC71;
+        }
+
+        .bridge-source-controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 7px;
+        }
+
+        .bridge-source-toggle {
+            display: grid;
+            grid-template-columns: 12px 1fr auto;
+            align-items: center;
+            gap: 8px;
+            min-height: 34px;
+            border: 1px solid #dfe6e9;
+            border-radius: 7px;
+            background: #ffffff;
+            color: #5b6770;
+            padding: 7px 9px;
+            font-family: inherit;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.16s, background 0.16s, color 0.16s;
+        }
+
+        .bridge-source-toggle:hover {
+            border-color: #0E7490;
+            background: #f3fafb;
+        }
+
+        .bridge-source-toggle.is-active {
+            border-color: #0E7490;
+            color: #2C3E50;
+            background: #eefbfc;
+        }
+
+        .bridge-source-toggle:not(.is-active) {
+            opacity: 0.62;
+        }
+
+        .bridge-source-toggle.is-disabled-by-layer {
+            opacity: 0.5;
+        }
+
+        .bridge-source-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #95A5A6;
+        }
+
+        .bridge-source-dot--panoramax {
+            background: #16A085;
+        }
+
+        .bridge-source-dot--mapillary {
+            background: #2ECC71;
+        }
+
+        .bridge-source-count {
+            font-family: 'JetBrains Mono', monospace;
+            color: #2C3E50;
+        }
+
+        .bridge-zoom-hint {
+            margin-top: 8px;
+            padding: 7px 8px;
+            border-radius: 6px;
+            background: #eef6f8;
+            color: #60717c;
+            font-size: 0.7rem;
+            line-height: 1.35;
+        }
+
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -886,6 +1208,25 @@
         .route-popup a:hover {
             transform: translateX(3px);
             opacity: 0.8;
+        }
+
+        .bridge-popup {
+            max-width: 380px;
+        }
+
+        .bridge-photo-popup-img,
+        .bridge-photo-popup-placeholder {
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            object-fit: cover;
+            border-radius: 6px;
+            background: #eef2f5;
+            color: #2C3E50;
+            font-weight: 700;
+            margin-bottom: 8px;
         }
 
         .controls {
@@ -1646,6 +1987,7 @@
         .legend-family[data-family="factual"]  { --family-accent: var(--family-factual);  --family-tint: rgba(44, 62, 80, 0.05); }
         .legend-family[data-family="stats"]    { --family-accent: var(--family-stats);    --family-tint: rgba(142, 68, 173, 0.05); }
         .legend-family[data-family="realtime"] { --family-accent: var(--family-realtime); --family-tint: rgba(230, 126, 34, 0.05); }
+        .legend-family[data-family="bridges"]  { --family-accent: var(--family-bridges);  --family-tint: rgba(14, 116, 144, 0.06); }
         .legend-family[data-family="tools"]    { --family-accent: var(--family-tools);    --family-tint: rgba(22, 160, 133, 0.05); }
 
         .legend-family-header {

@@ -67,6 +67,17 @@ QUERIES = {
         >;
         out geom;
     """,
+    "bridges": """
+        [out:json][timeout:120];
+        area["ISO3166-2"="FR-84"]->.dept;
+        (
+          way(area.dept)["man_made"="bridge"];
+          way(area.dept)["bridge:support"];
+          way(area.dept)["bridge:structure"];
+          relation(area.dept)["man_made"="bridge"];
+        );
+        out tags geom;
+    """,
 }
 
 
@@ -130,6 +141,34 @@ def way_to_feature(element: dict[str, Any], extra_properties: dict[str, Any] | N
     }
 
 
+def way_to_area_or_line_feature(element: dict[str, Any], extra_properties: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    coordinates = [
+        [point["lon"], point["lat"]]
+        for point in element.get("geometry", [])
+        if "lon" in point and "lat" in point
+    ]
+
+    if len(coordinates) < 2:
+        return None
+
+    properties = element_properties(element)
+    if extra_properties:
+        properties.update(extra_properties)
+
+    is_closed = len(coordinates) >= 4 and point_key(coordinates[0]) == point_key(coordinates[-1])
+    geometry = {
+        "type": "Polygon" if is_closed else "LineString",
+        "coordinates": [coordinates] if is_closed else coordinates,
+    }
+
+    return {
+        "type": "Feature",
+        "id": properties["@id"],
+        "geometry": geometry,
+        "properties": properties,
+    }
+
+
 def assemble_rings(segments: list[list[list[float]]]) -> list[list[list[float]]]:
     pending = [segment[:] for segment in segments if len(segment) >= 2]
     rings: list[list[list[float]]] = []
@@ -184,7 +223,10 @@ def relation_member_segments(relation: dict[str, Any], role: str) -> list[list[l
     return segments
 
 
-def relation_to_polygon_feature(relation: dict[str, Any]) -> dict[str, Any] | None:
+def relation_to_polygon_feature(
+    relation: dict[str, Any],
+    extra_properties: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
     outer_rings = assemble_rings(relation_member_segments(relation, "outer"))
     inner_rings = assemble_rings(relation_member_segments(relation, "inner"))
 
@@ -192,6 +234,8 @@ def relation_to_polygon_feature(relation: dict[str, Any]) -> dict[str, Any] | No
         return None
 
     properties = element_properties(relation)
+    if extra_properties:
+        properties.update(extra_properties)
 
     if len(outer_rings) == 1:
         geometry = {
@@ -356,11 +400,54 @@ def bicycle_routes_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     return collection(features, len(elements))
 
 
+def bridge_role(tags: dict[str, Any]) -> str:
+    support = tags.get("bridge:support")
+    if support:
+        normalized = str(support).strip().lower()
+        if normalized == "pier":
+            return "pillar"
+        if normalized in {"abutement", "abutted", "abucted", "abutmentq"}:
+            return "abutment"
+        return normalized
+    if tags.get("man_made") == "bridge":
+        return "deck"
+    if tags.get("bridge:structure"):
+        return "structure"
+    return "bridge"
+
+
+def bridge_features_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    features: list[dict[str, Any]] = []
+
+    for element in data.get("elements", []):
+        tags = element.get("tags") or {}
+        if not (
+            tags.get("man_made") == "bridge"
+            or tags.get("bridge:support")
+            or tags.get("bridge:structure")
+        ):
+            continue
+
+        extra_properties = {"bridge_role": bridge_role(tags)}
+        if element.get("type") == "way":
+            feature = way_to_area_or_line_feature(element, extra_properties)
+        elif element.get("type") == "relation" and tags.get("man_made") == "bridge":
+            feature = relation_to_polygon_feature(element, extra_properties)
+        else:
+            feature = None
+
+        if feature:
+            features.append(feature)
+
+    return collection(features, len(data.get("elements", [])))
+
+
 CONVERTERS = {
     "departmental-roads": departmental_roads_to_geojson,
     "construction-roads": construction_roads_to_geojson,
     "communes-vaucluse": communes_to_geojson,
     "bicycle-routes": bicycle_routes_to_geojson,
+    "bridges": bridge_features_to_geojson,
 }
 
 
