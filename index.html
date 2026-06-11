@@ -50,12 +50,19 @@
         <div class="main-content">
             <div class="sidebar">
                 <section class="legend-family" data-family="factual" data-expanded="false">
-                    <button class="legend-family-header" type="button" aria-expanded="false">
-                        <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></span>
-                        <span class="legend-family-label">Cartographie factuelle</span>
-                        <span class="legend-family-meta toggle-icon family-toggle-icon" role="button" tabindex="0" aria-label="Visibilité de la rubrique"></span>
-                        <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </button>
+                    <div class="legend-family-header">
+                        <button class="legend-family-expand" type="button" aria-expanded="false">
+                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></span>
+                            <span class="legend-family-label">Cartographie factuelle</span>
+                        </button>
+                        <button class="legend-family-vis" type="button" aria-label="Visibilité de la rubrique">
+                            <span class="family-eye-icon toggle-icon"></span>
+                            <span class="family-vis-count"></span>
+                        </button>
+                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
+                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
+                        </button>
+                    </div>
                     <div class="legend-family-body">
                 <div class="legend-section">
                     <div class="legend-title">Territoire</div>
@@ -71,7 +78,7 @@
                 <div class="legend-section">
                     <div class="legend-title" onclick="toggleAllHierarchy()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
                         <span>Hiérarchie du Réseau</span>
-                        <span id="hierarchyToggleIcon" class="toggle-icon layer-toggle-icon"></span>
+                        <span id="hierarchyToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
                     <span class="freshness-badge" id="freshness-hierarchy" data-schedule-key="osm"></span>
                     
@@ -159,7 +166,7 @@
                 <div class="legend-section">
                     <div class="legend-title" onclick="toggleCities()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
                         <span>Villes Principales</span>
-                        <span id="citiesToggleIcon" class="toggle-icon layer-toggle-icon"></span>
+                        <span id="citiesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
 
                     <div class="legend-item" data-city="main" style="pointer-events: none;">
@@ -177,12 +184,19 @@
                 </section>
 
                 <section class="legend-family" data-family="stats" data-expanded="false">
-                    <button class="legend-family-header" type="button" aria-expanded="false">
-                        <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>
-                        <span class="legend-family-label">Données statistiques</span>
-                        <span class="legend-family-meta toggle-icon family-toggle-icon" role="button" tabindex="0" aria-label="Visibilité de la rubrique"></span>
-                        <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </button>
+                    <div class="legend-family-header">
+                        <button class="legend-family-expand" type="button" aria-expanded="false">
+                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span>
+                            <span class="legend-family-label">Données statistiques</span>
+                        </button>
+                        <button class="legend-family-vis" type="button" aria-label="Visibilité de la rubrique">
+                            <span class="family-eye-icon toggle-icon"></span>
+                            <span class="family-vis-count"></span>
+                        </button>
+                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
+                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
+                        </button>
+                    </div>
                     <div class="legend-family-body">
                 <div class="legend-section">
                     <div class="legend-title" onclick="toggleAccidents()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
@@ -240,12 +254,19 @@
                 </section>
 
                 <section class="legend-family" data-family="realtime" data-expanded="false">
-                    <button class="legend-family-header" type="button" aria-expanded="false">
-                        <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
-                        <span class="legend-family-label">Temps réel</span>
-                        <span class="legend-family-meta toggle-icon family-toggle-icon" role="button" tabindex="0" aria-label="Visibilité de la rubrique"></span>
-                        <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </button>
+                    <div class="legend-family-header">
+                        <button class="legend-family-expand" type="button" aria-expanded="false">
+                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+                            <span class="legend-family-label">Temps réel</span>
+                        </button>
+                        <button class="legend-family-vis" type="button" aria-label="Visibilité de la rubrique">
+                            <span class="family-eye-icon toggle-icon"></span>
+                            <span class="family-vis-count"></span>
+                        </button>
+                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
+                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
+                        </button>
+                    </div>
                     <div class="legend-family-body">
                 <div class="legend-section">
                     <div class="legend-title" onclick="toggleBisonFute()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; font-weight: 600;">
@@ -277,12 +298,19 @@
                 </section>
 
                 <section class="legend-family" data-family="incubator" data-expanded="false">
-                    <button class="legend-family-header" type="button" aria-expanded="false">
-                        <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg></span>
-                        <span class="legend-family-label">Incubateur</span>
-                        <span class="legend-family-meta toggle-icon family-toggle-icon" role="button" tabindex="0" aria-label="Visibilité de la rubrique"></span>
-                        <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </button>
+                    <div class="legend-family-header">
+                        <button class="legend-family-expand" type="button" aria-expanded="false">
+                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg></span>
+                            <span class="legend-family-label">Incubateur</span>
+                        </button>
+                        <button class="legend-family-vis" type="button" aria-label="Visibilité de la rubrique">
+                            <span class="family-eye-icon toggle-icon"></span>
+                            <span class="family-vis-count"></span>
+                        </button>
+                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
+                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
+                        </button>
+                    </div>
                     <div class="legend-family-body">
                 <div class="legend-section">
                     <div class="legend-title" onclick="window.toggleBridges && window.toggleBridges();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
@@ -330,12 +358,15 @@
                 </section>
 
                 <section class="legend-family" data-family="tools" data-expanded="false">
-                    <button class="legend-family-header" type="button" aria-expanded="false">
-                        <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
-                        <span class="legend-family-label">Outils &amp; méta</span>
-                        <span class="legend-family-meta"></span>
-                        <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
-                    </button>
+                    <div class="legend-family-header">
+                        <button class="legend-family-expand" type="button" aria-expanded="false">
+                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
+                            <span class="legend-family-label">Outils &amp; méta</span>
+                        </button>
+                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
+                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
+                        </button>
+                    </div>
                     <div class="legend-family-body">
                 <div class="legend-section">
                     <div class="legend-title">Rechercher une Route</div>

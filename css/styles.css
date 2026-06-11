@@ -1534,16 +1534,63 @@
             height: 18px;
         }
 
-        .family-toggle-icon {
-            width: 30px;
-            height: 30px;
+        .legend-family-vis {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+            margin: 0;
+            padding: 3px 8px 3px 4px;
+            border: 1px solid rgba(0, 0, 0, 0.07);
+            border-radius: 8px;
+            background: #fff;
             cursor: pointer;
-            color: #2C3E50;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #7f8c8d;
+            line-height: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            transition: background 0.18s ease, border-color 0.18s ease;
         }
 
-        .family-toggle-icon .eye-glyph {
-            width: 19px;
-            height: 19px;
+        .legend-family-vis:hover {
+            background: rgba(44, 62, 80, 0.06);
+            border-color: rgba(44, 62, 80, 0.14);
+        }
+
+        .family-eye-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .family-eye-icon .eye-glyph {
+            width: 17px;
+            height: 17px;
+        }
+
+        .family-vis-count {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0;
+            min-width: 2.2em;
+            letter-spacing: 0;
+        }
+
+        .family-vis-count strong {
+            color: #2C3E50;
+            font-weight: 700;
+        }
+
+        .family-vis-sep {
+            opacity: 0.45;
+            margin: 0 1px;
+        }
+
+        .legend-family-vis:has(.family-eye-icon.is-hidden) .family-vis-count strong {
+            color: #95a5a6;
         }
 
         .toggle-icon.is-open {
@@ -1559,9 +1606,7 @@
         }
 
         .legend-title:hover .layer-toggle-icon,
-        .family-toggle-icon:hover {
-            background: rgba(44, 62, 80, 0.06);
-            border-color: rgba(44, 62, 80, 0.12);
+        .family-eye-icon:hover {
             transform: scale(1.04);
         }
 
@@ -1569,7 +1614,7 @@
             transform: scale(0.96);
         }
 
-        .family-toggle-icon:focus-visible,
+        .legend-family-vis:focus-visible,
         .layer-toggle-icon:focus-visible {
             outline: 2px solid rgba(44, 62, 80, 0.3);
             outline-offset: 1px;
@@ -2026,9 +2071,14 @@
         .legend-family-header {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 2px;
             width: 100%;
-            padding: 10px 14px;
+        }
+
+        .legend-family-expand,
+        .legend-family-chevron-btn {
+            display: inline-flex;
+            align-items: center;
             border: none;
             background: transparent;
             cursor: pointer;
@@ -2042,7 +2092,22 @@
             transition: background 0.18s;
         }
 
-        .legend-family-header:hover {
+        .legend-family-expand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+            padding: 10px 0 10px 14px;
+        }
+
+        .legend-family-chevron-btn {
+            padding: 10px 14px 10px 4px;
+            flex-shrink: 0;
+        }
+
+        .legend-family-expand:hover,
+        .legend-family-chevron-btn:hover {
             background: var(--family-tint);
         }
 
@@ -2070,15 +2135,6 @@
             text-overflow: ellipsis;
         }
 
-        .legend-family-meta.family-toggle-icon {
-            margin-left: auto;
-            flex-shrink: 0;
-        }
-
-        .legend-family-header:hover .family-toggle-icon {
-            background: rgba(44, 62, 80, 0.06);
-            border-color: rgba(44, 62, 80, 0.12);
-        }
 
         .legend-family-chevron {
             display: inline-flex;

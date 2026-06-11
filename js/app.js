@@ -25,14 +25,22 @@
             iconElement.classList.toggle('is-open', visible && !isPartial);
             iconElement.dataset.visState = !visible ? 'closed' : (isPartial ? 'partial' : 'open');
 
-            iconElement.setAttribute('role', family ? 'button' : 'img');
+            const isFamilyEyeGlyph = family && iconElement.classList.contains('family-eye-icon');
+            if (iconElement.tagName === 'BUTTON' || isFamilyEyeGlyph) {
+                iconElement.removeAttribute('role');
+                if (isFamilyEyeGlyph) {
+                    iconElement.setAttribute('aria-hidden', 'true');
+                }
+            } else {
+                iconElement.setAttribute('role', family ? 'button' : 'img');
+            }
 
-            if (family) {
+            if (family && !isFamilyEyeGlyph) {
                 const stateLabel = isPartial
                     ? 'Rubrique partiellement visible'
                     : (visible ? 'Rubrique visible' : 'Rubrique masquée');
                 iconElement.setAttribute('aria-label', `${stateLabel} (cliquer pour ${visible ? 'tout masquer' : 'tout afficher'})`);
-            } else {
+            } else if (!family) {
                 const stateLabel = isPartial
                     ? 'Couche partiellement visible'
                     : (visible ? 'Couche visible' : 'Couche masquée');
@@ -302,25 +310,34 @@
 
         function refreshFamilyMeta(fam) {
             if (!fam) return;
-            const meta = fam.querySelector('.legend-family-meta');
-            if (!meta) return;
+            const visBtn = fam.querySelector('.legend-family-vis');
+            if (!visBtn) return;
 
             const counts = getFamilyLayerCounts(fam.dataset.family);
-            if (!counts || !meta.classList.contains('family-toggle-icon')) {
-                if (meta.classList.contains('family-toggle-icon')) {
-                    meta.innerHTML = '';
-                    meta.hidden = true;
-                }
+            if (!counts) {
+                visBtn.hidden = true;
                 return;
             }
 
-            meta.hidden = false;
+            visBtn.hidden = false;
             const { visible, total } = counts;
             const anyVisible = visible > 0;
             const partial = anyVisible && visible < total;
             const label = visible > 1 ? 'couches visibles' : 'couche visible';
-            setToggleIcon(meta, anyVisible, { family: true, partial });
-            meta.setAttribute('title', `${visible} ${label} sur ${total} — cliquer pour ${anyVisible ? 'tout masquer' : 'tout afficher'}`);
+            const eye = visBtn.querySelector('.family-eye-icon');
+            const countEl = visBtn.querySelector('.family-vis-count');
+
+            setToggleIcon(eye, anyVisible, { family: true, partial });
+            if (countEl) {
+                countEl.innerHTML = `<strong>${visible}</strong><span class="family-vis-sep">/</span>${total}`;
+            }
+
+            const action = anyVisible ? 'tout masquer' : 'tout afficher';
+            const stateLabel = partial
+                ? 'Rubrique partiellement visible'
+                : (anyVisible ? 'Rubrique visible' : 'Rubrique masquée');
+            visBtn.setAttribute('title', `${visible} ${label} sur ${total} — cliquer pour ${action}`);
+            visBtn.setAttribute('aria-label', `${stateLabel} — ${visible}/${total} — cliquer pour ${action}`);
         }
 
         function ensureHierarchyVisibility(targetVisible) {
@@ -402,26 +419,26 @@
         function setupLegendFamilies() {
             document.querySelectorAll('.legend-family').forEach(fam => {
                 refreshFamilyMeta(fam);
-                const header = fam.querySelector('.legend-family-header');
-                const familyEye = fam.querySelector('.family-toggle-icon');
-                if (!header) return;
-                header.addEventListener('click', (event) => {
-                    if (event.target.closest('.family-toggle-icon')) return;
+                const expandBtn = fam.querySelector('.legend-family-expand');
+                const chevronBtn = fam.querySelector('.legend-family-chevron-btn');
+                const familyVisBtn = fam.querySelector('.legend-family-vis');
+
+                const toggleExpanded = () => {
                     const isExpanded = fam.dataset.expanded !== 'false';
                     const nextExpanded = !isExpanded;
                     fam.dataset.expanded = nextExpanded ? 'true' : 'false';
-                    header.setAttribute('aria-expanded', String(nextExpanded));
-                });
-                if (familyEye) {
-                    const activateFamilyEye = (event) => {
-                        event.preventDefault();
+                    const expandedValue = String(nextExpanded);
+                    expandBtn?.setAttribute('aria-expanded', expandedValue);
+                    chevronBtn?.setAttribute('aria-expanded', expandedValue);
+                };
+
+                expandBtn?.addEventListener('click', toggleExpanded);
+                chevronBtn?.addEventListener('click', toggleExpanded);
+
+                if (familyVisBtn) {
+                    familyVisBtn.addEventListener('click', (event) => {
                         event.stopPropagation();
                         toggleFamilyVisibility(fam.dataset.family);
-                    };
-                    familyEye.addEventListener('click', activateFamilyEye);
-                    familyEye.addEventListener('keydown', (event) => {
-                        if (event.key !== 'Enter' && event.key !== ' ') return;
-                        activateFamilyEye(event);
                     });
                 }
             });
@@ -936,14 +953,14 @@
         let bisonFuteMarkers = [];
         let bisonFuteVisible = false;
         let cityMarkers = [];
-        let citiesVisible = true;
+        let citiesVisible = false;
         const dataRefreshState = {};
         
         // Visibility state per hierarchy level
         let hierarchyVisibility = {
-            regional: true,
-            territorial: true,
-            local: true
+            regional: false,
+            territorial: false,
+            local: false
         };
 
         function getFamilyLayerCounts(familyId) {
@@ -2006,8 +2023,8 @@
         // Wait until everything is loaded (DOM + Leaflet)
         window.addEventListener('DOMContentLoaded', function() {
         
-        // Initialize map centered on Vaucluse
-        window.map = L.map('map').setView([44.0, 5.1], 10);
+        // Initialize map centered on Vaucluse (refined after boundary load)
+        window.map = L.map('map').setView([44.05, 5.15], 11);
 
         // Plain CartoDB Positron basemap
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -2086,8 +2103,8 @@
                     }
                 }).addTo(window.map);
                 
-                // Fit view to the department
-                map.fitBounds(boundaryLayer.getBounds(), { padding: [20, 20] });
+                // Fit view to the department, slightly zoomed in
+                map.fitBounds(boundaryLayer.getBounds(), { padding: [14, 14], maxZoom: 11 });
                 
                 console.log('✓ Limite départementale chargée depuis le GeoJSON local');
                 
@@ -2194,7 +2211,11 @@
                                     roadHierarchy: hierarchy,
                                     wayTags: way.tags || {},
                                     wayId: way.id
-                                }).addTo(window.map);
+                                });
+
+                                if (hierarchyVisibility[hierarchy]) {
+                                    polyline.addTo(window.map);
+                                }
 
                                 // Store polyline by route reference
                                 if (!routePolylines[ref]) {
@@ -2471,6 +2492,9 @@
                             }
                         });
                     }
+
+                    // Sync map + legend with default hidden layers
+                    updateHierarchyDisplay();
 
                     // Initialize label display
                     updateRouteLabels();
@@ -5196,11 +5220,19 @@
                 weight: 2,
                 opacity: 1,
                 fillOpacity: 0.9
-            }).addTo(window.map).bindPopup(`<strong>${city.name}</strong>`);
+            }).bindPopup(`<strong>${city.name}</strong>`);
 
-            // Store for visibility toggle
             cityMarkers.push(cityMarker);
+            if (citiesVisible) {
+                cityMarker.addTo(window.map);
+            }
         });
+
+        if (!citiesVisible) {
+            document.querySelectorAll('[data-city]').forEach(item => {
+                item.style.opacity = '0.5';
+            });
+        }
 
         // Legend click handling (hierarchy only, if no inline handler)
         document.querySelectorAll('.legend-item[data-hierarchy]').forEach(item => {
