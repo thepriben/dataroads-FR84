@@ -409,6 +409,7 @@
                     break;
             }
             syncLegendChrome();
+            if (!suppressAppUrlSync) syncAppUrlState();
         }
 
         function toggleFamilyVisibility(familyId) {
@@ -1040,9 +1041,11 @@
             if (trafficVisible) active.push('traffic');
             if (wazeEnabled) active.push('waze');
             if (bisonFuteVisible) active.push('bison');
-            if (bridgeVisible) active.push('bridges');
-            if (bridgePhotoProviderVisibility.panoramax) active.push('pnx');
-            if (bridgePhotoProviderVisibility.mapillary) active.push('mly');
+            if (bridgeVisible) {
+                active.push('bridges');
+                if (bridgePhotoProviderVisibility.panoramax) active.push('pnx');
+                if (bridgePhotoProviderVisibility.mapillary) active.push('mly');
+            }
             return active;
         }
 
@@ -1596,7 +1599,7 @@
             V861: { label: 'Via Venaissia', colour: '#59D422', weight: 5 }
         };
         const BICYCLE_STRUCTURANTE_PRIORITY = ['EV17', 'EV8', 'V861'];
-        const BICYCLE_LOCAL_STYLE = { colour: '#C8CDD3', weight: 2, opacity: 0.35 };
+        const BICYCLE_LOCAL_STYLE = { colour: '#6C5CE7', weight: 4, opacity: 0.88, dashArray: '8, 5' };
 
         function buildBicycleRelationIdToRef(bicycleWays) {
             const relationIdToRef = new Map();
@@ -1645,6 +1648,7 @@
                 colour: BICYCLE_LOCAL_STYLE.colour,
                 weight: BICYCLE_LOCAL_STYLE.weight,
                 opacity: BICYCLE_LOCAL_STYLE.opacity,
+                dashArray: BICYCLE_LOCAL_STYLE.dashArray,
                 structuranteRef: ''
             };
         }
@@ -1757,7 +1761,8 @@
             const polyline = L.polyline(coords, {
                 color: style.colour,
                 weight: style.weight,
-                opacity: style.opacity
+                opacity: style.opacity,
+                dashArray: style.dashArray || null
             }).addTo(window.map);
 
             bicyclePolylines.push(polyline);
@@ -1782,14 +1787,15 @@
             polyline.bindPopup(popupContent);
             polyline.on('mouseover', function() {
                 this.setStyle({
-                    weight: style.weight + (style.structuranteRef ? 2 : 1),
+                    weight: style.weight + (style.structuranteRef ? 2 : 2),
                     opacity: 1
                 });
             });
             polyline.on('mouseout', function() {
                 this.setStyle({
                     weight: style.weight,
-                    opacity: style.opacity
+                    opacity: style.opacity,
+                    dashArray: style.dashArray || null
                 });
             });
 
