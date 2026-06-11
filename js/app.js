@@ -306,6 +306,7 @@
         function syncLegendChrome() {
             syncFreshnessBadgeVisibility();
             document.querySelectorAll('.legend-family').forEach(refreshFamilyMeta);
+            scheduleAppUrlSync();
         }
 
         function refreshFamilyMeta(fam) {
@@ -962,6 +963,249 @@
             territorial: false,
             local: false
         };
+
+        // ========== URL STATE (view, families, layers) ==========
+
+        const APP_URL_HIERARCHY_KEYS = {
+            hr: 'regional',
+            ht: 'territorial',
+            hl: 'local'
+        };
+
+        const APP_URL_FAMILY_IDS = ['factual', 'stats', 'realtime', 'incubator'];
+
+        function parseAppUrlState() {
+            const params = new URLSearchParams(window.location.search);
+            const state = { families: [], layers: [], layersExplicit: false };
+
+            const z = Number.parseFloat(params.get('z') || '');
+            const lat = Number.parseFloat(params.get('lat') || '');
+            const lng = Number.parseFloat(params.get('lng') || '');
+            if (Number.isFinite(z) && Number.isFinite(lat) && Number.isFinite(lng)) {
+                state.view = { z, lat, lng };
+            }
+
+            if (params.has('ly')) {
+                state.layersExplicit = true;
+                state.layers = params.get('ly')
+                    .split(',')
+                    .map(value => value.trim())
+                    .filter(Boolean);
+            }
+
+            const fam = params.get('fam');
+            if (fam) {
+                state.families = fam
+                    .split(',')
+                    .map(value => value.trim())
+                    .filter(id => APP_URL_FAMILY_IDS.includes(id));
+            }
+
+            if (!state.view && !state.layersExplicit && !state.families.length) return null;
+            return state;
+        }
+
+        function appUrlHasView(state) {
+            return !!(state?.view && Number.isFinite(state.view.z));
+        }
+
+        let suppressAppUrlSync = false;
+        let appUrlSyncTimer = null;
+        let appUrlStateApplied = false;
+        let appUrlLayersPending = null;
+        let appUrlFamiliesPending = null;
+
+        function initAppUrlStateFromLocation() {
+            const state = parseAppUrlState();
+            appUrlLayersPending = null;
+            appUrlFamiliesPending = null;
+            if (!state) return;
+            if (state.layersExplicit) appUrlLayersPending = new Set(state.layers);
+            else if (state.families.length) appUrlFamiliesPending = state.families.slice();
+        }
+
+        initAppUrlStateFromLocation();
+
+        function collectActiveAppUrlLayers() {
+            const active = [];
+            Object.entries(APP_URL_HIERARCHY_KEYS).forEach(([key, hierarchy]) => {
+                if (hierarchyVisibility[hierarchy]) active.push(key);
+            });
+            if (constructionVisible) active.push('construction');
+            if (bicycleVisible) active.push('bicycle');
+            if (citiesVisible) active.push('cities');
+            if (limitationsMode) active.push('limits');
+            if (accidentsVisible) active.push('accidents');
+            if (trafficVisible) active.push('traffic');
+            if (wazeEnabled) active.push('waze');
+            if (bisonFuteVisible) active.push('bison');
+            if (bridgeVisible) active.push('bridges');
+            if (bridgePhotoProviderVisibility.panoramax) active.push('pnx');
+            if (bridgePhotoProviderVisibility.mapillary) active.push('mly');
+            return active;
+        }
+
+        function collectActiveAppUrlFamilies() {
+            return APP_URL_FAMILY_IDS.filter(familyId => {
+                const counts = getFamilyLayerCounts(familyId);
+                return counts && counts.visible > 0;
+            });
+        }
+
+        function syncAppUrlState() {
+            if (suppressAppUrlSync || !window.map) return;
+
+            const center = window.map.getCenter();
+            const params = new URLSearchParams();
+            params.set('z', window.map.getZoom().toFixed(2));
+            params.set('lat', center.lat.toFixed(4));
+            params.set('lng', center.lng.toFixed(4));
+
+            const layers = collectActiveAppUrlLayers();
+            params.set('ly', layers.join(','));
+
+            const families = collectActiveAppUrlFamilies();
+            if (families.length) params.set('fam', families.join(','));
+
+            const next = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+            if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
+                window.history.replaceState(null, '', next);
+            }
+        }
+
+        function scheduleAppUrlSync() {
+            if (suppressAppUrlSync) return;
+            clearTimeout(appUrlSyncTimer);
+            appUrlSyncTimer = setTimeout(syncAppUrlState, 350);
+        }
+
+        function setHierarchyLevelIfNeeded(hierarchy, desired) {
+            if (hierarchyVisibility[hierarchy] === desired) return;
+            hierarchyVisibility[hierarchy] = desired;
+        }
+
+        function setBooleanLayerIfNeeded(current, desired, toggleFn) {
+            if (current === desired || typeof toggleFn !== 'function') return;
+            toggleFn();
+        }
+
+        function setBridgeProviderIfNeeded(provider, desired) {
+            if (bridgePhotoProviderVisibility[provider] === desired) return;
+            if (typeof window.toggleBridgePhotoProvider === 'function') {
+                window.toggleBridgePhotoProvider(provider);
+            }
+        }
+
+        function applyAppUrlHierarchyFromSet(wanted) {
+            Object.entries(APP_URL_HIERARCHY_KEYS).forEach(([key, hierarchy]) => {
+                setHierarchyLevelIfNeeded(hierarchy, wanted.has(key));
+            });
+            if (typeof window.updateHierarchyDisplay === 'function') {
+                window.updateHierarchyDisplay();
+            }
+        }
+
+        function applyAppUrlLayerKey(key, wanted) {
+            const desired = wanted.has(key);
+            switch (key) {
+                case 'hr':
+                case 'ht':
+                case 'hl':
+                    return true;
+                case 'construction':
+                    setBooleanLayerIfNeeded(constructionVisible, desired, window.toggleConstruction);
+                    return !desired || constructionPolylines.length > 0;
+                case 'bicycle':
+                    setBooleanLayerIfNeeded(bicycleVisible, desired, window.toggleBicycleRoutes);
+                    return !desired || bicyclePolylines.length > 0;
+                case 'cities':
+                    setBooleanLayerIfNeeded(citiesVisible, desired, window.toggleCities);
+                    return true;
+                case 'limits':
+                    setBooleanLayerIfNeeded(limitationsMode, desired, window.toggleLimitationsMode);
+                    return true;
+                case 'accidents':
+                    setBooleanLayerIfNeeded(accidentsVisible, desired, window.toggleAccidents);
+                    return !desired || accidentMarkers.length > 0;
+                case 'traffic':
+                    setBooleanLayerIfNeeded(trafficVisible, desired, window.toggleTraffic);
+                    return !desired || trafficMarkers.length > 0;
+                case 'waze':
+                    if (wazeEnabled !== desired && typeof toggleWazeTraffic === 'function') toggleWazeTraffic();
+                    return !desired || trafficMarkers.length > 0;
+                case 'bison':
+                    setBooleanLayerIfNeeded(bisonFuteVisible, desired, window.toggleBisonFute);
+                    return !desired || bisonFuteMarkers.length > 0;
+                case 'bridges':
+                    setBooleanLayerIfNeeded(bridgeVisible, desired, window.toggleBridges);
+                    return !desired || bridgeDataLoaded;
+                case 'pnx':
+                    if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
+                    setBridgeProviderIfNeeded('panoramax', desired);
+                    return !desired || bridgeDataLoaded;
+                case 'mly':
+                    if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
+                    setBridgeProviderIfNeeded('mapillary', desired);
+                    return !desired || bridgeDataLoaded;
+                default:
+                    return true;
+            }
+        }
+
+        function applyAppUrlLayersFromSet(wanted) {
+            applyAppUrlHierarchyFromSet(wanted);
+
+            const pendingKeys = ['construction', 'bicycle', 'cities', 'limits', 'accidents', 'traffic', 'waze', 'bison', 'bridges', 'pnx', 'mly'];
+            let allReady = true;
+            pendingKeys.forEach(key => {
+                if (!applyAppUrlLayerKey(key, wanted)) allReady = false;
+            });
+            return allReady;
+        }
+
+        function applyAppUrlView(state) {
+            if (!appUrlHasView(state) || !window.map) return;
+            window.map.setView([state.view.lat, state.view.lng], state.view.z, { animate: false });
+        }
+
+        function tryApplyAppUrlState() {
+            if (appUrlStateApplied || !window.map) return;
+
+            const state = parseAppUrlState();
+            if (!state) {
+                appUrlStateApplied = true;
+                return;
+            }
+
+            suppressAppUrlSync = true;
+            try {
+                if (appUrlHasView(state)) applyAppUrlView(state);
+
+                if (appUrlLayersPending) {
+                    if (!window.routePolylines) return;
+                    const ready = applyAppUrlLayersFromSet(appUrlLayersPending);
+                    if (!ready) return;
+                    appUrlLayersPending = null;
+                } else if (appUrlFamiliesPending?.length) {
+                    if (!window.routePolylines) return;
+                    appUrlFamiliesPending.forEach(familyId => setFamilyVisibility(familyId, true));
+                    appUrlFamiliesPending = null;
+                }
+
+                appUrlStateApplied = true;
+            } finally {
+                suppressAppUrlSync = false;
+                if (appUrlStateApplied) scheduleAppUrlSync();
+            }
+        }
+
+        window.addEventListener('popstate', () => {
+            appUrlStateApplied = false;
+            appUrlLayersPending = null;
+            appUrlFamiliesPending = null;
+            initAppUrlStateFromLocation();
+            tryApplyAppUrlState();
+        });
 
         function getFamilyLayerCounts(familyId) {
             switch (familyId) {
@@ -2024,7 +2268,13 @@
         window.addEventListener('DOMContentLoaded', function() {
         
         // Initialize map centered on Vaucluse (refined after boundary load)
-        window.map = L.map('map').setView([44.05, 5.15], 12);
+        const launchUrlState = parseAppUrlState();
+        const launchCenter = appUrlHasView(launchUrlState)
+            ? [launchUrlState.view.lat, launchUrlState.view.lng]
+            : [44.05, 5.15];
+        const launchZoom = appUrlHasView(launchUrlState) ? launchUrlState.view.z : 13;
+        window.map = L.map('map').setView(launchCenter, launchZoom);
+        window.map.on('moveend zoomend', scheduleAppUrlSync);
 
         // Plain CartoDB Positron basemap
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -2103,9 +2353,13 @@
                     }
                 }).addTo(window.map);
                 
-                // Fit view to the department, slightly zoomed in
-                map.fitBounds(boundaryLayer.getBounds(), { padding: [8, 8], maxZoom: 12 });
-                map.setZoom(Math.min(map.getZoom() + 1, 12));
+                // Fit view to the department unless the URL already defines the viewport
+                if (!appUrlHasView(parseAppUrlState())) {
+                    map.fitBounds(boundaryLayer.getBounds(), { padding: [6, 6], maxZoom: 13 });
+                    map.setZoom(Math.min(map.getZoom() + 1, 13));
+                }
+                tryApplyAppUrlState();
+                scheduleAppUrlSync();
                 
                 console.log('✓ Limite départementale chargée depuis le GeoJSON local');
                 
@@ -2489,6 +2743,7 @@
 
                     // Sync map + legend with default hidden layers
                     updateHierarchyDisplay();
+                    tryApplyAppUrlState();
 
                     // Initialize label display
                     updateRouteLabels();
@@ -4452,6 +4707,7 @@
                     syncBridgeLayersOnMap();
                     if (show) fitBridgeOverview();
                     console.log(`✓ ${bridgeGroups.length} groupe(s) de ponts chargés`);
+                    tryApplyAppUrlState();
                     return bridgeGroups;
                 } catch (error) {
                     console.error('Erreur chargement ponts:', error);
@@ -4763,6 +5019,7 @@
 
             // Refresh "Network Information" stats now that AADT values are known.
             if (typeof updateNetworkStats === 'function') updateNetworkStats();
+            tryApplyAppUrlState();
         }
 
         // Load accident data from local static GeoJSON
@@ -4885,7 +5142,7 @@
                         }
                     });
                 }
-                
+                tryApplyAppUrlState();
             } catch (error) {
                 console.error('Erreur lors du chargement de l\'accidentologie:', error);
             }
@@ -5026,6 +5283,7 @@
                 }
 
                 applyConstructionVisibleUi();
+                tryApplyAppUrlState();
             } catch (error) {
                 console.error('Erreur chargement routes en construction:', error);
                 document.getElementById('count-construction').textContent = '0';
@@ -5077,6 +5335,7 @@
                 });
 
                 applyBicycleVisibleUi();
+                tryApplyAppUrlState();
             } catch (error) {
                 console.error('Erreur chargement véloroutes:', error);
                 bicycleVisible = false;
@@ -5237,7 +5496,7 @@
                 } else {
                     console.log('ℹ️ Aucun événement Bison Futé dans la zone du Vaucluse actuellement');
                 }
-                
+                tryApplyAppUrlState();
             } catch (error) {
                 console.error('❌ Erreur lors du chargement Bison Futé:', error);
                 console.log('ℹ️ Bison Futé couvre principalement le RRN (autoroutes, nationales)');
