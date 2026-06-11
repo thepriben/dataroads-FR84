@@ -2489,6 +2489,11 @@
             : [44.05, 5.15];
         const launchZoom = appUrlHasView(launchUrlState) ? launchUrlState.view.z : 13;
         window.map = L.map('map').setView(launchCenter, launchZoom);
+        if (window.map.attributionControl) {
+            window.map.attributionControl.setPrefix(
+                '<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>'
+            );
+        }
         window.map.on('moveend zoomend', scheduleAppUrlSync);
 
         // Plain CartoDB Positron basemap
