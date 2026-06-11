@@ -1256,13 +1256,11 @@
                         visible: bisonFuteVisible ? 1 : 0,
                         total: 1
                     };
-                case 'incubator': {
-                    let visible = bridgeVisible ? 1 : 0;
-                    const total = 3;
-                    if (bridgeVisible && bridgePhotoProviderVisibility.panoramax) visible++;
-                    if (bridgeVisible && bridgePhotoProviderVisibility.mapillary) visible++;
-                    return { visible, total };
-                }
+                case 'incubator':
+                    return {
+                        visible: bridgeVisible ? 1 : 0,
+                        total: 1
+                    };
                 default:
                     return null;
             }
