@@ -19,7 +19,7 @@
             --family-factual: #2C3E50;
             --family-stats: #8E44AD;
             --family-realtime: #E67E22;
-            --family-bridges: #0E7490;
+            --family-incubator: #0E7490;
             --family-tools: #16A085;
         }
 
@@ -1505,41 +1505,74 @@
             }
         }
 
-        /* Layer visibility eye icon */
+        /* Layer / family visibility eye icon */
         .toggle-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: rgba(39, 174, 96, 0.12);
-            color: var(--success);
-            transition: color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #2C3E50;
+            transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
             flex-shrink: 0;
+            line-height: 0;
         }
 
-        .toggle-icon svg {
+        .toggle-icon .eye-glyph {
+            display: block;
+        }
+
+        .layer-toggle-icon {
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+        }
+
+        .layer-toggle-icon .eye-glyph {
             width: 18px;
             height: 18px;
-            display: block;
+        }
+
+        .family-toggle-icon {
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            color: #2C3E50;
+        }
+
+        .family-toggle-icon .eye-glyph {
+            width: 19px;
+            height: 19px;
+        }
+
+        .toggle-icon.is-open {
+            color: #2C3E50;
+        }
+
+        .toggle-icon.is-partial {
+            color: #566573;
         }
 
         .toggle-icon.is-hidden {
             color: #95A5A6;
-            background: rgba(149, 165, 166, 0.15);
         }
 
-        .legend-title:hover .toggle-icon {
-            transform: scale(1.12);
+        .legend-title:hover .layer-toggle-icon,
+        .family-toggle-icon:hover {
+            background: rgba(44, 62, 80, 0.06);
+            border-color: rgba(44, 62, 80, 0.12);
+            transform: scale(1.04);
         }
 
-        .legend-title:hover .toggle-icon:not(.is-hidden) {
-            background: rgba(39, 174, 96, 0.22);
+        .toggle-icon:active {
+            transform: scale(0.96);
         }
 
-        .legend-title:hover .toggle-icon.is-hidden {
-            background: rgba(149, 165, 166, 0.28);
+        .family-toggle-icon:focus-visible,
+        .layer-toggle-icon:focus-visible {
+            outline: 2px solid rgba(44, 62, 80, 0.3);
+            outline-offset: 1px;
         }
 
         .freshness-badge.is-layer-hidden .freshness-pill {
@@ -1987,7 +2020,7 @@
         .legend-family[data-family="factual"]  { --family-accent: var(--family-factual);  --family-tint: rgba(44, 62, 80, 0.05); }
         .legend-family[data-family="stats"]    { --family-accent: var(--family-stats);    --family-tint: rgba(142, 68, 173, 0.05); }
         .legend-family[data-family="realtime"] { --family-accent: var(--family-realtime); --family-tint: rgba(230, 126, 34, 0.05); }
-        .legend-family[data-family="bridges"]  { --family-accent: var(--family-bridges);  --family-tint: rgba(14, 116, 144, 0.06); }
+        .legend-family[data-family="incubator"] { --family-accent: var(--family-incubator); --family-tint: rgba(14, 116, 144, 0.06); }
         .legend-family[data-family="tools"]    { --family-accent: var(--family-tools);    --family-tint: rgba(22, 160, 133, 0.05); }
 
         .legend-family-header {
@@ -2037,80 +2070,14 @@
             text-overflow: ellipsis;
         }
 
-        .legend-family-meta {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            font-weight: 600;
-            text-transform: none;
-            letter-spacing: 0;
-            color: #7f8c8d;
-            background: white;
-            padding: 3px 8px;
-            border-radius: 10px;
-            border: 1px solid rgba(0, 0, 0, 0.06);
+        .legend-family-meta.family-toggle-icon {
+            margin-left: auto;
             flex-shrink: 0;
-            transition: border-color 0.2s ease, background 0.2s ease;
         }
 
-        .legend-family-meta.is-all-visible {
-            border-color: rgba(39, 174, 96, 0.25);
-            background: rgba(39, 174, 96, 0.06);
-        }
-
-        .legend-family-meta.is-partial-visible {
-            border-color: rgba(243, 156, 18, 0.25);
-            background: rgba(243, 156, 18, 0.06);
-        }
-
-        .legend-family-meta.is-none-visible {
-            color: #95a5a6;
-            background: #f4f6f7;
-        }
-
-        .layer-vis-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .layer-vis-dots {
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-        }
-
-        .layer-vis-dot {
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: #d5dbdb;
-            transition: background 0.2s ease, transform 0.2s ease;
-        }
-
-        .layer-vis-dot.is-on {
-            background: var(--family-accent, #7f8c8d);
-            transform: scale(1.15);
-        }
-
-        .legend-family-meta.is-all-visible .layer-vis-dot.is-on {
-            background: #27AE60;
-        }
-
-        .layer-vis-num strong {
-            color: var(--family-accent, #2C3E50);
-            font-weight: 700;
-        }
-
-        .legend-family-meta.is-none-visible .layer-vis-num strong {
-            color: #95a5a6;
-        }
-
-        .layer-vis-sep {
-            opacity: 0.45;
-            margin: 0 1px;
+        .legend-family-header:hover .family-toggle-icon {
+            background: rgba(44, 62, 80, 0.06);
+            border-color: rgba(44, 62, 80, 0.12);
         }
 
         .legend-family-chevron {

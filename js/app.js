@@ -10,16 +10,43 @@
 
         // Global functions exposed to inline HTML handlers
 
-        // SVG icons for open/closed eye toggles (Lucide style)
-        const EYE_OPEN_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
-        const EYE_CLOSED_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
+        // Shared eye icons for family (rubrique) and layer (couche) visibility toggles.
+        const EYE_OPEN_SVG = '<svg class="eye-glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1.5 12s4.6-7.5 10.5-7.5S22.5 12 22.5 12 17.9 19.5 12 19.5 1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>';
+        const EYE_PARTIAL_SVG = '<svg class="eye-glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M1.5 12s4.6-7.5 10.5-7.5S22.5 12 22.5 12 17.9 19.5 12 19.5 1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" opacity="0.45"/><path d="M8 12h8"/></svg>';
+        const EYE_CLOSED_SVG = '<svg class="eye-glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
-        function setToggleIcon(iconElement, visible) {
+        function setToggleIcon(iconElement, visible, options = {}) {
             if (!iconElement) return;
-            iconElement.innerHTML = visible ? EYE_OPEN_SVG : EYE_CLOSED_SVG;
+            const { family = false, partial = false } = options;
+            const isPartial = partial && visible;
+            iconElement.innerHTML = !visible ? EYE_CLOSED_SVG : (isPartial ? EYE_PARTIAL_SVG : EYE_OPEN_SVG);
             iconElement.classList.toggle('is-hidden', !visible);
-            iconElement.setAttribute('aria-label', visible ? 'Couche visible (cliquer pour masquer)' : 'Couche masquée (cliquer pour afficher)');
-            iconElement.setAttribute('title', visible ? 'Couche visible — cliquer pour masquer' : 'Couche masquée — cliquer pour afficher');
+            iconElement.classList.toggle('is-partial', isPartial);
+            iconElement.classList.toggle('is-open', visible && !isPartial);
+            iconElement.dataset.visState = !visible ? 'closed' : (isPartial ? 'partial' : 'open');
+
+            iconElement.setAttribute('role', family ? 'button' : 'img');
+
+            if (family) {
+                const stateLabel = isPartial
+                    ? 'Rubrique partiellement visible'
+                    : (visible ? 'Rubrique visible' : 'Rubrique masquée');
+                iconElement.setAttribute('aria-label', `${stateLabel} (cliquer pour ${visible ? 'tout masquer' : 'tout afficher'})`);
+            } else {
+                const stateLabel = isPartial
+                    ? 'Couche partiellement visible'
+                    : (visible ? 'Couche visible' : 'Couche masquée');
+                iconElement.setAttribute('aria-label', stateLabel);
+                iconElement.setAttribute('title', visible
+                    ? (isPartial ? 'Couche partiellement visible — cliquer pour masquer' : 'Couche visible — cliquer pour masquer')
+                    : 'Couche masquée — cliquer pour afficher');
+            }
+        }
+
+        function initLayerToggleIcons() {
+            document.querySelectorAll('.layer-toggle-icon[id]').forEach(icon => {
+                setToggleIcon(icon, !icon.classList.contains('is-hidden'));
+            });
         }
 
         // ========== FRESHNESS BADGES (integration date + next refresh) ==========
@@ -279,37 +306,124 @@
             if (!meta) return;
 
             const counts = getFamilyLayerCounts(fam.dataset.family);
-            if (!counts) {
-                meta.innerHTML = '';
-                meta.hidden = true;
+            if (!counts || !meta.classList.contains('family-toggle-icon')) {
+                if (meta.classList.contains('family-toggle-icon')) {
+                    meta.innerHTML = '';
+                    meta.hidden = true;
+                }
                 return;
             }
 
             meta.hidden = false;
             const { visible, total } = counts;
+            const anyVisible = visible > 0;
+            const partial = anyVisible && visible < total;
             const label = visible > 1 ? 'couches visibles' : 'couche visible';
-            const dots = Array.from({ length: total }, (_, index) =>
-                `<span class="layer-vis-dot${index < visible ? ' is-on' : ''}"></span>`
-            ).join('');
+            setToggleIcon(meta, anyVisible, { family: true, partial });
+            meta.setAttribute('title', `${visible} ${label} sur ${total} — cliquer pour ${anyVisible ? 'tout masquer' : 'tout afficher'}`);
+        }
 
-            meta.classList.toggle('is-all-visible', visible === total);
-            meta.classList.toggle('is-partial-visible', visible > 0 && visible < total);
-            meta.classList.toggle('is-none-visible', visible === 0);
-            meta.title = `${visible} ${label} sur ${total}`;
-            meta.innerHTML = `<span class="layer-vis-indicator"><span class="layer-vis-dots" aria-hidden="true">${dots}</span><span class="layer-vis-num"><strong>${visible}</strong><span class="layer-vis-sep">/</span>${total}</span></span>`;
+        function ensureHierarchyVisibility(targetVisible) {
+            const allVisible = hierarchyVisibility.regional && hierarchyVisibility.territorial && hierarchyVisibility.local;
+            const anyVisible = hierarchyVisibility.regional || hierarchyVisibility.territorial || hierarchyVisibility.local;
+            if (targetVisible && !allVisible) {
+                hierarchyVisibility.regional = true;
+                hierarchyVisibility.territorial = true;
+                hierarchyVisibility.local = true;
+                if (typeof window.updateHierarchyDisplay === 'function') window.updateHierarchyDisplay();
+            } else if (!targetVisible && anyVisible) {
+                hierarchyVisibility.regional = false;
+                hierarchyVisibility.territorial = false;
+                hierarchyVisibility.local = false;
+                if (typeof window.updateHierarchyDisplay === 'function') window.updateHierarchyDisplay();
+            }
+        }
+
+        function ensureLayerToggle(isVisible, toggleFn) {
+            if (typeof toggleFn !== 'function' || isVisible === undefined) return;
+            if (isVisible) return;
+            toggleFn();
+        }
+
+        function ensureLayerOff(isVisible, toggleFn) {
+            if (typeof toggleFn !== 'function' || isVisible === undefined) return;
+            if (!isVisible) return;
+            toggleFn();
+        }
+
+        function setFamilyVisibility(familyId, targetVisible) {
+            switch (familyId) {
+                case 'factual':
+                    ensureHierarchyVisibility(targetVisible);
+                    if (targetVisible) {
+                        ensureLayerToggle(constructionVisible, window.toggleConstruction);
+                        ensureLayerToggle(bicycleVisible, window.toggleBicycleRoutes);
+                        ensureLayerToggle(citiesVisible, window.toggleCities);
+                        const limitationsLegend = document.getElementById('limitationsLegend');
+                        if (limitationsLegend && limitationsLegend.style.display !== 'none') {
+                            ensureLayerToggle(limitationsMode, window.toggleLimitationsMode);
+                        }
+                    } else {
+                        ensureLayerOff(constructionVisible, window.toggleConstruction);
+                        ensureLayerOff(bicycleVisible, window.toggleBicycleRoutes);
+                        ensureLayerOff(citiesVisible, window.toggleCities);
+                        ensureLayerOff(limitationsMode, window.toggleLimitationsMode);
+                    }
+                    break;
+                case 'stats':
+                    if (targetVisible) {
+                        ensureLayerToggle(accidentsVisible, window.toggleAccidents);
+                        ensureLayerToggle(trafficVisible || wazeEnabled, window.toggleTraffic);
+                    } else {
+                        ensureLayerOff(accidentsVisible, window.toggleAccidents);
+                        ensureLayerOff(trafficVisible, window.toggleTraffic);
+                    }
+                    break;
+                case 'realtime':
+                    if (targetVisible) ensureLayerToggle(bisonFuteVisible, window.toggleBisonFute);
+                    else ensureLayerOff(bisonFuteVisible, window.toggleBisonFute);
+                    break;
+                case 'incubator':
+                    if (targetVisible) ensureLayerToggle(bridgeVisible, window.toggleBridges);
+                    else ensureLayerOff(bridgeVisible, window.toggleBridges);
+                    break;
+                default:
+                    break;
+            }
+            syncLegendChrome();
+        }
+
+        function toggleFamilyVisibility(familyId) {
+            const counts = getFamilyLayerCounts(familyId);
+            if (!counts) return;
+            setFamilyVisibility(familyId, counts.visible === 0);
         }
 
         function setupLegendFamilies() {
             document.querySelectorAll('.legend-family').forEach(fam => {
                 refreshFamilyMeta(fam);
                 const header = fam.querySelector('.legend-family-header');
+                const familyEye = fam.querySelector('.family-toggle-icon');
                 if (!header) return;
-                header.addEventListener('click', () => {
+                header.addEventListener('click', (event) => {
+                    if (event.target.closest('.family-toggle-icon')) return;
                     const isExpanded = fam.dataset.expanded !== 'false';
                     const nextExpanded = !isExpanded;
                     fam.dataset.expanded = nextExpanded ? 'true' : 'false';
                     header.setAttribute('aria-expanded', String(nextExpanded));
                 });
+                if (familyEye) {
+                    const activateFamilyEye = (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toggleFamilyVisibility(fam.dataset.family);
+                    };
+                    familyEye.addEventListener('click', activateFamilyEye);
+                    familyEye.addEventListener('keydown', (event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        activateFamilyEye(event);
+                    });
+                }
             });
 
             // When the "Limitations" section becomes visible/hidden dynamically,
@@ -331,6 +445,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            initLayerToggleIcons();
             setupLegendFamilies();
             syncLegendChrome();
         });
@@ -834,16 +949,21 @@
         function getFamilyLayerCounts(familyId) {
             switch (familyId) {
                 case 'factual': {
-                    let visible = 1;
-                    let total = 1;
-                    total += 3;
-                    visible += ['regional', 'territorial', 'local'].filter(h => hierarchyVisibility[h]).length;
+                    let visible = 0;
+                    let total = 0;
+
                     total += 1;
-                    if (constructionVisible) visible++;
+                    if (hierarchyVisibility.regional || hierarchyVisibility.territorial || hierarchyVisibility.local) visible++;
+
                     total += 1;
                     if (bicycleVisible) visible++;
+
+                    total += 1;
+                    if (constructionVisible) visible++;
+
                     total += 1;
                     if (citiesVisible) visible++;
+
                     const limitations = document.getElementById('limitationsLegend');
                     if (limitations && limitations.style.display !== 'none') {
                         total += 1;
@@ -863,7 +983,7 @@
                         visible: bisonFuteVisible ? 1 : 0,
                         total: 1
                     };
-                case 'bridges': {
+                case 'incubator': {
                     let visible = bridgeVisible ? 1 : 0;
                     const total = 3;
                     if (bridgeVisible && bridgePhotoProviderVisibility.panoramax) visible++;
@@ -1673,7 +1793,7 @@
                 setToggleIcon(icon, false);
                 if (title) title.style.fontWeight = '600';
             } else {
-                setToggleIcon(icon, true);
+                setToggleIcon(icon, true, { partial: true });
                 if (title) title.style.fontWeight = '700';
             }
 
