@@ -2024,7 +2024,7 @@
         window.addEventListener('DOMContentLoaded', function() {
         
         // Initialize map centered on Vaucluse (refined after boundary load)
-        window.map = L.map('map').setView([44.05, 5.15], 11);
+        window.map = L.map('map').setView([44.05, 5.15], 12);
 
         // Plain CartoDB Positron basemap
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -2104,7 +2104,8 @@
                 }).addTo(window.map);
                 
                 // Fit view to the department, slightly zoomed in
-                map.fitBounds(boundaryLayer.getBounds(), { padding: [14, 14], maxZoom: 11 });
+                map.fitBounds(boundaryLayer.getBounds(), { padding: [8, 8], maxZoom: 12 });
+                map.setZoom(Math.min(map.getZoom() + 1, 12));
                 
                 console.log('✓ Limite départementale chargée depuis le GeoJSON local');
                 
@@ -2130,12 +2131,6 @@
             local: ['D1', 'D7', 'D6', 'D5', 'D3', 'D10', 'D11', 'D12', 'D13', 'D14', 'D16', 'D17', 'D18', 'D19', 'D20']
         };
 
-        // Road loading message
-        const routesLoadingPopup = L.popup()
-            .setLatLng([43.95, 5.1])
-            .setContent('<div style="text-align: center; padding: 10px;"><strong>Chargement des routes départementales...</strong><br><small>Lecture du GeoJSON local issu d’OpenStreetMap</small></div>')
-            .openOn(window.map);
-
         // Load roads by hierarchy category
         let roadLabels = []; // Store labels for zoom management
         let routesByHierarchy = { regional: [], territorial: [], local: [] }; // Store routes by hierarchy
@@ -2157,7 +2152,6 @@
                     scheduleKey: 'wikidata'
                 });
                 syncLegendChrome();
-                routesLoadingPopup.remove();
 
                 if (data.features && data.features.length > 0) {
                     console.log(`✓ ${data.features.length} tronçons chargés depuis le GeoJSON OSM`);
@@ -2511,7 +2505,6 @@
                     }
                 }
             } catch (error) {
-                routesLoadingPopup.remove();
                 console.error('Erreur lors du chargement des routes:', error);
 
                 const detail = error && error.message
@@ -2530,16 +2523,18 @@
             }
         }
 
-        // --- RD labels: anti-collision ---
-        // UX: light offset (spiral + points along the route); localized stack if ≥4 refs
-        //       remain in conflict after max offset.
+        // --- RD labels: anti-collision + zoom sync ---
+        // Panonceaux par niveau hiérarchique (seuils + fondu 0.75 niveau de zoom).
+        // Mise à jour pendant zoom/déplacement ; recadrage viewport pour limiter le bruit.
         // Priority: regional (3) > territorial (2) > local (1) — highest keeps ideal position.
-        // Recommended test area: Avignon [43.9493, 4.8055], zoom 12–13 (D900/D943/D15 junction…).
+        // Test: Avignon [43.9493, 4.8055] — z10 régional, z12 territorial, z14 local.
         const ROUTE_LABEL_ZOOM_THRESHOLDS = {
-            regional: 9,
-            territorial: 11,
-            local: 13
+            regional: 10,
+            territorial: 12,
+            local: 14
         };
+        const ROUTE_LABEL_ZOOM_FADE_SPAN = 0.75;
+        const ROUTE_LABEL_VIEWPORT_PADDING = 0.12;
         const ROUTE_LABEL_PRIORITY = { regional: 3, territorial: 2, local: 1 };
         const ROUTE_HIERARCHY_LABELS = {
             regional: 'Intérêt régional',
@@ -2570,6 +2565,31 @@
         function getRouteLabelAnchor(route) {
             const candidates = getRouteLabelCandidates(route);
             return candidates.length > 0 ? candidates[Math.floor(candidates.length / 2)] : null;
+        }
+
+        function getRouteLabelZoomOpacity(hierarchy, zoom) {
+            const threshold = ROUTE_LABEL_ZOOM_THRESHOLDS[hierarchy];
+            if (zoom < threshold) return 0;
+            if (zoom >= threshold + ROUTE_LABEL_ZOOM_FADE_SPAN) return 1;
+            return (zoom - threshold) / ROUTE_LABEL_ZOOM_FADE_SPAN;
+        }
+
+        function getRouteLabelZoomScale(zoom) {
+            return Math.min(1.2, Math.max(0.88, 0.72 + zoom * 0.025));
+        }
+
+        function routeIntersectsViewport(route) {
+            const bounds = map.getBounds().pad(ROUTE_LABEL_VIEWPORT_PADDING);
+            if (route.ways) {
+                for (const way of route.ways) {
+                    if (!way.geometry) continue;
+                    for (const point of way.geometry) {
+                        if (bounds.contains([point.lat, point.lon])) return true;
+                    }
+                }
+            }
+            const anchor = getRouteLabelAnchor(route);
+            return !!(anchor && bounds.contains(anchor));
         }
 
         function offsetLatLngByPixels(latlng, dx, dy) {
@@ -2612,8 +2632,10 @@
             const entries = [];
             ['regional', 'territorial', 'local'].forEach(hierarchy => {
                 if (!hierarchyVisibility[hierarchy]) return;
-                if (zoom < ROUTE_LABEL_ZOOM_THRESHOLDS[hierarchy]) return;
+                const opacity = getRouteLabelZoomOpacity(hierarchy, zoom);
+                if (opacity <= 0) return;
                 routesByHierarchy[hierarchy].forEach(route => {
+                    if (!routeIntersectsViewport(route)) return;
                     const anchor = getRouteLabelAnchor(route);
                     if (!anchor) return;
                     entries.push({
@@ -2621,6 +2643,7 @@
                         hierarchy,
                         ref: route.ref,
                         priority: ROUTE_LABEL_PRIORITY[hierarchy],
+                        opacity,
                         anchor,
                         candidates: getRouteLabelCandidates(route)
                     });
@@ -2724,13 +2747,19 @@
             return [...groups.values()].filter(group => group.length >= ROUTE_LABEL_CLUSTER_MIN);
         }
 
-        function buildRouteLabelClusterHtml(group) {
+        function buildRouteLabelHtml(entry, zoom) {
+            const opacity = entry.opacity ?? getRouteLabelZoomOpacity(entry.hierarchy, zoom);
+            const scale = getRouteLabelZoomScale(zoom);
+            return `<div class="route-label ${entry.hierarchy}" style="opacity:${opacity.toFixed(2)};transform:scale(${scale.toFixed(2)})">${entry.ref}</div>`;
+        }
+
+        function buildRouteLabelClusterHtml(group, zoom) {
             group.sort((a, b) => {
                 if (b.priority !== a.priority) return b.priority - a.priority;
                 return a.ref.localeCompare(b.ref, 'fr');
             });
             const labelsHtml = group
-                .map(entry => `<div class="route-label ${entry.hierarchy}">${entry.ref}</div>`)
+                .map(entry => buildRouteLabelHtml(entry, zoom))
                 .join('');
             return `<div class="route-label-cluster" title="${group.map(e => e.ref).join(', ')}">${labelsHtml}</div>`;
         }
@@ -2772,7 +2801,7 @@
                 };
                 clusterEntry.marker = createRouteLabelMarker(
                     clusterEntry,
-                    buildRouteLabelClusterHtml(group),
+                    buildRouteLabelClusterHtml(group, map.getZoom()),
                     true
                 );
                 clusterEntry.marker.bindPopup(buildRouteLabelClusterPopup(group));
@@ -2816,6 +2845,10 @@
             roadLabels.forEach(label => map.removeLayer(label));
             roadLabels = [];
 
+            const anyHierarchyVisible = ['regional', 'territorial', 'local']
+                .some(hierarchy => hierarchyVisibility[hierarchy]);
+            if (!anyHierarchyVisible) return;
+
             const zoom = map.getZoom();
             const entries = collectVisibleRouteLabels(zoom);
             const placedEntries = entries.map(entry => {
@@ -2823,7 +2856,7 @@
                     ...entry,
                     marker: createRouteLabelMarker(
                         entry,
-                        `<div class="route-label ${entry.hierarchy}">${entry.ref}</div>`,
+                        buildRouteLabelHtml(entry, zoom),
                         false
                     )
                 };
@@ -2842,7 +2875,19 @@
             });
         }
 
-        map.on('zoomend', updateRouteLabels);
+        let routeLabelRefreshPending = false;
+        function scheduleRouteLabelRefresh() {
+            if (routeLabelRefreshPending) return;
+            routeLabelRefreshPending = true;
+            requestAnimationFrame(() => {
+                routeLabelRefreshPending = false;
+                updateRouteLabels();
+            });
+        }
+
+        map.on('zoom', scheduleRouteLabelRefresh);
+        map.on('zoomend', scheduleRouteLabelRefresh);
+        map.on('moveend', scheduleRouteLabelRefresh);
 
         // ========== OSM QUALITY MANAGEMENT ==========
         
