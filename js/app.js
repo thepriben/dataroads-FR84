@@ -946,6 +946,7 @@
         let bridgeMapChangeHandler = null;
         const BRIDGE_PHOTO_MIN_ZOOM = 16;
         const BRIDGE_SCHEMATIC_MIN_ZOOM = 16;
+        const BRIDGE_GEOMETRY_MIN_ZOOM = 14;
         const BRIDGE_PHOTO_OUTSIDE_BASE_PX = 34;
         const BRIDGE_PHOTO_OUTSIDE_RING_PX = 15;
         const bridgePhotoProviderVisibility = {
@@ -1457,7 +1458,11 @@
 
         function bindBridgeMapChangeHandler() {
             if (!window.map || bridgeMapChangeHandler) return;
-            bridgeMapChangeHandler = () => updateBridgePhotoLayerVisibility();
+            bridgeMapChangeHandler = () => {
+                updateBridgeGeometryVisibility();
+                updateBridgeGroupMarkerLayer();
+                updateBridgePhotoLayerVisibility();
+            };
             window.map.on('zoomend moveend', bridgeMapChangeHandler);
         }
 
@@ -1465,6 +1470,190 @@
             if (!window.map || !bridgeMapChangeHandler) return;
             window.map.off('zoomend moveend', bridgeMapChangeHandler);
             bridgeMapChangeHandler = null;
+        }
+
+        function bridgeClusterRadiusPx(zoom) {
+            if (zoom >= 15) return 0;
+            if (zoom >= 13) return 34;
+            if (zoom >= 11) return 54;
+            return 78;
+        }
+
+        function getBridgeGroupsInView() {
+            if (!window.map) return [];
+            const bounds = window.map.getBounds().pad(0.08);
+            return bridgeGroups.filter(group => group.bounds?.isValid?.() && bounds.intersects(group.bounds));
+        }
+
+        function buildBridgeClusterDescriptor(groups, isCluster) {
+            const photoCount = groups.reduce((sum, group) => sum + group.photos.length, 0);
+            const center = groups.reduce((acc, group) => {
+                const groupCenter = group.bounds.getCenter();
+                acc.lat += groupCenter.lat;
+                acc.lng += groupCenter.lng;
+                return acc;
+            }, { lat: 0, lng: 0 });
+
+            return {
+                groups,
+                isCluster,
+                bridgeCount: groups.length,
+                photoCount,
+                center: L.latLng(center.lat / groups.length, center.lng / groups.length)
+            };
+        }
+
+        function clusterBridgeGroupsInView() {
+            const zoom = window.map.getZoom();
+            const radiusPx = bridgeClusterRadiusPx(zoom);
+            const groups = getBridgeGroupsInView();
+            if (!groups.length) return [];
+
+            if (radiusPx <= 0) {
+                return groups.map(group => buildBridgeClusterDescriptor([group], false));
+            }
+
+            const points = groups.map((group, index) => ({
+                group,
+                index,
+                point: window.map.latLngToContainerPoint(group.bounds.getCenter())
+            }));
+            const parent = points.map((_, index) => index);
+
+            function find(index) {
+                if (parent[index] !== index) parent[index] = find(parent[index]);
+                return parent[index];
+            }
+
+            function union(a, b) {
+                parent[find(a)] = find(b);
+            }
+
+            for (let i = 0; i < points.length; i += 1) {
+                for (let j = i + 1; j < points.length; j += 1) {
+                    const distance = Math.hypot(
+                        points[i].point.x - points[j].point.x,
+                        points[i].point.y - points[j].point.y
+                    );
+                    if (distance <= radiusPx * 2) union(i, j);
+                }
+            }
+
+            const buckets = new Map();
+            points.forEach((entry, index) => {
+                const root = find(index);
+                if (!buckets.has(root)) buckets.set(root, []);
+                buckets.get(root).push(entry.group);
+            });
+
+            return [...buckets.values()].map(clusterGroups => (
+                buildBridgeClusterDescriptor(clusterGroups, clusterGroups.length > 1)
+            ));
+        }
+
+        function bridgeClusterDiameter(cluster, zoom) {
+            if (cluster.isCluster) {
+                const zoomBase = zoom < 11 ? 58 : zoom < 13 ? 46 : 34;
+                const signal = cluster.photoCount > 0
+                    ? Math.sqrt(cluster.photoCount) * 5
+                    : cluster.bridgeCount * 4;
+                return Math.min(80, zoomBase + signal);
+            }
+
+            if (cluster.photoCount > 0) {
+                return Math.min(30, 14 + Math.sqrt(cluster.photoCount) * 4);
+            }
+            return 12;
+        }
+
+        function bridgeClusterLabel(cluster, zoom) {
+            if (cluster.isCluster) {
+                if (cluster.photoCount > 0) return String(cluster.photoCount);
+                if (cluster.bridgeCount > 1) return String(cluster.bridgeCount);
+                return '';
+            }
+            if (zoom >= 14 && cluster.photoCount > 1) return String(cluster.photoCount);
+            return '';
+        }
+
+        function bridgeClusterTooltip(cluster) {
+            if (cluster.isCluster) {
+                const bridgeLabel = `${cluster.bridgeCount} pont${cluster.bridgeCount > 1 ? 's' : ''}`;
+                if (cluster.photoCount > 0) {
+                    return `${bridgeLabel} · ${cluster.photoCount} photo${cluster.photoCount > 1 ? 's' : ''}`;
+                }
+                return `${bridgeLabel} · zoomez pour détailler`;
+            }
+
+            const group = cluster.groups[0];
+            if (cluster.photoCount > 0) {
+                return `${group.title} · ${cluster.photoCount} photo${cluster.photoCount > 1 ? 's' : ''}`;
+            }
+            return group.title;
+        }
+
+        function updateBridgeGeometryVisibility() {
+            if (!bridgeGeometryLayerGroup || !window.map) return;
+            const showGeometry = bridgeVisible && window.map.getZoom() >= BRIDGE_GEOMETRY_MIN_ZOOM;
+            if (showGeometry) {
+                if (!window.map.hasLayer(bridgeGeometryLayerGroup)) bridgeGeometryLayerGroup.addTo(window.map);
+            } else if (window.map.hasLayer(bridgeGeometryLayerGroup)) {
+                window.map.removeLayer(bridgeGeometryLayerGroup);
+            }
+        }
+
+        function makeBridgeClusterMarker(cluster) {
+            const zoom = window.map.getZoom();
+            const diameter = bridgeClusterDiameter(cluster, zoom);
+            const label = bridgeClusterLabel(cluster, zoom);
+            const marker = L.marker(cluster.center, {
+                icon: L.divIcon({
+                    className: 'bridge-group-marker-wrapper',
+                    html: `
+                        <div
+                            class="bridge-group-marker${cluster.isCluster ? ' is-cluster' : ' is-solo'}${cluster.photoCount ? ' has-photos' : ''}"
+                            style="width:${diameter}px;height:${diameter}px;"
+                        >
+                            ${label ? `<span>${label}</span>` : ''}
+                        </div>
+                    `,
+                    iconSize: [diameter, diameter],
+                    iconAnchor: [diameter / 2, diameter / 2]
+                }),
+                zIndexOffset: cluster.isCluster ? 640 : 620
+            });
+
+            marker.bindTooltip(bridgeClusterTooltip(cluster), {
+                direction: 'top',
+                offset: [0, -(diameter / 2 + 4)]
+            });
+            marker.on('click', () => {
+                if (cluster.isCluster && cluster.bridgeCount > 1) {
+                    const bounds = cluster.groups.reduce((acc, group) => {
+                        acc.extend(group.bounds);
+                        return acc;
+                    }, L.latLngBounds(cluster.groups[0].bounds.getSouthWest(), cluster.groups[0].bounds.getNorthEast()));
+                    window.map.fitBounds(bounds, {
+                        padding: [72, 72],
+                        maxZoom: Math.min(20, window.map.getZoom() + 2),
+                        animate: true
+                    });
+                    return;
+                }
+                if (typeof window.openBridgeViewer === 'function') {
+                    window.openBridgeViewer(cluster.groups[0].id, { fit: true });
+                }
+            });
+            return marker;
+        }
+
+        function updateBridgeGroupMarkerLayer() {
+            if (!bridgeGroupMarkerLayerGroup || !window.map || !bridgeVisible) return;
+
+            bridgeGroupMarkerLayerGroup.clearLayers();
+            clusterBridgeGroupsInView().forEach(cluster => {
+                makeBridgeClusterMarker(cluster).addTo(bridgeGroupMarkerLayerGroup);
+            });
         }
 
         function fitBridgeOverview() {
@@ -1489,13 +1678,14 @@
             if (!window.map || !bridgeGeometryLayerGroup || !bridgePhotoLayerGroup) return;
 
             if (bridgeVisible) {
-                if (!window.map.hasLayer(bridgeGeometryLayerGroup)) bridgeGeometryLayerGroup.addTo(window.map);
                 if (bridgeGroupMarkerLayerGroup && !window.map.hasLayer(bridgeGroupMarkerLayerGroup)) {
                     bridgeGroupMarkerLayerGroup.addTo(window.map);
                 }
                 if (!window.map.hasLayer(bridgePhotoLayerGroup)) bridgePhotoLayerGroup.addTo(window.map);
                 bindBridgeMapChangeHandler();
                 applyBridgesVisibleUi();
+                updateBridgeGeometryVisibility();
+                updateBridgeGroupMarkerLayer();
                 updateBridgePhotoLayerVisibility();
             } else {
                 if (window.map.hasLayer(bridgeGeometryLayerGroup)) window.map.removeLayer(bridgeGeometryLayerGroup);
@@ -4435,10 +4625,6 @@
             });
         }
 
-        function bridgeGroupMarkerDiameter(photoCount) {
-            return Math.min(46, 18 + Math.sqrt(Math.max(photoCount, 0)) * 6);
-        }
-
         function bridgeGeometryWeightBoost(photoCount) {
             return Math.min(5, Math.floor(Math.sqrt(Math.max(photoCount, 0)) * 1.4));
         }
@@ -4654,31 +4840,6 @@
                 openBridgeViewer(group.id, { photoKey: photo.key, fit: true });
             });
 
-            return marker;
-        }
-
-        function makeBridgeGroupMarker(group) {
-            const diameter = bridgeGroupMarkerDiameter(group.photos.length);
-            const photoLabel = group.photos.length > 0 ? String(group.photos.length) : '';
-            const marker = L.marker(group.bounds.getCenter(), {
-                icon: L.divIcon({
-                    className: 'bridge-group-marker-wrapper',
-                    html: `
-                        <div class="bridge-group-marker${group.photos.length ? ' has-photos' : ''}" style="width:${diameter}px;height:${diameter}px;">
-                            <span>${photoLabel}</span>
-                        </div>
-                    `,
-                    iconSize: [diameter, diameter],
-                    iconAnchor: [diameter / 2, diameter / 2]
-                }),
-                zIndexOffset: 620
-            });
-
-            marker.bindTooltip(
-                `${group.title} · ${group.photos.length} photo${group.photos.length > 1 ? 's' : ''}`,
-                { direction: 'top', offset: [0, -(diameter / 2 + 4)] }
-            );
-            marker.on('click', () => openBridgeViewer(group.id, { fit: true }));
             return marker;
         }
 
@@ -4968,9 +5129,6 @@
             enrichBridgeGroupLayouts(bridgeGroups);
 
             bridgeGroupMarkerLayerGroup = L.layerGroup();
-            bridgeGroups.forEach(group => {
-                makeBridgeGroupMarker(group).addTo(bridgeGroupMarkerLayerGroup);
-            });
 
             bridgePhotoLayerGroup = L.layerGroup();
             bridgePhotoMarkers = [];

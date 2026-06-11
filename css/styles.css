@@ -837,25 +837,39 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2px solid #ffffff;
-            background: #95A5A6;
+            border: 3px solid #ffffff;
+            background: rgba(149, 165, 166, 0.9);
             color: #ffffff;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.72rem;
             font-weight: 800;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
             cursor: pointer;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
-        .bridge-group-marker.has-photos {
-            background: #F39C12;
-            border-color: #ffffff;
+        .bridge-group-marker.is-cluster {
+            background: rgba(243, 156, 18, 0.88);
+            box-shadow: 0 4px 16px rgba(243, 156, 18, 0.35);
+        }
+
+        .bridge-group-marker.is-cluster span {
+            font-size: 0.95rem;
+            letter-spacing: -0.02em;
+        }
+
+        .bridge-group-marker.is-solo {
+            border-width: 2px;
+            background: rgba(127, 140, 141, 0.82);
+        }
+
+        .bridge-group-marker.is-solo.has-photos {
+            background: rgba(243, 156, 18, 0.9);
         }
 
         .bridge-group-marker:hover {
             transform: scale(1.06);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.32);
+            box-shadow: 0 5px 14px rgba(0, 0, 0, 0.3);
         }
 
         .bridge-photo-marker-wrapper {
