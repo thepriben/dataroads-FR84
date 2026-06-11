@@ -391,7 +391,7 @@
                 case 'stats':
                     if (targetVisible) {
                         ensureLayerToggle(accidentsVisible, window.toggleAccidents);
-                        ensureLayerToggle(trafficVisible || wazeEnabled, window.toggleTraffic);
+                        ensureLayerToggle(trafficVisible, window.toggleTraffic);
                     } else {
                         ensureLayerOff(accidentsVisible, window.toggleAccidents);
                         ensureLayerOff(trafficVisible, window.toggleTraffic);
@@ -402,8 +402,13 @@
                     else ensureLayerOff(bisonFuteVisible, window.toggleBisonFute);
                     break;
                 case 'incubator':
-                    if (targetVisible) ensureLayerToggle(bridgeVisible, window.toggleBridges);
-                    else ensureLayerOff(bridgeVisible, window.toggleBridges);
+                    if (targetVisible) {
+                        ensureLayerToggle(bridgeVisible, window.toggleBridges);
+                        ensureLayerToggle(weatherStationsVisible, window.toggleWeatherStations);
+                    } else {
+                        ensureLayerOff(bridgeVisible, window.toggleBridges);
+                        ensureLayerOff(weatherStationsVisible, window.toggleWeatherStations);
+                    }
                     break;
                 default:
                     break;
@@ -830,10 +835,13 @@
             });
         }
 
-        function setToolActive(btnId, active) {
+        function setToolActive(btnId, active, options) {
             const btn = document.getElementById(btnId);
             if (!btn) return;
             btn.classList.toggle('is-active', !!active);
+            if (options && Object.prototype.hasOwnProperty.call(options, 'bounce')) {
+                btn.classList.toggle('is-bounce', !!active && !!options.bounce);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', setupMapToolbar);
@@ -921,7 +929,6 @@
         document.addEventListener('DOMContentLoaded', setupSidebarResizer);
 
         let wazeLayer = null;
-        let wazeEnabled = false;
         let trafficMarkers = [];
         let trafficVisible = false;
         let accidentMarkers = [];
@@ -961,6 +968,18 @@
         let bisonFuteVisible = false;
         let cityMarkers = [];
         let citiesVisible = false;
+        const WEATHER_STATIONS = [
+            { id: 'avignon', name: 'Avignon', lat: 43.9493, lon: 4.8055 },
+            { id: 'carpentras', name: 'Carpentras', lat: 44.055, lon: 5.048 },
+            { id: 'orange', name: 'Orange', lat: 44.136, lon: 4.809 },
+            { id: 'apt', name: 'Apt', lat: 43.876, lon: 5.396 },
+            { id: 'cavaillon', name: 'Cavaillon', lat: 43.838, lon: 5.038 },
+            { id: 'pertuis', name: 'Pertuis', lat: 43.695, lon: 5.503 }
+        ];
+        const headerWeatherStation = WEATHER_STATIONS[Math.floor(Math.random() * WEATHER_STATIONS.length)];
+        let weatherStationsVisible = false;
+        let weatherStationMarkers = [];
+        const weatherStationDataById = new Map();
         let limitationsMode = false;
         const dataRefreshState = {};
         
@@ -1044,8 +1063,8 @@
             if (limitationsMode) active.push('limits');
             if (accidentsVisible) active.push('accidents');
             if (trafficVisible) active.push('traffic');
-            if (wazeEnabled) active.push('waze');
             if (bisonFuteVisible) active.push('bison');
+            if (weatherStationsVisible) active.push('weather');
             if (bridgeVisible) {
                 active.push('bridges');
                 if (bridgePhotoProviderVisibility.panoramax) active.push('pnx');
@@ -1145,11 +1164,12 @@
                     setBooleanLayerIfNeeded(accidentsVisible, desired, window.toggleAccidents);
                     return !desired || accidentMarkers.length > 0;
                 case 'traffic':
+                case 'waze':
                     setBooleanLayerIfNeeded(trafficVisible, desired, window.toggleTraffic);
                     return !desired || trafficMarkers.length > 0;
-                case 'waze':
-                    if (wazeEnabled !== desired && typeof toggleWazeTraffic === 'function') toggleWazeTraffic();
-                    return !desired || trafficMarkers.length > 0;
+                case 'weather':
+                    setBooleanLayerIfNeeded(weatherStationsVisible, desired, window.toggleWeatherStations);
+                    return true;
                 case 'bison':
                     setBooleanLayerIfNeeded(bisonFuteVisible, desired, window.toggleBisonFute);
                     return !desired || bisonFuteMarkers.length > 0;
@@ -1172,7 +1192,7 @@
         function applyAppUrlLayersFromSet(wanted) {
             applyAppUrlHierarchyFromSet(wanted);
 
-            const pendingKeys = ['construction', 'bicycle', 'cities', 'limits', 'accidents', 'traffic', 'waze', 'bison', 'bridges', 'pnx', 'mly'];
+            const pendingKeys = ['construction', 'bicycle', 'cities', 'limits', 'accidents', 'traffic', 'waze', 'weather', 'bison', 'bridges', 'pnx', 'mly'];
             let allReady = true;
             pendingKeys.forEach(key => {
                 if (!applyAppUrlLayerKey(key, wanted)) allReady = false;
@@ -1253,7 +1273,7 @@
                     let visible = 0;
                     const total = 2;
                     if (accidentsVisible) visible++;
-                    if (trafficVisible || wazeEnabled) visible++;
+                    if (trafficVisible) visible++;
                     return { visible, total };
                 }
                 case 'realtime':
@@ -1261,11 +1281,13 @@
                         visible: bisonFuteVisible ? 1 : 0,
                         total: 1
                     };
-                case 'incubator':
-                    return {
-                        visible: bridgeVisible ? 1 : 0,
-                        total: 1
-                    };
+                case 'incubator': {
+                    let visible = 0;
+                    const total = 2;
+                    if (bridgeVisible) visible++;
+                    if (weatherStationsVisible) visible++;
+                    return { visible, total };
+                }
                 default:
                     return null;
             }
@@ -1287,7 +1309,9 @@
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
-                    return trafficVisible || wazeEnabled;
+                    return trafficVisible;
+                case 'freshness-weather-stations':
+                    return weatherStationsVisible;
                 case 'freshness-bison-fute':
                     return bisonFuteVisible;
                 default:
@@ -1474,9 +1498,35 @@
 
         function bridgeClusterRadiusPx(zoom) {
             if (zoom >= 15) return 0;
-            if (zoom >= 13) return 34;
-            if (zoom >= 11) return 54;
-            return 78;
+            if (zoom <= 10) return 72;
+            // Rayon qui décroît progressivement : les ponts se séparent de proche en proche.
+            return Math.max(0, Math.round(72 * (15 - zoom) / 5));
+        }
+
+        function bridgePhotoCountsForGroups(groups) {
+            return groups.map(group => group.photos.length);
+        }
+
+        function bridgeSoloMarkerDiameter(photoCount) {
+            if (photoCount <= 0) return 11;
+            return Math.min(42, 18 + photoCount * 8);
+        }
+
+        function bridgeClusterMarkerDiameter(cluster, zoom) {
+            const photoCounts = bridgePhotoCountsForGroups(cluster.groups);
+            const maxPhotoCount = Math.max(0, ...photoCounts, 0);
+            const totalPhotos = cluster.photoCount;
+
+            if (!cluster.isCluster) {
+                return bridgeSoloMarkerDiameter(maxPhotoCount);
+            }
+
+            const zoomBase = zoom < 11 ? 48 : zoom < 13 ? 36 : 24;
+            if (totalPhotos > 0) {
+                // Priorité au pont le plus riche en photos, puis agrégat du groupe.
+                return Math.min(78, zoomBase + maxPhotoCount * 9 + totalPhotos * 3);
+            }
+            return Math.min(58, zoomBase + Math.sqrt(cluster.bridgeCount) * 4);
         }
 
         function getBridgeGroupsInView() {
@@ -1486,7 +1536,9 @@
         }
 
         function buildBridgeClusterDescriptor(groups, isCluster) {
-            const photoCount = groups.reduce((sum, group) => sum + group.photos.length, 0);
+            const photoCounts = bridgePhotoCountsForGroups(groups);
+            const photoCount = photoCounts.reduce((sum, count) => sum + count, 0);
+            const maxPhotoCount = Math.max(0, ...photoCounts, 0);
             const center = groups.reduce((acc, group) => {
                 const groupCenter = group.bounds.getCenter();
                 acc.lat += groupCenter.lat;
@@ -1499,6 +1551,7 @@
                 isCluster,
                 bridgeCount: groups.length,
                 photoCount,
+                maxPhotoCount,
                 center: L.latLng(center.lat / groups.length, center.lng / groups.length)
             };
         }
@@ -1535,7 +1588,7 @@
                         points[i].point.x - points[j].point.x,
                         points[i].point.y - points[j].point.y
                     );
-                    if (distance <= radiusPx * 2) union(i, j);
+                    if (distance <= radiusPx * 1.35) union(i, j);
                 }
             }
 
@@ -1551,28 +1604,13 @@
             ));
         }
 
-        function bridgeClusterDiameter(cluster, zoom) {
-            if (cluster.isCluster) {
-                const zoomBase = zoom < 11 ? 58 : zoom < 13 ? 46 : 34;
-                const signal = cluster.photoCount > 0
-                    ? Math.sqrt(cluster.photoCount) * 5
-                    : cluster.bridgeCount * 4;
-                return Math.min(80, zoomBase + signal);
-            }
-
-            if (cluster.photoCount > 0) {
-                return Math.min(30, 14 + Math.sqrt(cluster.photoCount) * 4);
-            }
-            return 12;
-        }
-
         function bridgeClusterLabel(cluster, zoom) {
             if (cluster.isCluster) {
                 if (cluster.photoCount > 0) return String(cluster.photoCount);
                 if (cluster.bridgeCount > 1) return String(cluster.bridgeCount);
                 return '';
             }
-            if (zoom >= 14 && cluster.photoCount > 1) return String(cluster.photoCount);
+            if (cluster.maxPhotoCount > 0 && zoom >= 13) return String(cluster.maxPhotoCount);
             return '';
         }
 
@@ -1604,7 +1642,7 @@
 
         function makeBridgeClusterMarker(cluster) {
             const zoom = window.map.getZoom();
-            const diameter = bridgeClusterDiameter(cluster, zoom);
+            const diameter = bridgeClusterMarkerDiameter(cluster, zoom);
             const label = bridgeClusterLabel(cluster, zoom);
             const marker = L.marker(cluster.center, {
                 icon: L.divIcon({
@@ -2058,7 +2096,7 @@
         
         window.toggleConvoisExceptionnels = function() {
             convoiMode = !convoiMode;
-            setToolActive('convoiBtn', convoiMode);
+            setToolActive('convoiBtn', convoiMode, { bounce: true });
 
             if (convoiMode) {
                 console.log('🚛 Mode Convois Exceptionnels activé');
@@ -2331,11 +2369,10 @@
         };
 
         function syncTrafficMarkersOnMap() {
-            const shouldShow = trafficVisible || wazeEnabled;
             trafficMarkers.forEach(marker => {
                 const onMap = window.map.hasLayer(marker);
-                if (shouldShow && !onMap) marker.addTo(window.map);
-                if (!shouldShow && onMap) window.map.removeLayer(marker);
+                if (trafficVisible && !onMap) marker.addTo(window.map);
+                if (!trafficVisible && onMap) window.map.removeLayer(marker);
             });
         }
 
@@ -2347,6 +2384,7 @@
             const legendItems = document.querySelectorAll('[data-traffic]');
 
             syncTrafficMarkersOnMap();
+            setToolActive('wazeBtn', trafficVisible, { bounce: true });
 
             if (trafficVisible) {
                 setToggleIcon(icon, true);
@@ -2431,53 +2469,6 @@
             }
             syncLegendChrome();
         };
-
-        async function toggleWazeTraffic() {
-            wazeEnabled = !wazeEnabled;
-            
-            setToolActive('wazeBtn', wazeEnabled);
-            syncTrafficMarkersOnMap();
-
-            if (wazeEnabled) {
-                // Highlight CD84 counting stations (real traffic data)
-                console.log('🚗 Mise en évidence des stations de comptage CD84');
-
-                trafficMarkers.forEach(marker => {
-                    const originalRadius = marker.getRadius();
-                    let pulse = 0;
-                    const pulseInterval = setInterval(() => {
-                        pulse++;
-                        const scale = 1 + Math.sin(pulse * 0.3) * 0.3;
-                        marker.setRadius(originalRadius * scale);
-
-                        if (pulse > 20) {
-                            clearInterval(pulseInterval);
-                            marker.setRadius(originalRadius);
-                        }
-                    }, 100);
-
-                    marker.setStyle({ fillOpacity: 1, opacity: 1 });
-                });
-
-                const stationBounds = trafficMarkers.map(marker => marker.getLatLng());
-
-                if (stationBounds.length > 0) {
-                    setTimeout(() => {
-                        window.map.fitBounds(stationBounds, { padding: [50, 50], maxZoom: 11 });
-                    }, 500);
-                }
-
-                console.log(`✓ ${trafficMarkers.length} stations de comptage mises en évidence`);
-
-            } else {
-                trafficMarkers.forEach(marker => {
-                    marker.setStyle({ fillOpacity: 0.8, opacity: 1 });
-                });
-                window.map.closePopup();
-                console.log('✗ Mode Trafic désactivé');
-            }
-            syncLegendChrome();
-        }
 
         // Wait until everything is loaded (DOM + Leaflet)
         window.addEventListener('DOMContentLoaded', function() {
@@ -5208,100 +5199,179 @@
 
         // ========== WEATHER ==========
 
+        const WEATHER_ICONS = {
+            0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️',
+            51: '🌦️', 53: '🌦️', 55: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️',
+            71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️', 80: '🌧️', 81: '🌧️',
+            82: '🌧️', 85: '🌨️', 86: '🌨️', 95: '⛈️', 96: '⛈️', 99: '⛈️'
+        };
+
+        const WEATHER_DESCRIPTIONS = {
+            0: 'Ciel dégagé', 1: 'Dégagé', 2: 'Nuageux', 3: 'Couvert',
+            45: 'Brouillard', 48: 'Brouillard', 51: 'Bruine', 53: 'Bruine', 55: 'Bruine',
+            61: 'Pluie légère', 63: 'Pluie', 65: 'Forte pluie', 71: 'Neige légère',
+            73: 'Neige', 75: 'Forte neige', 77: 'Grésil', 80: 'Averses', 81: 'Averses',
+            82: 'Fortes averses', 85: 'Averses de neige', 86: 'Averses de neige',
+            95: 'Orage', 96: 'Orage', 99: 'Orage violent'
+        };
+
         function formatWeatherTime(value) {
             const match = String(value || '').match(/T(\d{2}:\d{2})/);
             return match ? match[1] : null;
         }
-        
-        async function loadWeather() {
+
+        function getWeatherIcon(code) {
+            return WEATHER_ICONS[code] || '🌡️';
+        }
+
+        function getWeatherDescription(code) {
+            return WEATHER_DESCRIPTIONS[code] || 'Variable';
+        }
+
+        function buildWeatherApiUrl(lat, lon) {
+            return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&timezone=Europe/Paris`;
+        }
+
+        async function fetchStationWeather(station) {
+            const source = window.InforouteApi.getLiveSource('weather');
+            const data = await window.InforouteApi.fetchJson(
+                buildWeatherApiUrl(station.lat, station.lon),
+                { cache: 'no-store' },
+                { timeoutMs: source.timeoutMs || 10000 }
+            );
+            if (!data.current) throw new Error(`Météo ${station.name}: données indisponibles`);
+            return data;
+        }
+
+        function renderWeatherStationPopup(station, current) {
+            const temp = Math.round(current.temperature_2m);
+            const desc = getWeatherDescription(current.weather_code);
+            const icon = getWeatherIcon(current.weather_code);
+            const updatedAt = formatWeatherTime(current.time);
+            const wind = current.wind_speed_10m != null ? `${Math.round(current.wind_speed_10m)} km/h` : '—';
+            const humidity = current.relative_humidity_2m != null ? `${Math.round(current.relative_humidity_2m)} %` : '—';
+
+            return `
+                <div class="weather-station-popup">
+                    <h4>${icon} ${station.name}</h4>
+                    <dl>
+                        <dt>Température</dt><dd>${temp} °C · ${desc}</dd>
+                        <dt>Vent</dt><dd>${wind}</dd>
+                        <dt>Humidité</dt><dd>${humidity}</dd>
+                        ${updatedAt ? `<dt>Mise à jour</dt><dd>${updatedAt}</dd>` : ''}
+                    </dl>
+                </div>
+            `;
+        }
+
+        function updateHeaderWeatherFromCurrent(station, current) {
+            const temp = Math.round(current.temperature_2m);
+            const desc = getWeatherDescription(current.weather_code);
+            const updatedAt = formatWeatherTime(current.time);
+            const iconEl = document.getElementById('weatherIcon');
+            const tempEl = document.getElementById('weatherTemp');
+            const descEl = document.getElementById('weatherDesc');
+            const stationEl = document.getElementById('weatherStation');
+            if (iconEl) iconEl.textContent = getWeatherIcon(current.weather_code);
+            if (tempEl) tempEl.textContent = `${temp}°C`;
+            if (descEl) descEl.textContent = updatedAt ? `${desc} · ${updatedAt}` : desc;
+            if (stationEl) stationEl.textContent = station.name;
+        }
+
+        function refreshWeatherStationMarkerUi(station) {
+            const marker = weatherStationMarkers.find(entry => entry.station.id === station.id)?.marker;
+            const data = weatherStationDataById.get(station.id);
+            if (!marker || !data?.current) return;
+            const temp = Math.round(data.current.temperature_2m);
+            marker.setTooltipContent(`${station.name} · ${temp}°C`);
+            marker.setPopupContent(renderWeatherStationPopup(station, data.current));
+        }
+
+        async function loadStationWeather(station, { updateHeader = false } = {}) {
+            const data = await fetchStationWeather(station);
+            weatherStationDataById.set(station.id, data);
+            refreshWeatherStationMarkerUi(station);
+            if (updateHeader) updateHeaderWeatherFromCurrent(station, data.current);
+            const badge = document.getElementById('freshness-weather-stations');
+            if (badge && typeof renderFreshnessBadge === 'function') {
+                renderFreshnessBadge(badge, {
+                    scheduleKey: 'live',
+                    generatedAt: data.current.time
+                });
+            }
+            return data;
+        }
+
+        async function loadHeaderWeather() {
             try {
-                const data = await window.InforouteApi.fetchLiveJson('weather');
-                
-                if (data.current) {
-                    const temp = Math.round(data.current.temperature_2m);
-                    const weatherCode = data.current.weather_code;
-                    
-                    // Weather icons by WMO code
-                    const weatherIcons = {
-                        0: '☀️',    // Clear sky
-                        1: '🌤️',   // Mainly clear
-                        2: '⛅',   // Partiellement nuageux
-                        3: '☁️',   // Couvert
-                        45: '🌫️',  // Brouillard
-                        48: '🌫️',  // Brouillard givrant
-                        51: '🌦️',  // Light drizzle
-                        53: '🌦️',  // Moderate drizzle
-                        55: '🌧️',  // Bruine dense
-                        61: '🌧️',  // Light rain
-                        63: '🌧️',  // Moderate rain
-                        65: '🌧️',  // Pluie forte
-                        71: '🌨️',  // Light snow
-                        73: '🌨️',  // Moderate snow
-                        75: '🌨️',  // Neige forte
-                        77: '🌨️',  // Snow grains
-                        80: '🌧️',  // Light showers
-                        81: '🌧️',  // Moderate showers
-                        82: '🌧️',  // Averses violentes
-                        85: '🌨️',  // Light snow showers
-                        86: '🌨️',  // Averses de neige fortes
-                        95: '⛈️',  // Orage
-                        96: '⛈️',  // Thunderstorm with light hail
-                        99: '⛈️'   // Thunderstorm with heavy hail
-                    };
-                    
-                    const weatherDescriptions = {
-                        0: 'Ciel dégagé',
-                        1: 'Dégagé',
-                        2: 'Nuageux',
-                        3: 'Couvert',
-                        45: 'Brouillard',
-                        48: 'Brouillard',
-                        51: 'Bruine',
-                        53: 'Bruine',
-                        55: 'Bruine',
-                        61: 'Pluie légère',
-                        63: 'Pluie',
-                        65: 'Forte pluie',
-                        71: 'Neige légère',
-                        73: 'Neige',
-                        75: 'Forte neige',
-                        77: 'Grésil',
-                        80: 'Averses',
-                        81: 'Averses',
-                        82: 'Fortes averses',
-                        85: 'Averses de neige',
-                        86: 'Averses de neige',
-                        95: 'Orage',
-                        96: 'Orage',
-                        99: 'Orage violent'
-                    };
-                    
-                    const icon = weatherIcons[weatherCode] || '🌡️';
-                    const desc = weatherDescriptions[weatherCode] || 'Variable';
-                    const updatedAt = formatWeatherTime(data.current.time);
-                    const details = ['Avignon', updatedAt].filter(Boolean).join(' • ');
-                    
-                    document.getElementById('weatherIcon').textContent = icon;
-                    document.getElementById('weatherTemp').textContent = `${temp}°C`;
-                    document.getElementById('weatherDesc').textContent = `${desc} • ${details}`;
-                }
+                await loadStationWeather(headerWeatherStation, { updateHeader: true });
             } catch (error) {
-                console.error('Erreur météo:', error);
-                document.getElementById('weatherIcon').textContent = '🌡️';
-                document.getElementById('weatherTemp').textContent = '--°C';
-                document.getElementById('weatherDesc').textContent = 'Non disponible';
+                console.error('Erreur météo header:', error);
+                const iconEl = document.getElementById('weatherIcon');
+                const tempEl = document.getElementById('weatherTemp');
+                const descEl = document.getElementById('weatherDesc');
+                const stationEl = document.getElementById('weatherStation');
+                if (iconEl) iconEl.textContent = '🌡️';
+                if (tempEl) tempEl.textContent = '--°C';
+                if (descEl) descEl.textContent = 'Non disponible';
+                if (stationEl) stationEl.textContent = headerWeatherStation.name;
             }
         }
-        
-        // Load weather on startup
-        loadWeather();
+
+        async function refreshVisibleWeatherStations() {
+            await Promise.all(
+                WEATHER_STATIONS.map(station => loadStationWeather(station).catch(error => {
+                    console.warn(`Météo ${station.name}:`, error.message);
+                    return null;
+                }))
+            );
+        }
+
+        function syncWeatherStationMarkersOnMap() {
+            weatherStationMarkers.forEach(({ marker }) => {
+                const onMap = window.map.hasLayer(marker);
+                if (weatherStationsVisible && !onMap) marker.addTo(window.map);
+                if (!weatherStationsVisible && onMap) window.map.removeLayer(marker);
+            });
+        }
+
+        function setWeatherStationsLegendCounts() {
+            const countEl = document.getElementById('count-weather-stations');
+            if (countEl) countEl.textContent = String(WEATHER_STATIONS.length);
+        }
+
+        window.toggleWeatherStations = function() {
+            weatherStationsVisible = !weatherStationsVisible;
+
+            const icon = document.getElementById('weatherStationsToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="weatherStationsToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-weather-station]');
+
+            syncWeatherStationMarkersOnMap();
+
+            if (weatherStationsVisible) {
+                setToggleIcon(icon, true);
+                if (title) title.style.fontWeight = '700';
+                legendItems.forEach(item => { item.style.opacity = '1'; });
+                refreshVisibleWeatherStations();
+                console.log(`✓ ${WEATHER_STATIONS.length} stations météo affichées`);
+            } else {
+                setToggleIcon(icon, false);
+                if (title) title.style.fontWeight = '600';
+                legendItems.forEach(item => { item.style.opacity = '0.5'; });
+                console.log('✗ Stations météo masquées');
+            }
+            syncLegendChrome();
+        };
+
+        loadHeaderWeather();
         window.setInterval(
-            loadWeather,
+            () => {
+                loadHeaderWeather();
+                if (weatherStationsVisible) refreshVisibleWeatherStations();
+            },
             window.InforouteApi.getLiveSource('weather').refreshMs || (10 * 60 * 1000)
         );
-
-        // ========== WAZE TRAFFIC ==========
-        // (function defined globally at top of script)
 
         // Load counting data from script-updated local GeoJSON
         async function loadTrafficCountingData() {
@@ -6010,6 +6080,45 @@
 
         if (!citiesVisible) {
             document.querySelectorAll('[data-city]').forEach(item => {
+                item.style.opacity = '0.5';
+            });
+        }
+
+        WEATHER_STATIONS.forEach(station => {
+            const marker = L.circleMarker([station.lat, station.lon], {
+                radius: 7,
+                fillColor: '#5d6d7e',
+                color: '#ffffff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.92
+            }).bindTooltip(`${station.name}`, { direction: 'top', offset: [0, -6] });
+
+            marker.on('click', async () => {
+                if (!marker.getPopup()) {
+                    marker.bindPopup('<div class="weather-station-popup">Chargement…</div>');
+                }
+                marker.openPopup();
+                if (!weatherStationDataById.has(station.id)) {
+                    try {
+                        await loadStationWeather(station);
+                    } catch (error) {
+                        marker.setPopupContent('<div class="weather-station-popup">Données indisponibles</div>');
+                        return;
+                    }
+                }
+                marker.setPopupContent(
+                    renderWeatherStationPopup(station, weatherStationDataById.get(station.id).current)
+                );
+            });
+
+            weatherStationMarkers.push({ station, marker });
+            if (weatherStationsVisible) marker.addTo(window.map);
+        });
+
+        setWeatherStationsLegendCounts();
+        if (!weatherStationsVisible) {
+            document.querySelectorAll('[data-weather-station]').forEach(item => {
                 item.style.opacity = '0.5';
             });
         }

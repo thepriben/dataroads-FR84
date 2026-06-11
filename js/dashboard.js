@@ -240,7 +240,7 @@
     };
 
     window.setDashboardButtonLoading = function setDashboardButtonLoading(isLoading) {
-        const btn = document.getElementById('dashboardBtn');
+        const btn = document.getElementById('dashboardHeaderBtn');
         if (!btn) return;
         btn.classList.toggle('is-loading', Boolean(isLoading));
         btn.disabled = Boolean(isLoading);
@@ -344,27 +344,32 @@
     };
 
     window.toggleDashboardPanel = async function toggleDashboardPanel(forceOpen) {
+        const overlay = document.getElementById('dashboardOverlay');
         const panel = document.getElementById('dashboardPanel');
-        const btn = document.getElementById('dashboardBtn');
-        if (!panel) return;
+        const btn = document.getElementById('dashboardHeaderBtn');
+        if (!panel || !overlay) return;
 
-        const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('active');
+        const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !overlay.classList.contains('active');
+
+        function setDashboardOpen(isOpen) {
+            overlay.classList.toggle('active', isOpen);
+            overlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            panel.classList.toggle('active', isOpen);
+            btn?.classList.toggle('is-active', isOpen);
+        }
 
         if (!shouldOpen) {
-            panel.classList.remove('active');
-            btn?.classList.remove('is-active');
+            setDashboardOpen(false);
             return;
         }
 
         if (typeof window.isDashboardDataCached === 'function' && window.isDashboardDataCached()) {
-            panel.classList.add('active');
-            btn?.classList.add('is-active');
+            setDashboardOpen(true);
             renderDashboard();
             return;
         }
 
-        panel.classList.remove('active');
-        btn?.classList.remove('is-active');
+        setDashboardOpen(false);
 
         if (typeof window.setDashboardButtonLoading === 'function') {
             window.setDashboardButtonLoading(true);
@@ -375,12 +380,11 @@
                 await window.refreshDashboardData({ force: Boolean(forceOpen) });
             }
 
-            if (typeof window.isDashboardDataCached === 'function' && window.isDashboardDataCached()) {
-                panel.classList.add('active');
-                btn?.classList.add('is-active');
+            const hasCache = typeof window.isDashboardDataCached === 'function' && window.isDashboardDataCached();
+            setDashboardOpen(true);
+            if (hasCache) {
                 renderDashboard();
             } else {
-                panel.classList.add('active');
                 btn?.classList.remove('is-active');
             }
         } finally {

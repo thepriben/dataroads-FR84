@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260606-7">
+    <link rel="stylesheet" href="css/styles.css?v=20260607-2">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -32,17 +32,24 @@
     <div class="container">
         <div class="header">
             <a class="header-logo-link" href="https://www.vaucluse.fr/" target="_blank" rel="noopener noreferrer" title="Département de Vaucluse — vaucluse.fr">
-                <img class="header-logo-mark" src="assets/cd84-logo-mark.jpg" width="100" height="100" alt="Département de Vaucluse">
+                <img class="header-logo-mark" src="assets/cd84-logo-mark.jpg" width="34" height="34" alt="Département de Vaucluse">
             </a>
             <div class="header-titles">
                 <h1>Réseau Routier Départemental</h1>
                 <div class="subtitle">Département de Vaucluse • Outils Numériques Routiers</div>
             </div>
-            <div id="weather" style="display: flex; align-items: center; gap: 15px; background: rgba(255,255,255,0.1); padding: 12px 20px; border-radius: 12px; backdrop-filter: blur(10px);">
-                <div style="font-size: 2rem;" id="weatherIcon">⏳</div>
-                <div>
-                    <div style="font-size: 1.5rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;" id="weatherTemp">--°C</div>
-                    <div style="font-size: 0.75rem; opacity: 0.9;" id="weatherDesc">Chargement...</div>
+            <div class="header-actions">
+                <button type="button" class="header-kpi-btn" id="dashboardHeaderBtn" onclick="toggleDashboardPanel()" title="Chiffres clés du Vaucluse">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 16V9"/><path d="M12 16V5"/><path d="M17 16v-6"/></svg>
+                    <span>Chiffres clés</span>
+                </button>
+                <div id="weather" class="header-weather" title="Station météo du header (aléatoire)">
+                    <div class="header-weather-icon" id="weatherIcon" aria-hidden="true">…</div>
+                    <div class="header-weather-body">
+                        <div class="header-weather-temp" id="weatherTemp">--°C</div>
+                        <div class="header-weather-desc" id="weatherDesc">Chargement…</div>
+                        <div class="header-weather-station" id="weatherStation">—</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -354,6 +361,20 @@
                     </div>
                     <div class="bridge-zoom-hint" id="bridgeZoomHint">Grappes de ponts au zoom lointain · profil au zoom 14+ · photos au zoom 16+.</div>
                 </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleWeatherStations && window.toggleWeatherStations();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Stations météo</span>
+                        <span id="weatherStationsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-weather-stations" data-schedule-key="live"></span>
+                    <div class="legend-item legend-item-summary" data-weather-station="total" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: #5d6d7e; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>
+                        <div class="legend-label">Stations Open-Meteo</div>
+                        <div class="legend-count" id="count-weather-stations">-</div>
+                    </div>
+                    <div class="weather-stations-hint">Clic sur une station pour les données courantes (température, vent, humidité).</div>
+                </div>
                     </div>
                 </section>
 
@@ -497,30 +518,18 @@
             <div class="map-stage">
                 <!-- Barre d'outils unifiée : modes spéciaux groupés en haut à droite -->
                 <div class="map-toolbar" role="toolbar" aria-label="Modes d'affichage spéciaux">
-                    <button type="button" class="map-tool" data-accent="#16A085" onclick="toggleDashboardPanel()" id="dashboardBtn" title="Tableau de bord — chiffres clés du Vaucluse">
-                        <span class="map-tool-icon">📈</span><span class="map-tool-label">Chiffres&nbsp;clés</span>
+                    <button type="button" class="map-tool" onclick="window.toggleTraffic && window.toggleTraffic()" id="wazeBtn" title="Afficher les stations de comptage CD84 (couche statistiques)">
+                        <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-8"/><path d="M22 20V8"/></svg></span>
+                        <span class="map-tool-label">Comptages CD84</span>
                     </button>
-                    <button type="button" class="map-tool" data-accent="#7F8C8D" onclick="toggleWazeTraffic()" id="wazeBtn" title="Mettre en évidence les stations de comptage CD84">
-                        <span class="map-tool-icon">📊</span><span class="map-tool-label">Comptages CD84</span>
+                    <button type="button" class="map-tool" onclick="window.toggleConvoisExceptionnels && window.toggleConvoisExceptionnels()" id="convoiBtn" title="Itinéraires adaptés aux convois exceptionnels">
+                        <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h13l3-5H8l-2 5Z"/><path d="M7 18h2"/><path d="M15 18h2"/><path d="M16 13v5"/><path d="M8 13v5"/></svg></span>
+                        <span class="map-tool-label">Convois&nbsp;except.</span>
                     </button>
-                    <button type="button" class="map-tool" data-accent="#9B59B6" onclick="toggleConvoisExceptionnels()" id="convoiBtn" title="Afficher les itinéraires adaptés aux convois exceptionnels">
-                        <span class="map-tool-icon">🚛</span><span class="map-tool-label">Convois&nbsp;Except.</span>
+                    <button type="button" class="map-tool" onclick="toggleLimitationsMode()" id="limitsBtn" title="Limitations de vitesse et restrictions ponts/PL">
+                        <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                        <span class="map-tool-label">Limitations</span>
                     </button>
-                    <button type="button" class="map-tool" data-accent="#F39C12" onclick="toggleLimitationsMode()" id="limitsBtn" title="Afficher les limitations de vitesse (dégradé chaud/froid) et les restrictions ponts/PL (hauteur, poids, longueur, largeur)">
-                        <span class="map-tool-icon">🚦</span><span class="map-tool-label">Limitations</span>
-                    </button>
-                </div>
-
-                <!-- Panneau tableau de bord (chiffres clés Vaucluse) -->
-                <div class="dashboard-panel" id="dashboardPanel" role="dialog" aria-labelledby="dashboardTitle" aria-modal="false">
-                    <div class="dashboard-header">
-                        <div>
-                            <h2 id="dashboardTitle">Chiffres clés — 84</h2>
-                            <p class="dashboard-subtitle">Vaucluse</p>
-                        </div>
-                        <button type="button" class="dashboard-close" onclick="toggleDashboardPanel(false)" aria-label="Fermer le tableau de bord">×</button>
-                    </div>
-                    <div class="dashboard-content" id="dashboardContent"></div>
                 </div>
 
                 <!-- Panneau de qualité des données -->
@@ -551,6 +560,19 @@
             </div>
         </div>
 
+        <div class="dashboard-overlay" id="dashboardOverlay" aria-hidden="true" onclick="if (event.target === this) toggleDashboardPanel(false)">
+            <div class="dashboard-panel" id="dashboardPanel" role="dialog" aria-labelledby="dashboardTitle" aria-modal="true">
+                <div class="dashboard-header">
+                    <div>
+                        <h2 id="dashboardTitle">Chiffres clés — Vaucluse (84)</h2>
+                        <p class="dashboard-subtitle">Indicateurs réseau et données croisées</p>
+                    </div>
+                    <button type="button" class="dashboard-close" onclick="toggleDashboardPanel(false)" aria-label="Fermer le tableau de bord">×</button>
+                </div>
+                <div class="dashboard-content" id="dashboardContent"></div>
+            </div>
+        </div>
+
         <footer class="site-footer">
             <div class="site-footer-repo-box">
                 <a href="https://github.com/thepriben/dataroads-FR84" target="_blank" rel="noopener noreferrer">dataroads-FR84</a>
@@ -569,7 +591,7 @@
         })();
     </script>
     <script src="js/api.js?v=20260606-1"></script>
-    <script src="js/dashboard.js?v=20260601-18"></script>
-    <script src="js/app.js?v=20260606-7"></script>
+    <script src="js/dashboard.js?v=20260607-1"></script>
+    <script src="js/app.js?v=20260607-2"></script>
 </body>
 </html>
