@@ -955,6 +955,7 @@
         let bisonFuteVisible = false;
         let cityMarkers = [];
         let citiesVisible = false;
+        let limitationsMode = false;
         const dataRefreshState = {};
         
         // Visibility state per hierarchy level
@@ -1055,21 +1056,29 @@
         function syncAppUrlState() {
             if (suppressAppUrlSync || !window.map) return;
 
-            const center = window.map.getCenter();
-            const params = new URLSearchParams();
-            params.set('z', window.map.getZoom().toFixed(2));
-            params.set('lat', center.lat.toFixed(4));
-            params.set('lng', center.lng.toFixed(4));
+            try {
+                const center = window.map.getCenter();
+                const params = new URLSearchParams();
+                params.set('z', window.map.getZoom().toFixed(2));
+                params.set('lat', center.lat.toFixed(4));
+                params.set('lng', center.lng.toFixed(4));
 
-            const layers = collectActiveAppUrlLayers();
-            params.set('ly', layers.join(','));
+                const layers = collectActiveAppUrlLayers();
+                params.set('ly', layers.join(','));
 
-            const families = collectActiveAppUrlFamilies();
-            if (families.length) params.set('fam', families.join(','));
+                const families = collectActiveAppUrlFamilies();
+                if (families.length) params.set('fam', families.join(','));
 
-            const next = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
-            if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
-                window.history.replaceState(null, '', next);
+                const query = params.toString();
+                const next = query
+                    ? `${window.location.pathname}?${query}${window.location.hash}`
+                    : `${window.location.pathname}${window.location.hash}`;
+                const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+                if (current !== next) {
+                    window.history.replaceState(null, '', next);
+                }
+            } catch (error) {
+                console.warn('Synchronisation URL carte:', error);
             }
         }
 
@@ -5552,7 +5561,6 @@
         
         // ========== LIMITATIONS DE VITESSE & RESTRICTIONS (max*) ==========
 
-        let limitationsMode = false;
         const speedPictoLayer = L.layerGroup();
         const restrictionLayer = L.layerGroup();
         let limitationsZoomHandler = null;
