@@ -16,7 +16,7 @@
         version: '0.2.1',
         repository,
         data: {
-            externalRefreshHours: 3,
+            externalRefreshHours: 1.5,
             geojson: {
                 'departmental-roads': 'data/osm/departmental-roads.geojson',
                 'construction-roads': 'data/osm/construction-roads.geojson',
@@ -34,7 +34,7 @@
             weather: {
                 sourceName: 'Open-Meteo Avignon',
                 url: 'https://api.open-meteo.com/v1/forecast?latitude=43.9493&longitude=4.8055&current=temperature_2m,weather_code&timezone=Europe/Paris',
-                refreshMs: 10 * 60 * 1000,
+                refreshMs: 5 * 60 * 1000,
                 timeoutMs: 10000
             }
         }
