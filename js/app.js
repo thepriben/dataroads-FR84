@@ -26,25 +26,31 @@
 
         const FRESHNESS_SCHEDULES = {
             osm: {
-                label: 'Hebdomadaire — lundi 03:17 UTC',
+                label: 'Bi-hebdo — lun. & jeu. 03:17 UTC',
                 source: 'OpenStreetMap via Overpass',
-                cron: '17 3 * * 1',
-                intervalMs: 7 * 24 * 60 * 60 * 1000
+                cron: '17 3 * * 1,4',
+                intervalMs: 3.5 * 24 * 60 * 60 * 1000
+            },
+            wikidata: {
+                label: 'Bi-hebdo — lun. & jeu. 03:17 UTC',
+                source: 'Liens Wikidata issus du cache OSM',
+                cron: '17 3 * * 1,4',
+                intervalMs: 3.5 * 24 * 60 * 60 * 1000
             },
             external: {
-                label: 'Toutes les 1 h 30 — à xx:23 UTC',
+                label: 'Toutes les 3 h — à xx:23 UTC',
                 source: 'data.gouv.fr & Bison Futé',
-                cron: '23 0,1,3,4,6,7,9,10,12,13,15,16,18,19,21,22 * * *',
-                intervalMs: 1.5 * 60 * 60 * 1000
+                cron: '23 */3 * * *',
+                intervalMs: 3 * 60 * 60 * 1000
             },
             static: {
                 label: 'Figé dans le dépôt — mise à jour manuelle',
                 source: 'Snapshot versionné (BAAC / OSM)'
             },
             live: {
-                label: 'Toutes les 5 min — directement dans le navigateur',
+                label: 'Toutes les 10 min — directement dans le navigateur',
                 source: 'Open-Meteo (live)',
-                intervalMs: 5 * 60 * 1000
+                intervalMs: 10 * 60 * 1000
             }
         };
 
@@ -67,7 +73,7 @@
         }
 
         // Compute the next UTC occurrence matching a 5-field cron expression.
-        // Only supports the patterns we use (`23 0,1,3,4,... * * *`, `17 3 * * 1`).
+        // Only supports the patterns we use (`23 */3 * * *`, `17 3 * * 1,4`).
         function nextCronUtc(cronExpr, from = new Date()) {
             const parts = cronExpr.trim().split(/\s+/);
             if (parts.length !== 5) return null;
@@ -136,8 +142,9 @@
             const generatedAt = latestCacheByGroup[scheduleKey];
             const lines = [];
 
-            if (scheduleKey === 'osm') lines.push('Hebdo · lun. 03:17 UTC');
-            else if (scheduleKey === 'external') lines.push('Toutes les 1 h 30 · xx:23 UTC');
+            if (scheduleKey === 'osm' || scheduleKey === 'wikidata') {
+                lines.push('Bi-hebdo · lun. & jeu. 03:17 UTC');
+            } else if (scheduleKey === 'external') lines.push('Toutes les 3 h · xx:23 UTC');
 
             if (config.cron) {
                 const next = nextCronUtc(config.cron);
@@ -945,7 +952,7 @@
             const statusElement = document.getElementById('externalRefreshStatus');
             if (!statusElement) return;
 
-            const refreshHours = window.APP_CONFIG?.data?.externalRefreshHours || 1.5;
+            const refreshHours = window.APP_CONFIG?.data?.externalRefreshHours || 3;
             const lines = Object.entries(dataRefreshState).map(([name, state]) => {
                 const dateLabel = formatParisDateTime(state.generatedAt);
                 const errorLabel = state.error ? ' - source indisponible, cache conservé' : '';
@@ -2010,7 +2017,7 @@
                 });
                 renderFreshnessBadge(document.getElementById('freshness-wikidata'), {
                     generatedAt: osmGeneratedAt,
-                    scheduleKey: 'osm'
+                    scheduleKey: 'wikidata'
                 });
                 syncLegendChrome();
                 routesLoadingPopup.remove();
@@ -4369,7 +4376,7 @@
         loadWeather();
         window.setInterval(
             loadWeather,
-            window.InforouteApi.getLiveSource('weather').refreshMs || (5 * 60 * 1000)
+            window.InforouteApi.getLiveSource('weather').refreshMs || (10 * 60 * 1000)
         );
 
         // ========== WAZE TRAFFIC ==========
@@ -4911,7 +4918,7 @@
                     if (typeof window.patchDashboardMetrics === 'function') {
                         window.patchDashboardMetrics({
                             bisonFute: { total: 0, travaux: 0, bouchons: 0, accidents: 0 },
-                            vintages: { bisonFute: 'Cache 1 h 30 · Info Routière' }
+                            vintages: { bisonFute: 'Cache 3 h · Info Routière' }
                         });
                     }
                     return;
@@ -5030,8 +5037,8 @@
                         vintages: {
                             bisonFute: formatDashboardCacheVintage(
                                 data._cache?.generated_at,
-                                'Cache 1 h 30 · Info Routière'
-                            ) || 'Cache 1 h 30 · Info Routière'
+                                'Cache 3 h · Info Routière'
+                            ) || 'Cache 3 h · Info Routière'
                         }
                     });
                 }
@@ -5542,8 +5549,8 @@
                 vintages: {
                     bisonFute: formatDashboardCacheVintage(
                         data._cache?.generated_at,
-                        'Cache 1 h 30 · Info Routière'
-                    ) || 'Cache 1 h 30 · Info Routière'
+                        'Cache 3 h · Info Routière'
+                    ) || 'Cache 3 h · Info Routière'
                 }
             };
         }

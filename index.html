@@ -364,7 +364,7 @@
                             <span class="sidebar-quality-btn-label">Panneau détaillé</span>
                         </button>
                     </div>
-                    <span class="freshness-badge" id="freshness-wikidata" data-schedule-key="osm"></span>
+                    <span class="freshness-badge" id="freshness-wikidata" data-schedule-key="wikidata"></span>
                     <div id="wikidataSummary" style="background:white;border-radius:8px;border:1px solid #dfe6e9;padding:10px;">
                         <div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>
                     </div>
@@ -410,7 +410,17 @@
                                 <div style="font-size:0.7rem;color:#7f8c8d;">Source&nbsp;: Overpass → workflow GitHub Actions</div>
                             </div>
                             <div class="refresh-formula-meta" id="refreshMetaOsm">
-                                Hebdo · lun. 03:17 UTC<br>—
+                                Bi-hebdo · lun. &amp; jeu. 03:17 UTC<br>—
+                            </div>
+                        </div>
+
+                        <div class="refresh-formula-row" data-schedule-key="wikidata">
+                            <div>
+                                <div class="refresh-formula-label">Wikidata (liens &amp; couverture)</div>
+                                <div style="font-size:0.7rem;color:#7f8c8d;">Tags OSM + infoboxes live navigateur</div>
+                            </div>
+                            <div class="refresh-formula-meta" id="refreshMetaWikidata">
+                                Bi-hebdo · lun. &amp; jeu. 03:17 UTC<br>—
                             </div>
                         </div>
 
@@ -420,7 +430,7 @@
                                 <div style="font-size:0.7rem;color:#7f8c8d;">data.gouv.fr · Bison Futé DATEX II</div>
                             </div>
                             <div class="refresh-formula-meta" id="refreshMetaExternal">
-                                Toutes les 1 h 30 · xx:23 UTC<br>—
+                                Toutes les 3 h · xx:23 UTC<br>—
                             </div>
                         </div>
 
@@ -429,7 +439,7 @@
                                 <div class="refresh-formula-label">Météo Open-Meteo</div>
                                 <div style="font-size:0.7rem;color:#7f8c8d;">Live navigateur</div>
                             </div>
-                            <div class="refresh-formula-meta">Toutes les 5 min</div>
+                            <div class="refresh-formula-meta">Toutes les 10 min</div>
                         </div>
 
                         <div class="refresh-formula-row" data-schedule-key="static">

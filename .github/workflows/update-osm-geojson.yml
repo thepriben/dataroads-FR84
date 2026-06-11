@@ -3,7 +3,7 @@ name: Update OSM GeoJSON
 on:
   workflow_dispatch:
   schedule:
-    - cron: "17 3 * * 1"
+    - cron: "17 3 * * 1,4"
 
 permissions:
   contents: write
