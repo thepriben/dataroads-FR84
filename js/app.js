@@ -932,6 +932,7 @@
         let bicyclePolylines = [];
         let bicycleVisible = false;
         let bridgeGeometryLayerGroup = null;
+        let bridgeGroupMarkerLayerGroup = null;
         let bridgePhotoLayerGroup = null;
         let bridgeDataLoaded = false;
         let bridgeLoadPromise = null;
@@ -943,7 +944,10 @@
         let bridgeFeatureLayersById = new Map();
         let activeBridgeGroupId = null;
         let bridgeMapChangeHandler = null;
-        const BRIDGE_PHOTO_MIN_ZOOM = 18;
+        const BRIDGE_PHOTO_MIN_ZOOM = 16;
+        const BRIDGE_SCHEMATIC_MIN_ZOOM = 16;
+        const BRIDGE_PHOTO_OUTSIDE_BASE_PX = 34;
+        const BRIDGE_PHOTO_OUTSIDE_RING_PX = 15;
         const bridgePhotoProviderVisibility = {
             panoramax: true,
             mapillary: true
@@ -1441,7 +1445,9 @@
             let visiblePhotoCount = 0;
             bridgePhotoMarkers.forEach(entry => {
                 if (bridgePhotoProviderVisibility[entry.photo.provider] === false) return;
-                if (!bounds.contains(entry.marker.getLatLng()) && !bounds.intersects(entry.group.bounds)) return;
+                const latlng = bridgePhotoMarkerLatLng(entry.photo, entry.group);
+                entry.marker.setLatLng(latlng);
+                if (!bounds.contains(latlng) && !bounds.intersects(entry.group.bounds)) return;
                 entry.marker.addTo(bridgePhotoLayerGroup);
                 visiblePhotoCount++;
             });
@@ -1484,12 +1490,18 @@
 
             if (bridgeVisible) {
                 if (!window.map.hasLayer(bridgeGeometryLayerGroup)) bridgeGeometryLayerGroup.addTo(window.map);
+                if (bridgeGroupMarkerLayerGroup && !window.map.hasLayer(bridgeGroupMarkerLayerGroup)) {
+                    bridgeGroupMarkerLayerGroup.addTo(window.map);
+                }
                 if (!window.map.hasLayer(bridgePhotoLayerGroup)) bridgePhotoLayerGroup.addTo(window.map);
                 bindBridgeMapChangeHandler();
                 applyBridgesVisibleUi();
                 updateBridgePhotoLayerVisibility();
             } else {
                 if (window.map.hasLayer(bridgeGeometryLayerGroup)) window.map.removeLayer(bridgeGeometryLayerGroup);
+                if (bridgeGroupMarkerLayerGroup && window.map.hasLayer(bridgeGroupMarkerLayerGroup)) {
+                    window.map.removeLayer(bridgeGroupMarkerLayerGroup);
+                }
                 bridgePhotoLayerGroup.clearLayers();
                 if (window.map.hasLayer(bridgePhotoLayerGroup)) window.map.removeLayer(bridgePhotoLayerGroup);
                 unbindBridgeMapChangeHandler();
@@ -4282,6 +4294,155 @@
             return photos;
         }
 
+        function bridgeOffsetLatLngByPixels(latlng, dx, dy) {
+            if (!window.map || !latlng) return latlng;
+            const point = window.map.latLngToContainerPoint(latlng);
+            return window.map.containerPointToLatLng(L.point(point.x + dx, point.y + dy));
+        }
+
+        function computeBridgeAxis(group) {
+            const latlngs = [];
+            group.features.forEach(info => {
+                const role = normalizeBridgeRole(info.role);
+                if (['deck', 'structure', 'bridge'].includes(role) || info.isMainBridge) {
+                    bridgeFeatureLatLngs(info.feature).forEach(latlng => latlngs.push(latlng));
+                }
+            });
+            if (!latlngs.length) {
+                group.features.forEach(info => {
+                    bridgeFeatureLatLngs(info.feature).forEach(latlng => latlngs.push(latlng));
+                });
+            }
+
+            const center = group.bounds?.isValid?.() ? group.bounds.getCenter() : latlngs[0];
+            if (!latlngs.length) {
+                return { start: center, end: center, center, length: 0 };
+            }
+            if (latlngs.length === 1) {
+                return { start: latlngs[0], end: latlngs[0], center: latlngs[0], length: 0 };
+            }
+
+            let bestI = 0;
+            let bestJ = 1;
+            let bestDistance = 0;
+            for (let i = 0; i < latlngs.length; i += 1) {
+                for (let j = i + 1; j < latlngs.length; j += 1) {
+                    const distance = latlngs[i].distanceTo(latlngs[j]);
+                    if (distance > bestDistance) {
+                        bestDistance = distance;
+                        bestI = i;
+                        bestJ = j;
+                    }
+                }
+            }
+
+            const start = latlngs[bestI];
+            const end = latlngs[bestJ];
+            return {
+                start,
+                end,
+                center: L.latLng((start.lat + end.lat) / 2, (start.lng + end.lng) / 2),
+                length: bestDistance
+            };
+        }
+
+        function bridgeAxisPointAt(axis, t) {
+            const clamped = Math.min(1, Math.max(0, t));
+            return L.latLng(
+                axis.start.lat + (axis.end.lat - axis.start.lat) * clamped,
+                axis.start.lng + (axis.end.lng - axis.start.lng) * clamped
+            );
+        }
+
+        function projectOnBridgeAxis(axis, latlng) {
+            if (!window.map || !axis || !latlng) return 0.5;
+            const start = window.map.latLngToContainerPoint(axis.start);
+            const end = window.map.latLngToContainerPoint(axis.end);
+            const point = window.map.latLngToContainerPoint(latlng);
+            const dx = end.x - start.x;
+            const dy = end.y - start.y;
+            const lengthSquared = (dx * dx) + (dy * dy);
+            if (lengthSquared < 1) return 0.5;
+            return Math.min(1, Math.max(0, (
+                ((point.x - start.x) * dx) + ((point.y - start.y) * dy)
+            ) / lengthSquared));
+        }
+
+        function defaultBridgePhotoAxisT(photo, group) {
+            const part = bridgeFeatureInfoById.get(photo.partId);
+            if (part && group.bridgeAxis) return projectOnBridgeAxis(group.bridgeAxis, part.center);
+            if (photo.role === 'abutment') return 0.08;
+            if (photo.role === 'pillar') return 0.5;
+            if (photo.role === 'deck') return 0.5;
+            return 0.5;
+        }
+
+        function buildBridgePhotoLayout(group) {
+            const layout = new Map();
+            if (!group?.bridgeAxis) return layout;
+
+            const abutmentParts = group.features
+                .filter(info => info.role === 'abutment')
+                .map(info => ({ info, t: projectOnBridgeAxis(group.bridgeAxis, info.center) }))
+                .sort((a, b) => a.t - b.t);
+            const abutmentTs = abutmentParts.map(item => item.t);
+            const fallbackAbutmentT = (index, total) => (
+                total <= 1 ? 0.08 : (index / Math.max(total - 1, 1)) * 0.84 + 0.08
+            );
+
+            const slotBuckets = new Map();
+            group.photos.forEach(photo => {
+                const part = bridgeFeatureInfoById.get(photo.partId);
+                let t = defaultBridgePhotoAxisT(photo, group);
+                if (photo.role === 'abutment' && !part) {
+                    const abutmentIndex = group.photos
+                        .filter(item => item.role === 'abutment')
+                        .findIndex(item => item.key === photo.key);
+                    const totalAbutments = group.photos.filter(item => item.role === 'abutment').length;
+                    t = fallbackAbutmentT(abutmentIndex, totalAbutments);
+                }
+                if (photo.role === 'abutment' && abutmentTs.length) {
+                    const nearest = abutmentParts.reduce((best, item) => {
+                        const distance = Math.abs(item.t - t);
+                        return distance < best.distance ? { distance, t: item.t } : best;
+                    }, { distance: Infinity, t });
+                    if (nearest.distance < 0.2) t = nearest.t;
+                }
+
+                const slotKey = `${photo.role}:${photo.partId || 'generic'}:${Math.round(t * 100)}`;
+                if (!slotBuckets.has(slotKey)) slotBuckets.set(slotKey, []);
+                slotBuckets.get(slotKey).push({ photo, t });
+            });
+
+            slotBuckets.forEach(items => {
+                items.sort((a, b) => a.photo.key.localeCompare(b.photo.key, 'fr'));
+                items.forEach((item, index) => {
+                    layout.set(item.photo.key, {
+                        t: item.t,
+                        side: index % 2 === 0 ? 1 : -1,
+                        ring: Math.floor(index / 2)
+                    });
+                });
+            });
+
+            return layout;
+        }
+
+        function enrichBridgeGroupLayouts(groups) {
+            groups.forEach(group => {
+                group.bridgeAxis = computeBridgeAxis(group);
+                group.photoLayout = buildBridgePhotoLayout(group);
+            });
+        }
+
+        function bridgeGroupMarkerDiameter(photoCount) {
+            return Math.min(46, 18 + Math.sqrt(Math.max(photoCount, 0)) * 6);
+        }
+
+        function bridgeGeometryWeightBoost(photoCount) {
+            return Math.min(5, Math.floor(Math.sqrt(Math.max(photoCount, 0)) * 1.4));
+        }
+
         function buildBridgeGroups(features) {
             const infos = (features || [])
                 .map(bridgeFeatureInfo)
@@ -4351,10 +4512,15 @@
             const role = bridgeRoleFromTags(feature.properties || {});
             const style = bridgeRoleStyle(role);
             const isPolygon = /Polygon$/.test(feature.geometry?.type || '');
+            const featureId = feature.id || feature.properties?.['@id'];
+            const info = bridgeFeatureInfoById.get(featureId);
+            const group = info ? bridgeGroupById.get(info.groupId) : null;
+            const photoBoost = group ? bridgeGeometryWeightBoost(group.photos.length) : 0;
+            const baseWeight = style.weight + photoBoost;
 
             return {
                 color: selected ? '#111827' : style.color,
-                weight: selected ? Math.max(style.weight + 2, 5) : style.weight,
+                weight: selected ? Math.max(baseWeight + 2, 5) : baseWeight,
                 opacity: selected ? 1 : 0.9,
                 fillColor: style.color,
                 fillOpacity: isPolygon ? (selected ? 0.32 : style.fillOpacity) : 0,
@@ -4398,14 +4564,26 @@
             return bits.join(' · ');
         }
 
-        function bridgePhotoMarkerLatLng(photo, index, total) {
-            if (total <= 1) return photo.center;
-            const angle = (Math.PI * 2 * index) / total;
-            const ring = Math.floor(index / 8) + 1;
-            const radius = 0.000035 * ring;
-            return L.latLng(
-                photo.center.lat + Math.sin(angle) * radius,
-                photo.center.lng + Math.cos(angle) * radius
+        function bridgePhotoMarkerLatLng(photo, group) {
+            const axis = group?.bridgeAxis;
+            if (!axis || !window.map) return photo.center;
+
+            const layout = group.photoLayout?.get(photo.key) || {
+                t: defaultBridgePhotoAxisT(photo, group),
+                side: 1,
+                ring: 0
+            };
+            const along = bridgeAxisPointAt(axis, layout.t);
+            const start = window.map.latLngToContainerPoint(axis.start);
+            const end = window.map.latLngToContainerPoint(axis.end);
+            const axisLength = Math.hypot(end.x - start.x, end.y - start.y) || 1;
+            const perpX = -(end.y - start.y) / axisLength;
+            const perpY = (end.x - start.x) / axisLength;
+            const offset = BRIDGE_PHOTO_OUTSIDE_BASE_PX + (layout.ring * BRIDGE_PHOTO_OUTSIDE_RING_PX);
+            return bridgeOffsetLatLngByPixels(
+                along,
+                perpX * layout.side * offset,
+                perpY * layout.side * offset
             );
         }
 
@@ -4457,8 +4635,8 @@
             `;
         }
 
-        function makeBridgePhotoMarker(photo, group, index) {
-            const latlng = bridgePhotoMarkerLatLng(photo, index, group.photos.length);
+        function makeBridgePhotoMarker(photo, group) {
+            const latlng = bridgePhotoMarkerLatLng(photo, group);
             const providerClass = photo.provider === 'panoramax' ? 'is-panoramax' : 'is-mapillary';
             const marker = L.marker(latlng, {
                 icon: L.divIcon({
@@ -4476,6 +4654,31 @@
                 openBridgeViewer(group.id, { photoKey: photo.key, fit: true });
             });
 
+            return marker;
+        }
+
+        function makeBridgeGroupMarker(group) {
+            const diameter = bridgeGroupMarkerDiameter(group.photos.length);
+            const photoLabel = group.photos.length > 0 ? String(group.photos.length) : '';
+            const marker = L.marker(group.bounds.getCenter(), {
+                icon: L.divIcon({
+                    className: 'bridge-group-marker-wrapper',
+                    html: `
+                        <div class="bridge-group-marker${group.photos.length ? ' has-photos' : ''}" style="width:${diameter}px;height:${diameter}px;">
+                            <span>${photoLabel}</span>
+                        </div>
+                    `,
+                    iconSize: [diameter, diameter],
+                    iconAnchor: [diameter / 2, diameter / 2]
+                }),
+                zIndexOffset: 620
+            });
+
+            marker.bindTooltip(
+                `${group.title} · ${group.photos.length} photo${group.photos.length > 1 ? 's' : ''}`,
+                { direction: 'top', offset: [0, -(diameter / 2 + 4)] }
+            );
+            marker.on('click', () => openBridgeViewer(group.id, { fit: true }));
             return marker;
         }
 
@@ -4561,6 +4764,77 @@
             `;
         }
 
+        function buildBridgeSchematicPhotoButton(photo, group, selectedPhotoKey, vertical) {
+            const layout = group.photoLayout?.get(photo.key) || {
+                t: defaultBridgePhotoAxisT(photo, group),
+                side: 1,
+                ring: 0
+            };
+            const left = `${6 + (layout.t * 88)}%`;
+            const offset = 4 + (layout.ring * 10);
+            const style = vertical === 'top'
+                ? `left:${left}; top:${offset}%;`
+                : `left:${left}; bottom:${offset}%;`;
+            const isActive = selectedPhotoKey === photo.key;
+
+            return `
+                <button
+                    type="button"
+                    class="bridge-schematic-photo${isActive ? ' is-active' : ''}"
+                    data-bridge-photo-key="${escapeHtml(photo.key)}"
+                    style="${style} --bridge-part-color:${photo.color};"
+                    title="${escapeHtml(bridgePhotoMetaLabel(photo))}"
+                >
+                    ${photo.provider === 'panoramax'
+                        ? `<img src="${panoramaxImageUrl(photo.id, 'thumb')}" alt="" loading="lazy">`
+                        : `<span class="bridge-schematic-photo-placeholder">${photo.provider === 'panoramax' ? 'P' : 'M'}</span>`}
+                    <span class="bridge-schematic-photo-label">${escapeHtml(photo.partLabel)}</span>
+                </button>
+            `;
+        }
+
+        function buildBridgeSchematicStructure(group) {
+            const axis = group.bridgeAxis;
+            const abutments = group.features.filter(info => info.role === 'abutment');
+            const pillars = group.features
+                .filter(info => info.role === 'pillar')
+                .map(info => ({
+                    info,
+                    t: axis ? projectOnBridgeAxis(axis, info.center) : 0.5
+                }))
+                .sort((a, b) => a.t - b.t);
+
+            const abutmentStart = abutments.length && axis
+                ? abutments.reduce((best, info) => (
+                    !best || projectOnBridgeAxis(axis, info.center) < projectOnBridgeAxis(axis, best.center) ? info : best
+                ), null)
+                : null;
+            const abutmentEnd = abutments.length && axis
+                ? abutments.reduce((best, info) => (
+                    !best || projectOnBridgeAxis(axis, info.center) > projectOnBridgeAxis(axis, best.center) ? info : best
+                ), null)
+                : null;
+
+            const pillarMarkup = pillars.map(({ t }) => `
+                <div class="bridge-schematic-pillar" style="left:${6 + (t * 88)}%;" aria-hidden="true"></div>
+            `).join('');
+
+            return `
+                <div class="bridge-schematic-structure">
+                    <div class="bridge-schematic-abutment bridge-schematic-abutment--start" style="--bridge-part-color:${abutmentStart?.color || '#E67E22'};">
+                        <span>Culée</span>
+                    </div>
+                    <div class="bridge-schematic-deck">
+                        ${pillarMarkup}
+                        <span class="bridge-schematic-deck-label">Tablier</span>
+                    </div>
+                    <div class="bridge-schematic-abutment bridge-schematic-abutment--end" style="--bridge-part-color:${abutmentEnd?.color || '#E67E22'};">
+                        <span>Culée</span>
+                    </div>
+                </div>
+            `;
+        }
+
         function renderBridgeViewer(group, selectedPhotoKey) {
             const panel = document.getElementById('bridgeViewerPanel');
             const title = document.getElementById('bridgeViewerTitle');
@@ -4577,21 +4851,31 @@
                 .join('');
 
             title.textContent = group.title;
-            subtitle.textContent = `${group.photos.length} photo${group.photos.length > 1 ? 's' : ''} · ${group.features.length} élément${group.features.length > 1 ? 's' : ''} OSM`;
+            subtitle.textContent = `${group.photos.length} photo${group.photos.length > 1 ? 's' : ''} · ${group.features.length} élément${group.features.length > 1 ? 's' : ''} OSM · vue en plan`;
 
-            const cards = group.photos.map(photo => `
-                <button type="button" class="bridge-photo-card${selectedPhoto?.key === photo.key ? ' is-active' : ''}" data-bridge-photo-key="${escapeHtml(photo.key)}">
-                    ${photo.provider === 'panoramax'
-                        ? `<img src="${panoramaxImageUrl(photo.id, 'thumb')}" alt="" loading="lazy">`
-                        : `<span class="bridge-photo-card-placeholder">Mapillary</span>`}
-                    <span class="bridge-photo-card-meta">
-                        <span class="bridge-photo-card-source">${escapeHtml(providerLabel(photo.provider))}</span>
-                        <span class="bridge-photo-card-part" style="--bridge-part-color:${photo.color};">${escapeHtml(photo.partLabel)}</span>
-                    </span>
-                </button>
-            `).join('');
+            const topPhotos = [];
+            const bottomPhotos = [];
+            group.photos.forEach(photo => {
+                const side = group.photoLayout?.get(photo.key)?.side ?? 1;
+                if (side > 0) topPhotos.push(photo);
+                else bottomPhotos.push(photo);
+            });
+
+            const schematicTop = topPhotos
+                .map(photo => buildBridgeSchematicPhotoButton(photo, group, selectedPhoto?.key, 'top'))
+                .join('');
+            const schematicBottom = bottomPhotos
+                .map(photo => buildBridgeSchematicPhotoButton(photo, group, selectedPhoto?.key, 'bottom'))
+                .join('');
 
             content.innerHTML = `
+                <div class="bridge-schematic">
+                    <div class="bridge-schematic-stage">
+                        <div class="bridge-schematic-photos bridge-schematic-photos--top">${schematicTop}</div>
+                        ${buildBridgeSchematicStructure(group)}
+                        <div class="bridge-schematic-photos bridge-schematic-photos--bottom">${schematicBottom}</div>
+                    </div>
+                </div>
                 <div class="bridge-viewer-hero">
                     ${buildBridgeViewerHero(selectedPhoto)}
                 </div>
@@ -4603,7 +4887,6 @@
                     </div>
                 ` : ''}
                 <div class="bridge-viewer-parts">${roleBadges}</div>
-                ${cards ? `<div class="bridge-photo-grid">${cards}</div>` : ''}
             `;
 
             content.querySelectorAll('[data-bridge-photo-key]').forEach(button => {
@@ -4625,7 +4908,17 @@
             }
 
             highlightBridgeGroup(group.id);
-            if (options.fit !== false) fitBridgeGroup(group);
+            if (options.fit !== false && window.map) {
+                if (window.map.getZoom() < BRIDGE_SCHEMATIC_MIN_ZOOM) {
+                    window.map.fitBounds(group.bounds, {
+                        padding: [90, 90],
+                        maxZoom: BRIDGE_SCHEMATIC_MIN_ZOOM,
+                        animate: true
+                    });
+                } else {
+                    fitBridgeGroup(group);
+                }
+            }
             renderBridgeViewer(group, options.photoKey);
         }
 
@@ -4672,14 +4965,21 @@
                 }
             });
 
+            enrichBridgeGroupLayouts(bridgeGroups);
+
+            bridgeGroupMarkerLayerGroup = L.layerGroup();
+            bridgeGroups.forEach(group => {
+                makeBridgeGroupMarker(group).addTo(bridgeGroupMarkerLayerGroup);
+            });
+
             bridgePhotoLayerGroup = L.layerGroup();
             bridgePhotoMarkers = [];
             bridgeGroups.forEach(group => {
-                group.photos.forEach((photo, index) => {
+                group.photos.forEach(photo => {
                     bridgePhotoMarkers.push({
                         photo,
                         group,
-                        marker: makeBridgePhotoMarker(photo, group, index)
+                        marker: makeBridgePhotoMarker(photo, group)
                     });
                 });
             });
