@@ -1796,6 +1796,9 @@
         }
 
         .inaturalist-sensitive-marker-wrapper {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
             background: transparent !important;
             border: none !important;
             pointer-events: auto !important;

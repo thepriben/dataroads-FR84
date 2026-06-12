@@ -1243,6 +1243,7 @@
         let inaturalistSensitiveMarkers = [];
         let inaturalistSensitivesVisible = false;
         let inaturalistSensitivesLoaded = false;
+        let inaturalistMapZoomHandler = null;
         let webcamsLayerGroup = null;
         let webcamsVisible = false;
         let webcamsLoaded = false;
@@ -2407,7 +2408,7 @@
             unknown: '#40916C'
         };
 
-        const INATURALIST_MARKER_HIT_PX = 40;
+        const INATURALIST_MARKER_MIN_HIT_PX = 48;
 
         function getInaturalistMarkerColor(iconicTaxon, qualityGrade) {
             const base = INATURALIST_TAXON_COLORS[iconicTaxon] || INATURALIST_TAXON_COLORS.unknown;
@@ -2416,55 +2417,97 @@
             return base;
         }
 
-        function inaturalistMarkerVisualSize(qualityGrade) {
-            if (qualityGrade === 'research') return 16;
-            if (qualityGrade === 'needs_id') return 15;
-            return 14;
+        function inaturalistMarkerZoomScale(zoom) {
+            const z = Number.isFinite(zoom) ? zoom : 11;
+            return Math.max(0.8, Math.min(2.1, 0.8 + (z - 8) * 0.13));
         }
 
-        function makeInaturalistSensitiveMarker(feature) {
-            const props = feature.properties || {};
-            const coords = feature.geometry?.coordinates;
-            if (!coords) return null;
+        function inaturalistMarkerVisualSize(qualityGrade, zoom) {
+            const base = qualityGrade === 'research' ? 18 : (qualityGrade === 'needs_id' ? 17 : 16);
+            return Math.round(base * inaturalistMarkerZoomScale(zoom));
+        }
 
+        function inaturalistMarkerHitSize(zoom, visualSize) {
+            return Math.round(Math.max(INATURALIST_MARKER_MIN_HIT_PX, visualSize * 2.75));
+        }
+
+        function makeInaturalistMarkerIcon(feature, zoom) {
+            const props = feature.properties || {};
             const color = getInaturalistMarkerColor(props.iconic_taxon, props.quality_grade);
-            const visualSize = inaturalistMarkerVisualSize(props.quality_grade);
-            const hitSize = INATURALIST_MARKER_HIT_PX;
+            const visualSize = inaturalistMarkerVisualSize(props.quality_grade, zoom);
+            const hitSize = inaturalistMarkerHitSize(zoom, visualSize);
             const qualityClass = props.quality_grade === 'casual'
                 ? ' is-casual'
                 : (props.quality_grade === 'needs_id' ? ' is-needs-id' : ' is-research');
             const label = props.taxon_name || 'Observation iNaturalist';
 
+            return L.divIcon({
+                className: 'inaturalist-sensitive-marker-wrapper',
+                html: `
+                    <button
+                        type="button"
+                        class="inaturalist-sensitive-marker${qualityClass}"
+                        style="width:${hitSize}px;height:${hitSize}px;"
+                        aria-label="${String(label).replace(/"/g, '&quot;')}"
+                    >
+                        <span
+                            class="inaturalist-sensitive-marker-dot"
+                            style="--inat-color:${color};width:${visualSize}px;height:${visualSize}px;"
+                        ></span>
+                    </button>
+                `,
+                iconSize: [hitSize, hitSize],
+                iconAnchor: [hitSize / 2, hitSize / 2]
+            });
+        }
+
+        function makeInaturalistSensitiveMarker(feature, zoom) {
+            const props = feature.properties || {};
+            const coords = feature.geometry?.coordinates;
+            if (!coords) return null;
+
+            const mapZoom = Number.isFinite(zoom) ? zoom : (window.map?.getZoom?.() ?? 11);
             const marker = L.marker([coords[1], coords[0]], {
-                icon: L.divIcon({
-                    className: 'inaturalist-sensitive-marker-wrapper',
-                    html: `
-                        <button
-                            type="button"
-                            class="inaturalist-sensitive-marker${qualityClass}"
-                            style="width:${hitSize}px;height:${hitSize}px;"
-                            aria-label="${String(label).replace(/"/g, '&quot;')}"
-                        >
-                            <span
-                                class="inaturalist-sensitive-marker-dot"
-                                style="--inat-color:${color};width:${visualSize}px;height:${visualSize}px;"
-                            ></span>
-                        </button>
-                    `,
-                    iconSize: [hitSize, hitSize],
-                    iconAnchor: [hitSize / 2, hitSize / 2]
-                }),
+                icon: makeInaturalistMarkerIcon(feature, mapZoom),
                 pane: 'markerPane',
                 riseOnHover: true,
                 interactive: true,
                 zIndexOffset: 1400
             });
 
+            marker._inatFeature = feature;
             marker.bindPopup(buildInaturalistPopup(props), {
                 autoPan: true,
                 closeButton: true
             });
             return marker;
+        }
+
+        function refreshInaturalistMarkerSizes() {
+            if (!inaturalistSensitivesVisible || !window.map || !inaturalistSensitiveMarkers.length) return;
+            const zoom = window.map.getZoom();
+            inaturalistSensitiveMarkers.forEach(marker => {
+                const feature = marker._inatFeature;
+                if (!feature) return;
+                marker.setIcon(makeInaturalistMarkerIcon(feature, zoom));
+            });
+            raiseInaturalistSensitiveMarkers();
+        }
+
+        function bindInaturalistMapZoomHandler() {
+            if (!window.map || inaturalistMapZoomHandler) return;
+            inaturalistMapZoomHandler = () => refreshInaturalistMarkerSizes();
+            window.map.on('zoomend', inaturalistMapZoomHandler);
+        }
+
+        function setSensitiveZonesMapInteractivity(enabled) {
+            if (!sensitiveZonesLayer) return;
+            sensitiveZonesLayer.eachLayer(layer => {
+                layer.options.interactive = enabled;
+                if (layer._path) {
+                    layer._path.style.pointerEvents = enabled ? '' : 'none';
+                }
+            });
         }
 
         function raiseInaturalistSensitiveMarkers() {
@@ -2481,6 +2524,9 @@
                     sensitiveZonesLayer.bringToBack();
                 }
             }
+            setSensitiveZonesMapInteractivity(
+                sensitiveZonesVisible && !inaturalistSensitivesVisible
+            );
             raiseInaturalistSensitiveMarkers();
         }
 
@@ -2743,13 +2789,15 @@
                 }
                 inaturalistSensitiveMarkers = [];
 
+                const mapZoom = window.map?.getZoom?.() ?? 11;
                 inaturalistSensitiveLayerGroup = L.layerGroup();
                 features.forEach(feature => {
-                    const marker = makeInaturalistSensitiveMarker(feature);
+                    const marker = makeInaturalistSensitiveMarker(feature, mapZoom);
                     if (!marker) return;
                     inaturalistSensitiveMarkers.push(marker);
                     inaturalistSensitiveLayerGroup.addLayer(marker);
                 });
+                bindInaturalistMapZoomHandler();
 
                 inaturalistSensitivesLoaded = true;
                 const countEl = document.getElementById('count-inaturalist-sensitive');
