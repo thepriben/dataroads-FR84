@@ -7,6 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-06
+
+### Added
+
+- **Incubateur — Webcams:** curated static layer (Bonpas traffic CD84, Mont Serein, Chalet Reynard) with map markers and external stream links.
+- **Guide utilisateur:** incubator section for webcams; URL layer code `wcam`.
+
 ## [0.3.0] - 2026-06-12
 
 ### Added
@@ -61,7 +68,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Data refresh scripts `update_osm_geojson.py` and `update_external_data.py`.
 - GitHub Pages deployment and automated data-refresh workflows.
 
-[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.1.0...v0.2.0

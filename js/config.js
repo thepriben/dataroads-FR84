@@ -13,7 +13,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.3.0',
+        version: '0.3.1',
         repository,
         data: {
             externalRefreshHours: 3,
@@ -29,7 +29,8 @@
                 'traffic-counting-demo': 'data/demo/traffic-counting-demo.geojson',
                 'road-events': 'data/external/road-events.geojson',
                 'sensitive-natural-zones': 'data/external/sensitive-natural-zones.geojson',
-                'inaturalist-sensitive-zones': 'data/external/inaturalist-sensitive-zones.geojson'
+                'inaturalist-sensitive-zones': 'data/external/inaturalist-sensitive-zones.geojson',
+                webcams: 'data/static/webcams-vaucluse.geojson'
             }
         },
         live: {

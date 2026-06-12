@@ -1,0 +1,61 @@
+{
+  "type": "FeatureCollection",
+  "_cache": {
+    "source_name": "Recensement manuel — sources officielles Vaucluse",
+    "source_url": "https://github.com/thepriben/dataroads-FR84",
+    "generated_at": "2026-06-06T12:00:00.000Z"
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [4.9080, 43.8905]
+      },
+      "properties": {
+        "id": "bonpas-traffic",
+        "name": "Carrefour de Bonpas — trafic",
+        "category": "traffic",
+        "source": "Conseil départemental du Vaucluse (CD84)",
+        "url": "https://srv1.webvia.fr/site/home?token=tklf2k9gnmtfcrqcr1yrw",
+        "commune": "Avignon",
+        "description": "Portail officiel CD84 : 4 webcams 24h/24 sur le carrefour de Bonpas (Avignon, A7, Bouches-du-Rhône, Cavaillon/Apt).",
+        "views": 4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [5.2663, 44.1790]
+      },
+      "properties": {
+        "id": "mont-serein",
+        "name": "Station du Mont Serein",
+        "category": "mountain",
+        "source": "Cap Ventoux Expériences / stationdumontserein.com",
+        "url": "https://www.stationdumontserein.com/",
+        "commune": "Beaumont-du-Ventoux",
+        "altitude_m": 1410,
+        "description": "Webcam en direct du versant nord du Mont Ventoux, depuis le chalet d'accueil de la station (~1 400 m)."
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [5.3191, 44.1524]
+      },
+      "properties": {
+        "id": "chalet-reynard",
+        "name": "Chalet Reynard",
+        "category": "mountain",
+        "source": "Station du Chalet Reynard",
+        "url": "https://www.chalet-reynard.com/",
+        "commune": "Bédoin",
+        "altitude_m": 1435,
+        "description": "Webcam et conditions en direct sur le versant sud du Mont Ventoux, au col du Chalet Reynard."
+      }
+    }
+  ]
+}

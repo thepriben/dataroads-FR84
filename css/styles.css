@@ -1224,6 +1224,76 @@
             border: 2px solid #fff;
         }
 
+        .webcam-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .webcam-swatch--traffic {
+            background: #C0392B;
+        }
+
+        .webcam-swatch--mountain {
+            background: #0E7490;
+        }
+
+        .webcam-marker-wrapper {
+            background: transparent;
+            border: none;
+        }
+
+        .webcam-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--webcam-color, #0E7490);
+            color: #fff;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+        }
+
+        .webcam-marker svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .webcam-popup-badge {
+            display: inline-block;
+            margin-bottom: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #fff;
+            background: #60717c;
+        }
+
+        .webcam-popup-badge[data-category="traffic"] {
+            background: #C0392B;
+        }
+
+        .webcam-popup-badge[data-category="mountain"] {
+            background: #0E7490;
+        }
+
+        .webcam-popup-desc {
+            margin: 0 0 8px;
+            font-size: 0.82rem;
+            line-height: 1.4;
+            color: #4a5b66;
+        }
+
+        .webcam-popup-link {
+            color: #3498DB;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
         .inaturalist-popup-photo {
             display: block;
             width: 100%;
@@ -1236,7 +1306,8 @@
         .bridge-zoom-hint,
         .weather-stations-hint,
         .sensitive-zones-hint,
-        .inaturalist-sensitive-hint {
+        .inaturalist-sensitive-hint,
+        .webcams-hint {
             margin-top: 8px;
             padding: 7px 8px;
             border-radius: 6px;

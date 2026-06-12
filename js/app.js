@@ -425,10 +425,12 @@
                         ensureLayerToggle(bridgeVisible, window.toggleBridges);
                         ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
+                        ensureLayerToggle(webcamsVisible, window.toggleWebcams);
                     } else {
                         ensureLayerOff(bridgeVisible, window.toggleBridges);
                         ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
+                        ensureLayerOff(webcamsVisible, window.toggleWebcams);
                     }
                     break;
                 default:
@@ -972,6 +974,9 @@
         let inaturalistSensitiveMarkers = [];
         let inaturalistSensitivesVisible = false;
         let inaturalistSensitivesLoaded = false;
+        let webcamsLayerGroup = null;
+        let webcamsVisible = false;
+        let webcamsLoaded = false;
         let bridgeGroups = [];
         let bridgePhotoMarkers = [];
         let bridgeGroupById = new Map();
@@ -1169,6 +1174,7 @@
             }
             if (sensitiveZonesVisible) active.push('ens');
             if (inaturalistSensitivesVisible) active.push('inat');
+            if (webcamsVisible) active.push('wcam');
             return active;
         }
 
@@ -1297,6 +1303,9 @@
                 case 'inat':
                     setBooleanLayerIfNeeded(inaturalistSensitivesVisible, desired, window.toggleInaturalistSensitives);
                     return !desired || inaturalistSensitivesLoaded;
+                case 'wcam':
+                    setBooleanLayerIfNeeded(webcamsVisible, desired, window.toggleWebcams);
+                    return !desired || webcamsLoaded;
                 default:
                     return true;
             }
@@ -1307,7 +1316,7 @@
 
             const pendingKeys = [
                 'construction', 'bicycle', 'cities', 'limits', 'accidents', 'traffic', 'waze',
-                'weather', 'bison', 'bridges', 'pnx', 'mly', 'ens', 'inat'
+                'weather', 'bison', 'bridges', 'pnx', 'mly', 'ens', 'inat', 'wcam'
             ];
             let allReady = true;
             pendingKeys.forEach(key => {
@@ -1425,10 +1434,11 @@
                 }
                 case 'incubator': {
                     let visible = 0;
-                    const total = 3;
+                    const total = 4;
                     if (bridgeVisible) visible++;
                     if (sensitiveZonesVisible) visible++;
                     if (inaturalistSensitivesVisible) visible++;
+                    if (webcamsVisible) visible++;
                     return { visible, total };
                 }
                 default:
@@ -1453,6 +1463,8 @@
                     return sensitiveZonesVisible;
                 case 'freshness-inaturalist-sensitive':
                     return inaturalistSensitivesVisible;
+                case 'freshness-webcams':
+                    return webcamsVisible;
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
@@ -2268,6 +2280,181 @@
                 });
                 if (!wantVisible) applyInaturalistSensitivesHiddenUi();
                 inaturalistSensitivesVisible = false;
+                syncLegendChrome();
+            }
+        };
+
+        const WEBCAM_CATEGORY_COLORS = {
+            traffic: '#C0392B',
+            mountain: '#0E7490'
+        };
+
+        function buildWebcamPopup(props = {}) {
+            const categoryLabel = props.category === 'traffic' ? 'Trafic' : 'Montagne';
+            const altitude = props.altitude_m
+                ? `<div class="detail"><strong>Altitude&nbsp;:</strong> ${props.altitude_m.toLocaleString('fr-FR')} m</div>`
+                : '';
+            const views = props.views
+                ? `<div class="detail"><strong>Vues&nbsp;:</strong> ${props.views}</div>`
+                : '';
+            const commune = props.commune
+                ? `<div class="detail"><strong>Commune&nbsp;:</strong> ${props.commune}</div>`
+                : '';
+            const link = props.url
+                ? `<div class="detail" style="margin-top: 10px;"><a href="${props.url}" target="_blank" rel="noopener noreferrer" class="webcam-popup-link">Ouvrir le flux →</a></div>`
+                : '';
+
+            return `
+                <div class="route-popup webcam-popup">
+                    <h3>${props.name || 'Webcam'}</h3>
+                    <div class="webcam-popup-badge" data-category="${props.category || ''}">${categoryLabel}</div>
+                    ${props.description ? `<p class="webcam-popup-desc">${props.description}</p>` : ''}
+                    ${commune}
+                    ${altitude}
+                    ${views}
+                    ${props.source ? `<div class="detail"><strong>Source&nbsp;:</strong> ${props.source}</div>` : ''}
+                    ${link}
+                </div>
+            `;
+        }
+
+        function makeWebcamMarker(feature) {
+            const props = feature.properties || {};
+            const coords = feature.geometry?.coordinates;
+            if (!coords) return null;
+
+            const color = WEBCAM_CATEGORY_COLORS[props.category] || '#0E7490';
+            const marker = L.marker([coords[1], coords[0]], {
+                icon: L.divIcon({
+                    className: 'webcam-marker-wrapper',
+                    html: `<div class="webcam-marker" data-category="${props.category || ''}" style="--webcam-color:${color};"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>`,
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                }),
+                zIndexOffset: 420
+            });
+
+            marker.bindTooltip(props.name || 'Webcam', { direction: 'top', offset: [0, -10] });
+            marker.bindPopup(buildWebcamPopup(props));
+            return marker;
+        }
+
+        function setWebcamLegendCounts(features = []) {
+            const counts = { traffic: 0, mountain: 0 };
+            features.forEach(feature => {
+                const category = feature.properties?.category;
+                if (category && Object.prototype.hasOwnProperty.call(counts, category)) {
+                    counts[category]++;
+                }
+            });
+            const trafficEl = document.getElementById('count-webcams-traffic');
+            const mountainEl = document.getElementById('count-webcams-mountain');
+            if (trafficEl) trafficEl.textContent = counts.traffic.toLocaleString('fr-FR');
+            if (mountainEl) mountainEl.textContent = counts.mountain.toLocaleString('fr-FR');
+        }
+
+        function applyWebcamsVisibleUi() {
+            const icon = document.getElementById('webcamsToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="webcamsToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-webcam]');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '700';
+            legendItems.forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+        }
+
+        function applyWebcamsHiddenUi() {
+            const icon = document.getElementById('webcamsToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="webcamsToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-webcam]');
+            setToggleIcon(icon, false);
+            if (title) title.style.fontWeight = '600';
+            legendItems.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+        }
+
+        function syncWebcamsOnMap() {
+            if (!webcamsLayerGroup || !window.map) return;
+            const onMap = window.map.hasLayer(webcamsLayerGroup);
+            if (webcamsVisible && !onMap) webcamsLayerGroup.addTo(window.map);
+            if (!webcamsVisible && onMap) window.map.removeLayer(webcamsLayerGroup);
+        }
+
+        window.toggleWebcams = function() {
+            webcamsVisible = !webcamsVisible;
+
+            if (!webcamsVisible) {
+                syncWebcamsOnMap();
+                applyWebcamsHiddenUi();
+                syncLegendChrome();
+                return;
+            }
+
+            if (!webcamsLoaded) {
+                const icon = document.getElementById('webcamsToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                if (typeof window.loadWebcams === 'function') {
+                    window.loadWebcams({ show: true });
+                }
+                return;
+            }
+
+            syncWebcamsOnMap();
+            applyWebcamsVisibleUi();
+            syncLegendChrome();
+        };
+
+        window.loadWebcams = async function(options = {}) {
+            const wantVisible = options.show === true || webcamsVisible || appUrlWantsLayer('wcam');
+            try {
+                const data = await window.InforouteApi.fetchGeoJson('webcams');
+                const features = data.features || [];
+                renderFreshnessBadge(document.getElementById('freshness-webcams'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'static',
+                    errorMsg: data._cache?.error
+                });
+
+                if (webcamsLayerGroup) {
+                    window.map?.removeLayer(webcamsLayerGroup);
+                    webcamsLayerGroup = null;
+                }
+
+                webcamsLayerGroup = L.layerGroup();
+                features.forEach(feature => {
+                    const marker = makeWebcamMarker(feature);
+                    if (marker) webcamsLayerGroup.addLayer(marker);
+                });
+
+                webcamsLoaded = true;
+                setWebcamLegendCounts(features);
+
+                if (wantVisible) {
+                    webcamsVisible = true;
+                    syncWebcamsOnMap();
+                    applyWebcamsVisibleUi();
+                } else {
+                    webcamsVisible = false;
+                    syncWebcamsOnMap();
+                    applyWebcamsHiddenUi();
+                }
+
+                syncLegendChrome();
+                tryApplyAppUrlState();
+                console.log(`✓ ${features.length} webcams chargées`);
+            } catch (error) {
+                console.error('Erreur chargement webcams:', error);
+                renderFreshnessBadge(document.getElementById('freshness-webcams'), {
+                    scheduleKey: 'static',
+                    errorMsg: error.message
+                });
+                if (!wantVisible) applyWebcamsHiddenUi();
+                webcamsVisible = false;
                 syncLegendChrome();
             }
         };
@@ -6259,6 +6446,11 @@
             if (inaturalistSensitivesLoaded || inaturalistSensitivesVisible || appUrlWantsLayer('inat')) return;
             if (window.loadInaturalistSensitives) window.loadInaturalistSensitives({ show: false });
         }, 5500);
+
+        setTimeout(() => {
+            if (webcamsLoaded || webcamsVisible || appUrlWantsLayer('wcam')) return;
+            if (window.loadWebcams) window.loadWebcams({ show: false });
+        }, 6000);
         
         // ========== ROADS UNDER CONSTRUCTION ==========
 
