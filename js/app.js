@@ -987,7 +987,7 @@
         let bridgeMapChangeHandler = null;
         const BRIDGE_PHOTO_MIN_ZOOM = 16;
         const BRIDGE_SCHEMATIC_MIN_ZOOM = 16;
-        const BRIDGE_GEOMETRY_MIN_ZOOM = 14;
+        const BRIDGE_GEOMETRY_MIN_ZOOM = 12;
         const BRIDGE_PHOTO_OUTSIDE_BASE_PX = 34;
         const BRIDGE_PHOTO_OUTSIDE_RING_PX = 15;
         const bridgePhotoProviderVisibility = {
@@ -1597,8 +1597,12 @@
             }
 
             const zoom = window.map.getZoom();
+            if (zoom < BRIDGE_GEOMETRY_MIN_ZOOM) {
+                hint.textContent = `Profil masqué à ce zoom · zoomez au niveau ${BRIDGE_GEOMETRY_MIN_ZOOM}+ pour afficher tablier, culées et piles.`;
+                return;
+            }
             if (zoom < BRIDGE_PHOTO_MIN_ZOOM) {
-                hint.textContent = `Photos masquées à ce zoom · zoomez au niveau ${BRIDGE_PHOTO_MIN_ZOOM}+ près d'un pont.`;
+                hint.textContent = `Profil visible · photos au zoom ${BRIDGE_PHOTO_MIN_ZOOM}+ près d'un pont.`;
                 return;
             }
 
@@ -1651,10 +1655,10 @@
         }
 
         function bridgeClusterRadiusPx(zoom) {
-            if (zoom >= 15) return 0;
+            if (zoom >= BRIDGE_GEOMETRY_MIN_ZOOM) return 0;
             if (zoom <= 10) return 72;
             // Rayon qui décroît progressivement : les ponts se séparent de proche en proche.
-            return Math.max(0, Math.round(72 * (15 - zoom) / 5));
+            return Math.max(0, Math.round(72 * (BRIDGE_GEOMETRY_MIN_ZOOM - zoom) / 2));
         }
 
         function bridgePhotoCountsForGroups(groups) {
@@ -1882,8 +1886,13 @@
         function updateBridgeGroupMarkerLayer() {
             if (!bridgeGroupMarkerLayerGroup || !window.map || !bridgeVisible) return;
 
+            const zoom = window.map.getZoom();
+            const geometryVisible = zoom >= BRIDGE_GEOMETRY_MIN_ZOOM;
+
             bridgeGroupMarkerLayerGroup.clearLayers();
             clusterBridgeGroupsInView().forEach(cluster => {
+                // Au zoom profil, la géométrie remplace les pastilles solo : inutile de cliquer.
+                if (geometryVisible && !cluster.isCluster) return;
                 makeBridgeClusterMarker(cluster).addTo(bridgeGroupMarkerLayerGroup);
             });
             bringBridgeGroupMarkersToFront();
