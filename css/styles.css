@@ -1658,8 +1658,12 @@
         }
 
         .bridge-group-marker.is-cluster span {
-            font-size: 0.95rem;
+            font-size: 0.78rem;
             letter-spacing: -0.02em;
+        }
+
+        .bridge-group-marker.is-cluster {
+            border-width: 2px;
         }
 
         .bridge-group-marker.is-solo {

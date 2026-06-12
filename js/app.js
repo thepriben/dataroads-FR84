@@ -1254,7 +1254,8 @@
         const BRIDGE_PHOTO_MIN_ZOOM = 16;
         const BRIDGE_SCHEMATIC_MIN_ZOOM = 16;
         const BRIDGE_GEOMETRY_MIN_ZOOM = 12;
-        const BRIDGE_CLUSTER_DISSOLVE_ZOOM = 14;
+        const BRIDGE_CLUSTER_DISSOLVE_ZOOM = 15;
+        const BRIDGE_CLUSTER_MIN_ZOOM = 8;
         const BRIDGE_PHOTO_OUTSIDE_BASE_PX = 34;
         const BRIDGE_PHOTO_OUTSIDE_RING_PX = 15;
         const bridgePhotoProviderVisibility = {
@@ -1916,50 +1917,75 @@
                 updateBridgeGroupMarkerLayer();
                 updateBridgePhotoLayerVisibility();
             };
-            window.map.on('zoom zoomend moveend', bridgeMapChangeHandler);
+            bridgeMapZoomHandler = () => {
+                updateBridgeGeometryVisibility();
+                updateBridgePhotoLayerVisibility();
+            };
+            window.map.on('zoom', bridgeMapZoomHandler);
+            window.map.on('zoomend moveend', bridgeMapChangeHandler);
         }
 
+        let bridgeMapZoomHandler = null;
+
         function unbindBridgeMapChangeHandler() {
-            if (!window.map || !bridgeMapChangeHandler) return;
-            window.map.off('zoom zoomend moveend', bridgeMapChangeHandler);
-            bridgeMapChangeHandler = null;
+            if (!window.map) return;
+            if (bridgeMapChangeHandler) {
+                window.map.off('zoomend moveend', bridgeMapChangeHandler);
+                bridgeMapChangeHandler = null;
+            }
+            if (bridgeMapZoomHandler) {
+                window.map.off('zoom', bridgeMapZoomHandler);
+                bridgeMapZoomHandler = null;
+            }
         }
 
         function bridgeClusterRadiusPx(zoom) {
-            if (zoom >= BRIDGE_CLUSTER_DISSOLVE_ZOOM) return 0;
-            if (zoom >= BRIDGE_GEOMETRY_MIN_ZOOM) {
-                // Zoom 12–13 : grappes conservées (clic pour zoomer) mais pastilles solo masquées.
-                return Math.round(12 * (BRIDGE_CLUSTER_DISSOLVE_ZOOM - zoom));
+            const z = Number.isFinite(zoom) ? zoom : BRIDGE_CLUSTER_MIN_ZOOM;
+            if (z >= BRIDGE_CLUSTER_DISSOLVE_ZOOM) return 0;
+            if (z < BRIDGE_GEOMETRY_MIN_ZOOM) {
+                // Déclin progressif 9→11 avant l'apparition du profil.
+                return Math.max(22, Math.round(62 - (z - BRIDGE_CLUSTER_MIN_ZOOM) * 10));
             }
-            if (zoom <= 10) return 72;
-            // Rayon qui décroît progressivement : les ponts se séparent de proche en proche.
-            return Math.max(12, Math.round(72 * (BRIDGE_GEOMETRY_MIN_ZOOM - zoom) / 2));
+            // 12→14 : petites grappes seulement (le profil porte le détail).
+            return Math.max(0, Math.round(14 * (BRIDGE_CLUSTER_DISSOLVE_ZOOM - z)));
+        }
+
+        function bridgeMarkerZoomScale(zoom) {
+            const z = Number.isFinite(zoom) ? zoom : BRIDGE_CLUSTER_MIN_ZOOM;
+            return Math.max(0.68, Math.min(1, 1.04 - (z - 9) * 0.05));
+        }
+
+        function bridgeGroupScreenSpanPx(group) {
+            if (!window.map || !group?.bounds?.isValid?.()) return 0;
+            const sw = window.map.latLngToContainerPoint(group.bounds.getSouthWest());
+            const ne = window.map.latLngToContainerPoint(group.bounds.getNorthEast());
+            return Math.max(Math.abs(ne.x - sw.x), Math.abs(ne.y - sw.y));
         }
 
         function bridgePhotoCountsForGroups(groups) {
             return groups.map(group => group.photos.length);
         }
 
-        function bridgeSoloMarkerDiameter(photoCount) {
-            if (photoCount <= 0) return 11;
-            return Math.min(42, 18 + photoCount * 8);
+        function bridgeSoloMarkerDiameter(photoCount, zoom) {
+            const scale = bridgeMarkerZoomScale(zoom);
+            if (photoCount <= 0) return Math.round(12 * scale);
+            return Math.round(Math.min(30, 14 + photoCount * 4) * scale);
         }
 
         function bridgeClusterMarkerDiameter(cluster, zoom) {
-            const photoCounts = bridgePhotoCountsForGroups(cluster.groups);
-            const maxPhotoCount = Math.max(0, ...photoCounts, 0);
-            const totalPhotos = cluster.photoCount;
+            const scale = bridgeMarkerZoomScale(zoom);
+            const maxPhotoCount = cluster.maxPhotoCount || 0;
 
             if (!cluster.isCluster) {
-                return bridgeSoloMarkerDiameter(maxPhotoCount);
+                return bridgeSoloMarkerDiameter(maxPhotoCount, zoom);
             }
 
-            const zoomBase = zoom < 11 ? 48 : zoom < 13 ? 36 : 24;
-            if (totalPhotos > 0) {
-                // Priorité au pont le plus riche en photos, puis agrégat du groupe.
-                return Math.min(78, zoomBase + maxPhotoCount * 9 + totalPhotos * 3);
-            }
-            return Math.min(58, zoomBase + Math.sqrt(cluster.bridgeCount) * 4);
+            const zoomBase = zoom < 11 ? 30 : zoom < 13 ? 26 : 22;
+            const countBump = Math.min(10, Math.sqrt(cluster.bridgeCount) * 2.2);
+            const photoBump = cluster.photoCount > 0
+                ? Math.min(8, maxPhotoCount * 1.6 + Math.sqrt(cluster.photoCount))
+                : 0;
+            return Math.round(Math.min(40, zoomBase + countBump + photoBump) * scale);
         }
 
         function getBridgeGroupsInView() {
@@ -2021,7 +2047,12 @@
                         points[i].point.x - points[j].point.x,
                         points[i].point.y - points[j].point.y
                     );
-                    if (distance <= radiusPx * 1.35) union(i, j);
+                    if (distance > radiusPx) continue;
+                    const spanI = bridgeGroupScreenSpanPx(points[i].group);
+                    const spanJ = bridgeGroupScreenSpanPx(points[j].group);
+                    const minSpan = Math.min(spanI, spanJ);
+                    if (minSpan > 18 && distance > minSpan * 0.55) continue;
+                    union(i, j);
                 }
             }
 
@@ -2039,12 +2070,24 @@
 
         function bridgeClusterLabel(cluster, zoom) {
             if (cluster.isCluster) {
-                if (cluster.photoCount > 0) return String(cluster.photoCount);
+                if (cluster.photoCount > 0 && zoom < 13) return String(cluster.photoCount);
                 if (cluster.bridgeCount > 1) return String(cluster.bridgeCount);
                 return '';
             }
-            if (cluster.maxPhotoCount > 0 && zoom >= 13) return String(cluster.maxPhotoCount);
+            if (cluster.maxPhotoCount > 0 && zoom >= 12 && zoom < BRIDGE_GEOMETRY_MIN_ZOOM + 1) {
+                return String(cluster.maxPhotoCount);
+            }
             return '';
+        }
+
+        function shouldShowBridgeClusterMarker(cluster, zoom) {
+            const geometryVisible = zoom >= BRIDGE_GEOMETRY_MIN_ZOOM;
+            if (!cluster.isCluster) {
+                return !geometryVisible;
+            }
+            if (zoom >= BRIDGE_CLUSTER_DISSOLVE_ZOOM) return false;
+            if (geometryVisible && zoom >= 13 && cluster.bridgeCount < 3) return false;
+            return true;
         }
 
         function bridgeClusterTooltip(cluster) {
@@ -2076,8 +2119,8 @@
         function handleBridgeClusterMarkerClick(cluster) {
             if (cluster.isCluster && cluster.bridgeCount > 1) {
                 const currentZoom = window.map.getZoom();
-                const zoomBump = cluster.bridgeCount > 24 ? 3 : 2;
-                const targetZoom = Math.min(currentZoom + zoomBump, 18);
+                const zoomBump = cluster.bridgeCount > 12 ? 2 : 1;
+                const targetZoom = Math.min(Math.max(currentZoom + zoomBump, BRIDGE_GEOMETRY_MIN_ZOOM), 18);
 
                 const validGroups = cluster.groups.filter(group => group.bounds?.isValid?.());
                 if (!validGroups.length) {
@@ -2094,12 +2137,11 @@
                 ));
 
                 if (bounds.isValid()) {
-                    const fitZoom = window.map.getBoundsZoom(bounds, false, L.point(48, 48));
-                    // Large clusters span the whole view: fitBounds would zoom out instead of drilling in.
-                    if (fitZoom > currentZoom && cluster.bridgeCount <= 16) {
+                    const fitZoom = window.map.getBoundsZoom(bounds, false, L.point(56, 56));
+                    if (fitZoom > currentZoom + 0.25 && cluster.bridgeCount <= 12) {
                         window.map.fitBounds(bounds, {
-                            padding: [48, 48],
-                            maxZoom: Math.max(targetZoom, fitZoom),
+                            padding: [56, 56],
+                            maxZoom: Math.min(18, Math.max(targetZoom, fitZoom)),
                             animate: true
                         });
                         return;
@@ -2162,12 +2204,10 @@
             if (!bridgeGroupMarkerLayerGroup || !window.map || !bridgeVisible) return;
 
             const zoom = window.map.getZoom();
-            const geometryVisible = zoom >= BRIDGE_GEOMETRY_MIN_ZOOM;
 
             bridgeGroupMarkerLayerGroup.clearLayers();
             clusterBridgeGroupsInView().forEach(cluster => {
-                // Au zoom profil, la géométrie remplace les pastilles solo : inutile de cliquer.
-                if (geometryVisible && !cluster.isCluster) return;
+                if (!shouldShowBridgeClusterMarker(cluster, zoom)) return;
                 makeBridgeClusterMarker(cluster).addTo(bridgeGroupMarkerLayerGroup);
             });
             bringBridgeGroupMarkersToFront();
@@ -2186,7 +2226,7 @@
 
             window.map.fitBounds(bounds, {
                 padding: [40, 40],
-                maxZoom: 12,
+                maxZoom: 11,
                 animate: true
             });
         }
