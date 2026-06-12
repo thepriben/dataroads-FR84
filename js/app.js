@@ -2140,8 +2140,16 @@
             syncLegendChrome();
         };
 
+        function appUrlWantsLayer(key) {
+            if (INITIAL_APP_URL_STATE?.layersExplicit && INITIAL_APP_URL_STATE.layers?.includes(key)) {
+                return true;
+            }
+            const state = parseAppUrlState();
+            return !!(state?.layersExplicit && state.layers?.includes(key));
+        }
+
         window.loadSensitiveZones = async function(options = {}) {
-            const show = options.show !== false;
+            const wantVisible = options.show === true || sensitiveZonesVisible || appUrlWantsLayer('ens');
             try {
                 const data = await window.InforouteApi.fetchGeoJson('sensitive-natural-zones');
                 const features = data.features || [];
@@ -2173,11 +2181,13 @@
                 const countEl = document.getElementById('count-sensitive-zones');
                 if (countEl) countEl.textContent = features.length.toLocaleString('fr-FR');
 
-                if (show) {
+                if (wantVisible) {
                     sensitiveZonesVisible = true;
                     syncSensitiveZonesOnMap();
                     applySensitiveZonesVisibleUi();
                 } else {
+                    sensitiveZonesVisible = false;
+                    syncSensitiveZonesOnMap();
                     applySensitiveZonesHiddenUi();
                 }
 
@@ -2190,14 +2200,14 @@
                     scheduleKey: 'natural',
                     errorMsg: error.message
                 });
-                if (!show) applySensitiveZonesHiddenUi();
+                if (!wantVisible) applySensitiveZonesHiddenUi();
                 sensitiveZonesVisible = false;
                 syncLegendChrome();
             }
         };
 
         window.loadInaturalistSensitives = async function(options = {}) {
-            const show = options.show !== false;
+            const wantVisible = options.show === true || inaturalistSensitivesVisible || appUrlWantsLayer('inat');
             try {
                 const data = await window.InforouteApi.fetchGeoJson('inaturalist-sensitive-zones');
                 const features = data.features || [];
@@ -2237,11 +2247,13 @@
                 const countEl = document.getElementById('count-inaturalist-sensitive');
                 if (countEl) countEl.textContent = features.length.toLocaleString('fr-FR');
 
-                if (show) {
+                if (wantVisible) {
                     inaturalistSensitivesVisible = true;
                     syncInaturalistSensitivesOnMap();
                     applyInaturalistSensitivesVisibleUi();
                 } else {
+                    inaturalistSensitivesVisible = false;
+                    syncInaturalistSensitivesOnMap();
                     applyInaturalistSensitivesHiddenUi();
                 }
 
@@ -2254,7 +2266,7 @@
                     scheduleKey: 'natural',
                     errorMsg: error.message
                 });
-                if (!show) applyInaturalistSensitivesHiddenUi();
+                if (!wantVisible) applyInaturalistSensitivesHiddenUi();
                 inaturalistSensitivesVisible = false;
                 syncLegendChrome();
             }
@@ -6239,10 +6251,12 @@
         }, 4500);
 
         setTimeout(() => {
+            if (sensitiveZonesLoaded || sensitiveZonesVisible || appUrlWantsLayer('ens')) return;
             if (window.loadSensitiveZones) window.loadSensitiveZones({ show: false });
         }, 5000);
 
         setTimeout(() => {
+            if (inaturalistSensitivesLoaded || inaturalistSensitivesVisible || appUrlWantsLayer('inat')) return;
             if (window.loadInaturalistSensitives) window.loadInaturalistSensitives({ show: false });
         }, 5500);
         
