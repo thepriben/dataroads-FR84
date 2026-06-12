@@ -1058,11 +1058,11 @@
                 headerLegendBtn?.setAttribute('aria-expanded', String(open));
                 mapLegendBtn?.setAttribute('aria-expanded', String(open));
                 gutterBtn?.setAttribute('aria-expanded', String(open));
-                if (gutterBtn) gutterBtn.hidden = open;
                 backdrop?.setAttribute('aria-hidden', String(!mobile || !mobileOpen));
                 headerLegendBtn?.classList.toggle('is-active', open);
                 mapLegendBtn?.classList.toggle('is-active', open);
                 document.body.classList.toggle('legend-panel-open', open);
+                document.body.classList.toggle('legend-panel-closed', !open);
             }
 
             function syncSidebarDom() {

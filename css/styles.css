@@ -339,39 +339,55 @@
             left: 0;
             top: 0;
             bottom: 0;
-            z-index: 1001;
-            width: 16px;
+            z-index: 1102;
+            width: 22px;
             display: none;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 6px;
             padding: 0;
             border: none;
-            border-right: 1px solid #cbd5e1;
+            border-right: 2px solid #94a3b8;
             border-radius: 0;
-            background: linear-gradient(90deg, #f1f5f9 0%, rgba(241, 245, 249, 0.92) 70%, rgba(241, 245, 249, 0.55) 100%);
-            color: #64748b;
+            background: linear-gradient(90deg, #e8eef4 0%, #f1f5f9 55%, rgba(241, 245, 249, 0.88) 100%);
+            color: #334155;
             cursor: pointer;
-            box-shadow: 2px 0 10px rgba(15, 23, 42, 0.06);
+            pointer-events: auto;
+            box-shadow: 3px 0 14px rgba(15, 23, 42, 0.12);
             transition: width 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
         }
 
         .sidebar-gutter svg {
-            width: 14px;
-            height: 14px;
+            width: 16px;
+            height: 16px;
             flex-shrink: 0;
+        }
+
+        .sidebar-gutter-label {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            line-height: 1;
+            color: #64748b;
+            user-select: none;
+            pointer-events: none;
         }
 
         .sidebar-gutter:hover,
         .sidebar-gutter:focus-visible {
-            width: 22px;
-            background: linear-gradient(90deg, #e8eef4 0%, rgba(232, 238, 244, 0.95) 100%);
-            color: #2c3e50;
-            box-shadow: 3px 0 14px rgba(15, 23, 42, 0.1);
+            width: 28px;
+            background: linear-gradient(90deg, #dce4ec 0%, #eef2f6 100%);
+            color: #1f2933;
+            border-right-color: #64748b;
+            box-shadow: 4px 0 18px rgba(15, 23, 42, 0.16);
             outline: none;
         }
 
-        .main-content.is-sidebar-collapsed .sidebar-gutter,
-        .main-content.is-mobile-sidebar:not(.is-sidebar-open) .sidebar-gutter {
+        body.legend-panel-closed .sidebar-gutter {
             display: flex;
         }
 
