@@ -2439,7 +2439,6 @@
             const props = feature.properties || {};
             const color = getInaturalistMarkerColor(props.iconic_taxon, props.quality_grade);
             const visualSize = inaturalistMarkerVisualSize(props.quality_grade, zoom);
-            const hitSize = inaturalistMarkerHitSize(zoom, visualSize);
             const qualityClass = props.quality_grade === 'casual'
                 ? ' is-casual'
                 : (props.quality_grade === 'needs_id' ? ' is-needs-id' : ' is-research');
@@ -2448,20 +2447,15 @@
             return L.divIcon({
                 className: 'inaturalist-sensitive-marker-wrapper',
                 html: `
-                    <button
-                        type="button"
-                        class="inaturalist-sensitive-marker${qualityClass}"
-                        style="width:${visualSize}px;height:${visualSize}px;"
+                    <span
+                        class="inaturalist-sensitive-marker-dot${qualityClass}"
+                        style="--inat-color:${color};width:${visualSize}px;height:${visualSize}px;"
                         aria-label="${String(label).replace(/"/g, '&quot;')}"
-                    >
-                        <span
-                            class="inaturalist-sensitive-marker-dot"
-                            style="--inat-color:${color};width:${visualSize}px;height:${visualSize}px;"
-                        ></span>
-                    </button>
+                        role="img"
+                    ></span>
                 `,
-                iconSize: [hitSize, hitSize],
-                iconAnchor: [hitSize / 2, hitSize / 2]
+                iconSize: [visualSize, visualSize],
+                iconAnchor: [visualSize / 2, visualSize / 2]
             });
         }
 
@@ -2475,11 +2469,13 @@
                 icon: makeInaturalistMarkerIcon(feature, mapZoom),
                 pane: 'markerPane',
                 riseOnHover: false,
-                interactive: true,
+                interactive: false,
+                keyboard: false,
                 zIndexOffset: 1400
             });
 
             marker._inatFeature = feature;
+            marker._inatProps = props;
             marker.bindPopup(() => buildInaturalistPopup(props), {
                 className: 'inat-leaflet-popup',
                 autoPan: true,
@@ -2487,35 +2483,35 @@
                 maxWidth: 320,
                 minWidth: 260
             });
-            marker.on('click', event => {
-                L.DomEvent.stopPropagation(event);
-                marker.openPopup();
-            });
             return marker;
         }
 
-        function inaturalistMarkerSnapRadiusPx(zoom) {
+        function inaturalistMarkerTightSnapRadiusPx(zoom) {
             const visual = inaturalistMarkerVisualSize('research', zoom);
-            return Math.round(inaturalistMarkerHitSize(zoom, visual) / 2 + 10);
+            return Math.round(visual / 2 + 5);
         }
 
-        function findNearestInaturalistMarker(latlng) {
+        function inaturalistMarkerDistancePx(latlng, marker) {
+            if (!window.map || !marker) return Infinity;
+            const clickPoint = window.map.latLngToContainerPoint(latlng);
+            const markerPoint = window.map.latLngToContainerPoint(marker.getLatLng());
+            return Math.hypot(markerPoint.x - clickPoint.x, markerPoint.y - clickPoint.y);
+        }
+
+        function findNearestInaturalistMarker(latlng, maxDistancePx) {
             if (!window.map || !inaturalistSensitivesVisible || !inaturalistSensitiveMarkers.length) {
                 return null;
             }
 
-            const clickPoint = window.map.latLngToContainerPoint(latlng);
-            const snapRadius = inaturalistMarkerSnapRadiusPx(window.map.getZoom());
+            const snapRadius = Number.isFinite(maxDistancePx)
+                ? maxDistancePx
+                : inaturalistMarkerTightSnapRadiusPx(window.map.getZoom());
             let bestMarker = null;
             let bestDistance = snapRadius;
 
             inaturalistSensitiveMarkers.forEach(marker => {
                 if (!window.map.hasLayer(marker)) return;
-                const markerPoint = window.map.latLngToContainerPoint(marker.getLatLng());
-                const distance = Math.hypot(
-                    markerPoint.x - clickPoint.x,
-                    markerPoint.y - clickPoint.y
-                );
+                const distance = inaturalistMarkerDistancePx(latlng, marker);
                 if (distance <= bestDistance) {
                     bestDistance = distance;
                     bestMarker = marker;
@@ -2523,6 +2519,45 @@
             });
 
             return bestMarker;
+        }
+
+        function findEnsLayerAtLatLng(latlng) {
+            if (!window.map || !sensitiveZonesVisible || !sensitiveZonesLayer) return null;
+
+            const layerPoint = window.map.latLngToLayerPoint(latlng);
+            let match = null;
+            sensitiveZonesLayer.eachLayer(layer => {
+                if (match || typeof layer._containsPoint !== 'function') return;
+                try {
+                    if (layer._containsPoint(layerPoint)) match = layer;
+                } catch (_) {
+                    // Ignore layers that cannot test point containment.
+                }
+            });
+            return match;
+        }
+
+        function handleIncubatorMapClick(event) {
+            if (!window.map) return;
+
+            const latlng = event.latlng;
+            const zoom = window.map.getZoom();
+            const tightSnap = inaturalistMarkerTightSnapRadiusPx(zoom);
+            const ensLayer = sensitiveZonesVisible ? findEnsLayerAtLatLng(latlng) : null;
+            const marker = inaturalistSensitivesVisible
+                ? findNearestInaturalistMarker(latlng, tightSnap)
+                : null;
+
+            if (marker) {
+                marker.openPopup();
+                L.DomEvent.stopPropagation(event);
+                return;
+            }
+
+            if (ensLayer) {
+                ensLayer.openPopup();
+                L.DomEvent.stopPropagation(event);
+            }
         }
 
         function refreshInaturalistMarkerSizes() {
@@ -2564,16 +2599,8 @@
         function bindInaturalistMapClickHandler() {
             if (!window.map || inaturalistMapClickHandler) return;
             inaturalistMapClickHandler = event => {
-                if (!inaturalistSensitivesVisible) return;
-                const target = event.originalEvent?.target;
-                if (target?.closest?.('.inaturalist-sensitive-marker')) return;
-                if (target?.closest?.('path.leaflet-interactive, .leaflet-interactive')) return;
-
-                const marker = findNearestInaturalistMarker(event.latlng);
-                if (!marker) return;
-
-                marker.openPopup();
-                L.DomEvent.stopPropagation(event);
+                if (!inaturalistSensitivesVisible && !sensitiveZonesVisible) return;
+                handleIncubatorMapClick(event);
             };
             window.map.on('click', inaturalistMapClickHandler);
         }
@@ -2692,9 +2719,29 @@
             const amount = String(claim.value.amount || '').replace(/^\+/, '');
             const numeric = Number.parseFloat(amount);
             if (!Number.isFinite(numeric)) return '';
-            const unit = claim.value.unit || '';
-            if (unit.endsWith('Q712226') || unit === '1') return `${numeric.toLocaleString('fr-FR')} ha`;
+            const unit = String(claim.value.unit || '');
+            if (!unit || unit === '1' || unit.includes('Q712226')) {
+                return `${numeric.toLocaleString('fr-FR')} ha`;
+            }
             return `${numeric.toLocaleString('fr-FR')}`;
+        }
+
+        function formatEnsInceptionYear(value) {
+            if (!value) return '';
+            const match = String(value).match(/(\d{4})/);
+            return match ? match[1] : String(value);
+        }
+
+        function ensAreasRoughlyEqual(areaHa, wikidataArea) {
+            const local = Number.parseFloat(String(areaHa ?? '').replace(',', '.'));
+            const remote = Number.parseFloat(String(wikidataArea ?? '').replace(/[^\d.,]/g, '').replace(',', '.'));
+            return Number.isFinite(local) && Number.isFinite(remote) && Math.abs(local - remote) < 0.2;
+        }
+
+        function ensLabelsRoughlyEqual(ensName, wikidataLabel) {
+            const left = normalizeEnsSearchName(ensName).toLowerCase();
+            const right = normalizeEnsSearchName(wikidataLabel).toLowerCase();
+            return left && right && left === right;
         }
 
         function buildEnsWikidataEnrichment(searchHit, entity) {
@@ -2777,61 +2824,91 @@
             `;
         }
 
-        function buildEnsWikidataPopupSection(wikidata, loading = false) {
+        function incubatorPopupLine(label, value) {
+            if (!value) return '';
+            return `
+                <p class="incubator-popup__line">
+                    <span class="incubator-popup__line-label">${label}</span>
+                    <span class="incubator-popup__line-value">${value}</span>
+                </p>
+            `;
+        }
+
+        function buildEnsWikidataPopupSection(props, wikidata, loading = false) {
             if (loading) {
                 return `
-                    <section class="incubator-popup__extra incubator-popup__extra--loading">
-                        <div class="incubator-popup__extra-title">Complément Wikidata</div>
-                        <p>Recherche en cours…</p>
-                    </section>
+                    <footer class="incubator-popup__wd incubator-popup__wd--loading">
+                        <span class="incubator-popup__wd-spinner">Wikidata…</span>
+                    </footer>
                 `;
             }
             if (!wikidata) return '';
 
-            const facts = [
-                incubatorPopupFact('Libellé WD', escapeHtml(wikidata.label)),
-                wikidata.inpnCode
-                    ? incubatorPopupFact('Code INPN', `<a href="${escapeHtml(wikidata.inpnUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(wikidata.inpnCode)}</a>`)
-                    : '',
-                wikidata.area ? incubatorPopupFact('Superficie WD', escapeHtml(wikidata.area)) : '',
-                wikidata.inception ? incubatorPopupFact('Création', escapeHtml(wikidata.inception)) : ''
-            ].join('');
+            const chips = [];
+            if (wikidata.inpnCode) {
+                chips.push(`<a class="incubator-popup__wd-chip" href="${escapeHtml(wikidata.inpnUrl)}" target="_blank" rel="noopener noreferrer">INPN ${escapeHtml(wikidata.inpnCode)}</a>`);
+            }
+            const inceptionYear = formatEnsInceptionYear(wikidata.inception);
+            if (inceptionYear) {
+                chips.push(`<span class="incubator-popup__wd-chip is-muted">créé ${escapeHtml(inceptionYear)}</span>`);
+            }
+            if (wikidata.area && !ensAreasRoughlyEqual(props.area_ha, wikidata.area)) {
+                chips.push(`<span class="incubator-popup__wd-chip is-muted">${escapeHtml(wikidata.area)}</span>`);
+            }
+
+            const description = wikidata.description
+                && !ensLabelsRoughlyEqual(props.name, wikidata.label)
+                ? wikidata.description
+                : (wikidata.description || '');
+
+            const links = [
+                `<a class="incubator-popup__wd-link" href="${escapeHtml(wikidata.url)}" target="_blank" rel="noopener noreferrer">Wikidata</a>`
+            ];
+            if (wikidata.website) {
+                links.push(`<a class="incubator-popup__wd-link" href="${escapeHtml(wikidata.website)}" target="_blank" rel="noopener noreferrer">Site</a>`);
+            }
+
+            if (!description && !chips.length) return '';
 
             return `
-                <section class="incubator-popup__extra">
-                    <div class="incubator-popup__extra-title">Complément Wikidata</div>
-                    ${wikidata.description ? `<p class="incubator-popup__extra-desc">${escapeHtml(wikidata.description)}</p>` : ''}
-                    ${facts ? `<dl class="incubator-popup__facts incubator-popup__facts--compact">${facts}</dl>` : ''}
-                    <div class="incubator-popup__links">
-                        <a href="${escapeHtml(wikidata.url)}" target="_blank" rel="noopener noreferrer">Wikidata</a>
-                        ${wikidata.website ? `<a href="${escapeHtml(wikidata.website)}" target="_blank" rel="noopener noreferrer">Site web</a>` : ''}
+                <footer class="incubator-popup__wd">
+                    ${description ? `<p class="incubator-popup__wd-desc">${escapeHtml(description)}</p>` : ''}
+                    <div class="incubator-popup__wd-row">
+                        ${chips.join('')}
+                        <span class="incubator-popup__wd-links">${links.join('')}</span>
                     </div>
-                </section>
+                </footer>
             `;
         }
 
         function buildSensitiveZonePopup(props = {}, wikidata = null, wikidataLoading = false) {
+            const name = repairEnsFrenchText(props.name) || 'Espace naturel sensible';
             const areaText = props.area_ha ? `${props.area_ha.toLocaleString('fr-FR')} ha` : '';
             const communes = props.communes ? escapeHtml(repairEnsFrenchText(props.communes)) : '';
             const habitat = props.habitat ? escapeHtml(repairEnsFrenchText(props.habitat)) : '';
             const manager = props.manager ? escapeHtml(repairEnsFrenchText(props.manager)) : '';
             const owner = props.owner ? escapeHtml(repairEnsFrenchText(props.owner)) : '';
-            const facts = [
-                incubatorPopupFact('Superficie', areaText),
-                incubatorPopupFact('Communes', communes),
-                incubatorPopupFact('Milieu', habitat),
-                incubatorPopupFact('Gestionnaire', manager),
-                incubatorPopupFact('Propriétaires', owner)
+            const heroChips = [
+                areaText ? `<span class="incubator-popup__meta-chip">${escapeHtml(areaText)}</span>` : '',
+                communes ? `<span class="incubator-popup__meta-chip">${communes}</span>` : ''
+            ].filter(Boolean).join('');
+            const bodyLines = [
+                incubatorPopupLine('Milieu', habitat),
+                incubatorPopupLine('Gestion', manager),
+                incubatorPopupLine('Propriété', owner)
             ].join('');
 
             return `
                 <div class="incubator-popup incubator-popup--ens">
                     <div class="incubator-popup__hero incubator-popup__hero--ens">
-                        <span class="incubator-popup__badge">ENS · CD84</span>
-                        <h3 class="incubator-popup__title">${escapeHtml(repairEnsFrenchText(props.name) || 'Espace naturel sensible')}</h3>
+                        <div class="incubator-popup__hero-top">
+                            <span class="incubator-popup__badge">ENS</span>
+                            ${heroChips}
+                        </div>
+                        <h3 class="incubator-popup__title">${escapeHtml(name)}</h3>
                     </div>
-                    <dl class="incubator-popup__facts">${facts}</dl>
-                    ${buildEnsWikidataPopupSection(wikidata, wikidataLoading)}
+                    ${bodyLines ? `<div class="incubator-popup__body incubator-popup__body--ens">${bodyLines}</div>` : ''}
+                    ${buildEnsWikidataPopupSection(props, wikidata, wikidataLoading)}
                 </div>
             `;
         }
@@ -2873,6 +2950,9 @@
 
         function bindSensitiveZonePopup(layer, feature) {
             const props = feature.properties || {};
+            layer.on('click', event => {
+                L.DomEvent.stopPropagation(event);
+            });
             layer.bindPopup(() => {
                 const key = normalizeEnsSearchName(props.name).toLowerCase();
                 const hasCache = ENS_WIKIDATA_CACHE.has(key);
