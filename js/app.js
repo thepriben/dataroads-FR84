@@ -1746,9 +1746,13 @@
         }
 
         function bringBridgeGroupMarkersToFront() {
-            if (bridgeGroupMarkerLayerGroup && window.map?.hasLayer(bridgeGroupMarkerLayerGroup)) {
-                bridgeGroupMarkerLayerGroup.bringToFront();
-            }
+            if (!bridgeGroupMarkerLayerGroup || !window.map?.hasLayer(bridgeGroupMarkerLayerGroup)) return;
+            // L.layerGroup has no bringToFront — only child layers (paths) may support it.
+            bridgeGroupMarkerLayerGroup.eachLayer(layer => {
+                if (typeof layer.bringToFront === 'function') {
+                    layer.bringToFront();
+                }
+            });
         }
 
         function updateBridgeGroupMarkerLayer() {
@@ -3351,6 +3355,11 @@
                     }
                 }
             } catch (error) {
+                const routePhaseError = error && /bringToFront|bridgeGroup/i.test(String(error.message || ''));
+                if (routePhaseError) {
+                    console.error('Erreur couche ponts après chargement des routes:', error);
+                    return;
+                }
                 console.error('Erreur lors du chargement des routes:', error);
 
                 const detail = error && error.message
