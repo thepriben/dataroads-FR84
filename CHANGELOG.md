@@ -7,9 +7,24 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-12
+
+### Added
+
+- **Incubateur:** bridges (OSM clusters, schematic viewer, Panoramax/Mapillary), ENS zones, and iNaturalist observations.
+- **Chiffres clés** KPI dashboard; weather stations in Temps réel.
+- Map URL state (viewport and layers) and home button to reset the department view.
+
 ### Changed
 
-- Véloroutes layer: permanent visual hierarchy highlighting EV17 (Via Rhôna), EV8, and V861 (Via Venaissia) with official OSM colours; local routes subdued.
+- More compact header and sidebar; fixed repo link and version in the sidebar foot.
+- Véloroutes hierarchy colours (EV17, EV8, V861); unified family and layer visibility controls.
+
+### Fixed
+
+- Bridge cluster markers, layer sync, and cluster click zoom.
+- URL zoom and layer persistence; ENS/iNaturalist no longer dropped by background preload.
+- GitHub Actions data workflows: rebase before push on concurrent updates.
 
 ## [0.2.1] - 2026-05-30
 
@@ -46,7 +61,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Data refresh scripts `update_osm_geojson.py` and `update_external_data.py`.
 - GitHub Pages deployment and automated data-refresh workflows.
 
-[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/thepriben/dataroads-FR84/releases/tag/v0.1.0
