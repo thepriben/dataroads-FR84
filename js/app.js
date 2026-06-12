@@ -5013,6 +5013,10 @@
             ) / lengthSquared));
         }
 
+        function isBridgeSpanPhotoRole(role) {
+            return ['deck', 'structure', 'bridge'].includes(normalizeBridgeRole(role));
+        }
+
         function defaultBridgePhotoAxisT(photo, group) {
             const part = bridgeFeatureInfoById.get(photo.partId);
             if (part && group.bridgeAxis) return projectOnBridgeAxis(group.bridgeAxis, part.center);
@@ -5020,6 +5024,39 @@
             if (photo.role === 'pillar') return 0.5;
             if (photo.role === 'deck') return 0.5;
             return 0.5;
+        }
+
+        function bridgePhotoSchematicT(photo, group, abutmentParts) {
+            const role = normalizeBridgeRole(photo.role);
+            const part = bridgeFeatureInfoById.get(photo.partId);
+
+            if (isBridgeSpanPhotoRole(role)) {
+                return 0.5;
+            }
+
+            if (role === 'pillar') {
+                return part && group.bridgeAxis
+                    ? projectOnBridgeAxis(group.bridgeAxis, part.center)
+                    : 0.5;
+            }
+
+            if (role === 'abutment') {
+                let t = part && group.bridgeAxis
+                    ? projectOnBridgeAxis(group.bridgeAxis, part.center)
+                    : 0.08;
+                if (abutmentParts.length) {
+                    const nearest = abutmentParts.reduce((best, item) => {
+                        const distance = Math.abs(item.t - t);
+                        return distance < best.distance ? { distance, t: item.t } : best;
+                    }, { distance: Infinity, t });
+                    if (nearest.distance < 0.2) t = nearest.t;
+                }
+                return t;
+            }
+
+            return part && group.bridgeAxis
+                ? projectOnBridgeAxis(group.bridgeAxis, part.center)
+                : 0.5;
         }
 
         function buildBridgePhotoLayout(group) {
@@ -5030,7 +5067,6 @@
                 .filter(info => info.role === 'abutment')
                 .map(info => ({ info, t: projectOnBridgeAxis(group.bridgeAxis, info.center) }))
                 .sort((a, b) => a.t - b.t);
-            const abutmentTs = abutmentParts.map(item => item.t);
             const fallbackAbutmentT = (index, total) => (
                 total <= 1 ? 0.08 : (index / Math.max(total - 1, 1)) * 0.84 + 0.08
             );
@@ -5038,7 +5074,7 @@
             const slotBuckets = new Map();
             group.photos.forEach(photo => {
                 const part = bridgeFeatureInfoById.get(photo.partId);
-                let t = defaultBridgePhotoAxisT(photo, group);
+                let t = bridgePhotoSchematicT(photo, group, abutmentParts);
                 if (photo.role === 'abutment' && !part) {
                     const abutmentIndex = group.photos
                         .filter(item => item.role === 'abutment')
@@ -5046,15 +5082,11 @@
                     const totalAbutments = group.photos.filter(item => item.role === 'abutment').length;
                     t = fallbackAbutmentT(abutmentIndex, totalAbutments);
                 }
-                if (photo.role === 'abutment' && abutmentTs.length) {
-                    const nearest = abutmentParts.reduce((best, item) => {
-                        const distance = Math.abs(item.t - t);
-                        return distance < best.distance ? { distance, t: item.t } : best;
-                    }, { distance: Infinity, t });
-                    if (nearest.distance < 0.2) t = nearest.t;
-                }
 
-                const slotKey = `${photo.role}:${photo.partId || 'generic'}:${Math.round(t * 100)}`;
+                const role = normalizeBridgeRole(photo.role);
+                const slotKey = isBridgeSpanPhotoRole(role)
+                    ? 'span:center'
+                    : `${role}:${photo.partId || 'generic'}:${Math.round(t * 100)}`;
                 if (!slotBuckets.has(slotKey)) slotBuckets.set(slotKey, []);
                 slotBuckets.get(slotKey).push({ photo, t });
             });
