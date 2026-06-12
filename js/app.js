@@ -1252,9 +1252,16 @@
         let bridgeFeatureLayersById = new Map();
         let activeBridgeGroupId = null;
         let bridgeMapChangeHandler = null;
+        let bridgeMapZoomHandler = null;
+        let bridgeMapZoomStartHandler = null;
+        let bridgeZoomSettleTimer = null;
+        let bridgeGeometryLayerShown = false;
         const BRIDGE_PHOTO_MIN_ZOOM = 16;
         const BRIDGE_SCHEMATIC_MIN_ZOOM = 16;
         const BRIDGE_GEOMETRY_MIN_ZOOM = 12;
+        const BRIDGE_ZOOM_SETTLE_MS = 110;
+        const BRIDGE_GEOMETRY_SHOW_ZOOM = BRIDGE_GEOMETRY_MIN_ZOOM + 0.4;
+        const BRIDGE_GEOMETRY_HIDE_ZOOM = BRIDGE_GEOMETRY_MIN_ZOOM - 0.4;
         const BRIDGE_CLUSTER_DISSOLVE_ZOOM = 15;
         const BRIDGE_CLUSTER_MIN_ZOOM = 8;
         const BRIDGE_PHOTO_OUTSIDE_BASE_PX = 34;
@@ -1870,15 +1877,10 @@
                 hint.textContent = `Grappes actives · zoomez au niveau ${BRIDGE_GEOMETRY_MIN_ZOOM}+ pour le profil (tablier, culées, piles).`;
                 return;
             }
-            if (zoom < BRIDGE_CLUSTER_DISSOLVE_ZOOM) {
-                hint.textContent = `Profil visible · grappes denses encore cliquables · photos au zoom ${BRIDGE_PHOTO_MIN_ZOOM}+.`;
-                return;
-            }
             if (zoom < BRIDGE_PHOTO_MIN_ZOOM) {
-                hint.textContent = `Profil visible · photos au zoom ${BRIDGE_PHOTO_MIN_ZOOM}+ près d'un pont.`;
+                hint.textContent = `Profil visible · cliquez un élément pour l'analyse · photos au zoom ${BRIDGE_PHOTO_MIN_ZOOM}+.`;
                 return;
             }
-
             const providers = Object.entries(bridgePhotoProviderVisibility)
                 .filter(([, active]) => active)
                 .map(([provider]) => bridgeProviderLabel(provider))
@@ -1911,25 +1913,68 @@
             updateBridgeZoomHint(visiblePhotoCount);
         }
 
+        function setBridgeMapZoomingState(active) {
+            const container = window.map?.getContainer?.();
+            if (container) container.classList.toggle('bridge-map-zooming', active);
+        }
+
+        function resetBridgeZoomUiState() {
+            if (bridgeZoomSettleTimer) {
+                clearTimeout(bridgeZoomSettleTimer);
+                bridgeZoomSettleTimer = null;
+            }
+            bridgeGeometryLayerShown = false;
+            setBridgeMapZoomingState(false);
+        }
+
+        function resolveBridgeGeometryShown(zoom) {
+            const z = Number.isFinite(zoom) ? zoom : BRIDGE_CLUSTER_MIN_ZOOM;
+            if (!bridgeGeometryLayerShown && z >= BRIDGE_GEOMETRY_SHOW_ZOOM) {
+                bridgeGeometryLayerShown = true;
+            } else if (bridgeGeometryLayerShown && z < BRIDGE_GEOMETRY_HIDE_ZOOM) {
+                bridgeGeometryLayerShown = false;
+            }
+            return bridgeGeometryLayerShown;
+        }
+
+        function refreshBridgeMapLayers() {
+            if (!window.map || !bridgeVisible) return;
+            updateBridgeGeometryVisibility();
+            updateBridgeGroupMarkerLayer();
+            updateBridgePhotoLayerVisibility();
+            ensureBasemapVisible();
+            setBridgeMapZoomingState(false);
+        }
+
+        function scheduleBridgeMapLayerRefresh() {
+            if (!window.map || !bridgeVisible) return;
+            setBridgeMapZoomingState(true);
+            if (bridgeZoomSettleTimer) clearTimeout(bridgeZoomSettleTimer);
+            bridgeZoomSettleTimer = setTimeout(() => {
+                bridgeZoomSettleTimer = null;
+                refreshBridgeMapLayers();
+            }, BRIDGE_ZOOM_SETTLE_MS);
+        }
+
         function bindBridgeMapChangeHandler() {
             if (!window.map || bridgeMapChangeHandler) return;
-            bridgeMapChangeHandler = () => {
-                updateBridgeGeometryVisibility();
-                updateBridgeGroupMarkerLayer();
-                updateBridgePhotoLayerVisibility();
-            };
+            bridgeMapZoomStartHandler = () => setBridgeMapZoomingState(true);
             bridgeMapZoomHandler = () => {
+                setBridgeMapZoomingState(true);
                 updateBridgeGeometryVisibility();
-                updateBridgePhotoLayerVisibility();
             };
+            bridgeMapChangeHandler = () => scheduleBridgeMapLayerRefresh();
+            window.map.on('zoomstart', bridgeMapZoomStartHandler);
             window.map.on('zoom', bridgeMapZoomHandler);
             window.map.on('zoomend moveend', bridgeMapChangeHandler);
         }
 
-        let bridgeMapZoomHandler = null;
-
         function unbindBridgeMapChangeHandler() {
             if (!window.map) return;
+            if (bridgeMapZoomStartHandler) {
+                window.map.off('zoomstart', bridgeMapZoomStartHandler);
+                bridgeMapZoomStartHandler = null;
+            }
             if (bridgeMapChangeHandler) {
                 window.map.off('zoomend moveend', bridgeMapChangeHandler);
                 bridgeMapChangeHandler = null;
@@ -1938,22 +1983,21 @@
                 window.map.off('zoom', bridgeMapZoomHandler);
                 bridgeMapZoomHandler = null;
             }
+            resetBridgeZoomUiState();
         }
 
         function bridgeClusterRadiusPx(zoom) {
             const z = Number.isFinite(zoom) ? zoom : BRIDGE_CLUSTER_MIN_ZOOM;
             if (z >= BRIDGE_CLUSTER_DISSOLVE_ZOOM) return 0;
             if (z < BRIDGE_GEOMETRY_MIN_ZOOM) {
-                // Déclin progressif 9→11 avant l'apparition du profil.
-                return Math.max(22, Math.round(62 - (z - BRIDGE_CLUSTER_MIN_ZOOM) * 10));
+                return Math.max(16, Math.round(50 * Math.pow(0.72, z - BRIDGE_CLUSTER_MIN_ZOOM)));
             }
-            // 12→14 : petites grappes seulement (le profil porte le détail).
-            return Math.max(0, Math.round(14 * (BRIDGE_CLUSTER_DISSOLVE_ZOOM - z)));
+            return Math.max(0, Math.round(10 * (BRIDGE_CLUSTER_DISSOLVE_ZOOM - z)));
         }
 
         function bridgeMarkerZoomScale(zoom) {
             const z = Number.isFinite(zoom) ? zoom : BRIDGE_CLUSTER_MIN_ZOOM;
-            return Math.max(0.68, Math.min(1, 1.04 - (z - 9) * 0.05));
+            return Math.max(0.62, Math.min(1, 1 - (z - 9) * 0.055));
         }
 
         function bridgeGroupScreenSpanPx(group) {
@@ -1969,8 +2013,8 @@
 
         function bridgeSoloMarkerDiameter(photoCount, zoom) {
             const scale = bridgeMarkerZoomScale(zoom);
-            if (photoCount <= 0) return Math.round(12 * scale);
-            return Math.round(Math.min(30, 14 + photoCount * 4) * scale);
+            if (photoCount <= 0) return Math.round(11 * scale);
+            return Math.round(Math.min(24, 12 + photoCount * 3) * scale);
         }
 
         function bridgeClusterMarkerDiameter(cluster, zoom) {
@@ -1981,12 +2025,31 @@
                 return bridgeSoloMarkerDiameter(maxPhotoCount, zoom);
             }
 
-            const zoomBase = zoom < 11 ? 30 : zoom < 13 ? 26 : 22;
-            const countBump = Math.min(10, Math.sqrt(cluster.bridgeCount) * 2.2);
+            const zoomBase = zoom < 11 ? 24 : 20;
+            const countBump = Math.min(6, Math.sqrt(cluster.bridgeCount) * 1.6);
             const photoBump = cluster.photoCount > 0
-                ? Math.min(8, maxPhotoCount * 1.6 + Math.sqrt(cluster.photoCount))
+                ? Math.min(5, maxPhotoCount + Math.sqrt(cluster.photoCount) * 0.8)
                 : 0;
-            return Math.round(Math.min(40, zoomBase + countBump + photoBump) * scale);
+            return Math.round(Math.min(32, zoomBase + countBump + photoBump) * scale);
+        }
+
+        function bridgeClusterScreenSpanPx(cluster) {
+            if (!window.map || !cluster?.groups?.length) return 0;
+            let minX = Infinity;
+            let minY = Infinity;
+            let maxX = -Infinity;
+            let maxY = -Infinity;
+            cluster.groups.forEach(group => {
+                if (!group.bounds?.isValid?.()) return;
+                const sw = window.map.latLngToContainerPoint(group.bounds.getSouthWest());
+                const ne = window.map.latLngToContainerPoint(group.bounds.getNorthEast());
+                minX = Math.min(minX, sw.x, ne.x);
+                minY = Math.min(minY, sw.y, ne.y);
+                maxX = Math.max(maxX, sw.x, ne.x);
+                maxY = Math.max(maxY, sw.y, ne.y);
+            });
+            if (!Number.isFinite(minX)) return 0;
+            return Math.max(maxX - minX, maxY - minY);
         }
 
         function getBridgeGroupsInView() {
@@ -2048,11 +2111,12 @@
                         points[i].point.x - points[j].point.x,
                         points[i].point.y - points[j].point.y
                     );
-                    if (distance > radiusPx) continue;
+                    const mergeLimit = radiusPx * 0.92;
+                    if (distance > mergeLimit) continue;
                     const spanI = bridgeGroupScreenSpanPx(points[i].group);
                     const spanJ = bridgeGroupScreenSpanPx(points[j].group);
                     const minSpan = Math.min(spanI, spanJ);
-                    if (minSpan > 18 && distance > minSpan * 0.55) continue;
+                    if (minSpan > 14 && distance > minSpan * 0.42) continue;
                     union(i, j);
                 }
             }
@@ -2064,9 +2128,25 @@
                 buckets.get(root).push(entry.group);
             });
 
-            return [...buckets.values()].map(clusterGroups => (
+            const clusters = [...buckets.values()].map(clusterGroups => (
                 buildBridgeClusterDescriptor(clusterGroups, clusterGroups.length > 1)
             ));
+            return splitOversizedBridgeClusters(clusters, zoom);
+        }
+
+        function splitOversizedBridgeClusters(clusters, zoom) {
+            const maxSpan = zoom < 11 ? 78 : 58;
+            const expanded = [];
+            clusters.forEach(cluster => {
+                if (!cluster.isCluster || bridgeClusterScreenSpanPx(cluster) <= maxSpan) {
+                    expanded.push(cluster);
+                    return;
+                }
+                cluster.groups.forEach(group => {
+                    expanded.push(buildBridgeClusterDescriptor([group], false));
+                });
+            });
+            return expanded;
         }
 
         function bridgeClusterLabel(cluster, zoom) {
@@ -2082,12 +2162,10 @@
         }
 
         function shouldShowBridgeClusterMarker(cluster, zoom) {
-            const geometryVisible = zoom >= BRIDGE_GEOMETRY_MIN_ZOOM;
-            if (!cluster.isCluster) {
-                return !geometryVisible;
-            }
+            if (resolveBridgeGeometryShown(zoom)) return false;
+            if (!cluster.isCluster) return true;
             if (zoom >= BRIDGE_CLUSTER_DISSOLVE_ZOOM) return false;
-            if (geometryVisible && zoom >= 13 && cluster.bridgeCount < 3) return false;
+            if (bridgeClusterScreenSpanPx(cluster) > (zoom < 11 ? 96 : 72)) return false;
             return true;
         }
 
@@ -2107,9 +2185,9 @@
             return group.title;
         }
 
-        function updateBridgeGeometryVisibility() {
+        function updateBridgeGeometryVisibility(zoom = window.map?.getZoom?.()) {
             if (!bridgeGeometryLayerGroup || !window.map) return;
-            const showGeometry = bridgeVisible && window.map.getZoom() >= BRIDGE_GEOMETRY_MIN_ZOOM;
+            const showGeometry = bridgeVisible && resolveBridgeGeometryShown(zoom);
             if (showGeometry) {
                 if (!window.map.hasLayer(bridgeGeometryLayerGroup)) bridgeGeometryLayerGroup.addTo(window.map);
             } else if (window.map.hasLayer(bridgeGeometryLayerGroup)) {
@@ -2192,23 +2270,17 @@
         }
 
         function ensureBasemapVisible() {
-            if (!window.map || !window.basemapLayer) return;
-            if (!window.map.hasLayer(window.basemapLayer)) {
-                window.basemapLayer.addTo(window.map);
+            if (typeof window.ensureBasemapVisible === 'function') {
+                window.ensureBasemapVisible();
             }
         }
 
         function refreshMapAfterBridgeLayerChange() {
             if (!window.map) return;
-            const refresh = () => {
-                ensureBasemapVisible();
-                window.map.invalidateSize({ pan: false });
-                if (typeof window.basemapLayer?.redraw === 'function') {
-                    window.basemapLayer.redraw();
-                }
-            };
-            refresh();
-            requestAnimationFrame(refresh);
+            ensureBasemapVisible();
+            if (typeof window.refreshBasemapTiles === 'function') {
+                window.refreshBasemapTiles();
+            }
         }
 
         function bringBridgeGroupMarkersToFront() {
@@ -2232,6 +2304,7 @@
                 makeBridgeClusterMarker(cluster).addTo(bridgeGroupMarkerLayerGroup);
             });
             bringBridgeGroupMarkersToFront();
+            requestAnimationFrame(() => setBridgeMapZoomingState(false));
         }
 
         function fitBridgeOverviewIfNeeded() {
@@ -2272,12 +2345,11 @@
                 bindBridgeMapChangeHandler();
                 applyBridgesVisibleUi();
                 // Populate cluster markers before geometry/photo layers (geometry toggle used to throw and skip this).
-                updateBridgeGroupMarkerLayer();
-                updateBridgeGeometryVisibility();
-                updateBridgePhotoLayerVisibility();
+                refreshBridgeMapLayers();
                 ensureBasemapVisible();
                 refreshMapAfterBridgeLayerChange();
             } else {
+                resetBridgeZoomUiState();
                 if (!bridgeGeometryLayerGroup || !bridgePhotoLayerGroup) return;
                 if (window.map.hasLayer(bridgeGeometryLayerGroup)) window.map.removeLayer(bridgeGeometryLayerGroup);
                 if (bridgeGroupMarkerLayerGroup && window.map.hasLayer(bridgeGroupMarkerLayerGroup)) {
@@ -3743,8 +3815,38 @@
         window.basemapLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '© OpenStreetMap contributors © CARTO',
             subdomains: 'abcd',
-            maxZoom: 20
+            maxZoom: 20,
+            keepBuffer: 3,
+            updateWhenZooming: true,
+            updateWhenIdle: true
         }).addTo(window.map);
+
+        let basemapTileRetryTimer = null;
+        window.ensureBasemapVisible = function() {
+            if (!window.map || !window.basemapLayer) return;
+            if (!window.map.hasLayer(window.basemapLayer)) {
+                window.basemapLayer.addTo(window.map);
+            }
+            if (typeof window.basemapLayer.bringToBack === 'function') {
+                window.basemapLayer.bringToBack();
+            }
+        };
+        window.refreshBasemapTiles = function() {
+            if (typeof window.basemapLayer?.redraw !== 'function') return;
+            window.basemapLayer.redraw();
+        };
+        window.basemapLayer.on('tileerror', () => {
+            if (basemapTileRetryTimer) return;
+            basemapTileRetryTimer = window.setTimeout(() => {
+                basemapTileRetryTimer = null;
+                window.ensureBasemapVisible();
+                window.refreshBasemapTiles();
+            }, 320);
+        });
+        window.map.on('zoomend', () => {
+            window.ensureBasemapVisible();
+            window.refreshBasemapTiles();
+        });
 
         // Official list of Vaucluse municipalities (for filtering)
         const communesVaucluse = [

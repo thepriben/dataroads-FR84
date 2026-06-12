@@ -1618,6 +1618,12 @@
             }
         }
 
+        #map.bridge-map-zooming .bridge-group-marker-wrapper,
+        #map.bridge-map-zooming .bridge-photo-marker-wrapper {
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
         .bridge-group-marker-wrapper {
             background: transparent !important;
             border: none !important;

@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-06-13
+
+### Changed
+
+- Bridge clusters: smaller markers, tighter merge radius, and no cluster blobs once the OSM geometry profile is visible.
+
+### Fixed
+
+- Blank basemap when toggling or zooming the bridges layer: Carto tiles are kept at the back with retry on load errors.
+- Ugly bridge rendering during rapid zoom +/-: markers hidden while zooming, debounced refresh, and geometry hysteresis.
+- Redundant bridge geometry popup removed; click opens the analysis viewer directly.
+
 ## [0.3.2] - 2026-06-12
 
 ### Added
