@@ -1262,36 +1262,38 @@
             height: 14px;
         }
 
-        .webcam-popup-badge {
-            display: inline-block;
-            margin-bottom: 8px;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            color: #fff;
-            background: #60717c;
+        .webcam-leaflet-popup .leaflet-popup-content {
+            margin: 10px 12px;
+            width: min(380px, calc(100vw - 72px)) !important;
         }
 
-        .webcam-popup-badge[data-category="traffic"] {
-            background: #C0392B;
+        .webcam-popup-frame {
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #111;
         }
 
-        .webcam-popup-badge[data-category="mountain"] {
-            background: #0E7490;
+        .webcam-popup-iframe,
+        .webcam-popup-video,
+        .webcam-popup-image {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            object-fit: cover;
+            background: #111;
         }
 
-        .webcam-popup-desc {
-            margin: 0 0 8px;
+        .webcam-popup-unavailable {
+            margin: 0;
+            padding: 24px 12px;
+            text-align: center;
             font-size: 0.82rem;
-            line-height: 1.4;
-            color: #4a5b66;
-        }
-
-        .webcam-popup-link {
-            color: #3498DB;
-            font-weight: 600;
-            text-decoration: none;
+            color: #60717c;
+            background: #f4f6f8;
+            border-radius: 6px;
         }
 
         .inaturalist-popup-photo {

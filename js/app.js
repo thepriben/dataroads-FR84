@@ -2003,16 +2003,48 @@
             return value;
         }
 
+        const ENS_TEXT_REPAIRS = [
+            ['Communaut\uFFFD d\uFFFDAgglom\uFFFDration', "Communauté d'Agglomération"],
+            ['Communaut\uFFFD de communes', 'Communauté de communes'],
+            ['d\uFFFDAgglom\uFFFDration', "d'Agglomération"],
+            ['Agglom\uFFFDration', 'Agglomération'],
+            ['Communaut\uFFFD', 'Communauté'],
+            ['D\uFFFDpartement', 'Département'],
+            ['g\uFFFDologique', 'géologique'],
+            ['Courth\uFFFDzon', 'Courthézon'],
+            ['Jonqui\uFFFDres', 'Jonquières'],
+            ['Malauc\uFFFDne', 'Malaucène'],
+            ['M\uFFFDrindol', 'Mérindol'],
+            ['M\uFFFDnerbes', 'Ménerbes'],
+            ['Opp\uFFFDde', 'Oppède'],
+            ['Priv\uFFFD', 'Privé'],
+            ['priv\uFFFD', 'privé'],
+            ['Rhone Lez', 'Rhône Lez']
+        ];
+
+        function repairEnsFrenchText(value) {
+            if (!value) return value;
+            let text = String(value).replace(/ï¿½/g, '\uFFFD');
+            ENS_TEXT_REPAIRS.forEach(([wrong, right]) => {
+                text = text.split(wrong).join(right);
+            });
+            return text;
+        }
+
         function buildSensitiveZonePopup(props = {}) {
             const areaText = props.area_ha ? `${props.area_ha.toLocaleString('fr-FR')} ha` : '—';
+            const communes = props.communes ? repairEnsFrenchText(props.communes) : '';
+            const habitat = props.habitat ? repairEnsFrenchText(props.habitat) : '';
+            const manager = props.manager ? repairEnsFrenchText(props.manager) : '';
+            const owner = props.owner ? repairEnsFrenchText(props.owner) : '';
             return `
                 <div class="route-popup sensitive-zone-popup">
-                    <h3>${props.name || 'Espace naturel sensible'}</h3>
+                    <h3>${repairEnsFrenchText(props.name) || 'Espace naturel sensible'}</h3>
                     <div class="detail"><strong>Superficie&nbsp;:</strong> ${areaText}</div>
-                    ${props.communes ? `<div class="detail"><strong>Communes&nbsp;:</strong> ${props.communes}</div>` : ''}
-                    ${props.habitat ? `<div class="detail"><strong>Milieu&nbsp;:</strong> ${props.habitat}</div>` : ''}
-                    ${props.manager ? `<div class="detail"><strong>Gestionnaire&nbsp;:</strong> ${props.manager}</div>` : ''}
-                    ${props.owner ? `<div class="detail"><strong>Propriétaires&nbsp;:</strong> ${props.owner}</div>` : ''}
+                    ${communes ? `<div class="detail"><strong>Communes&nbsp;:</strong> ${communes}</div>` : ''}
+                    ${habitat ? `<div class="detail"><strong>Milieu&nbsp;:</strong> ${habitat}</div>` : ''}
+                    ${manager ? `<div class="detail"><strong>Gestionnaire&nbsp;:</strong> ${manager}</div>` : ''}
+                    ${owner ? `<div class="detail"><strong>Propriétaires&nbsp;:</strong> ${owner}</div>` : ''}
                 </div>
             `;
         }
@@ -2289,33 +2321,195 @@
             mountain: '#0E7490'
         };
 
-        function buildWebcamPopup(props = {}) {
-            const categoryLabel = props.category === 'traffic' ? 'Trafic' : 'Montagne';
-            const altitude = props.altitude_m
-                ? `<div class="detail"><strong>Altitude&nbsp;:</strong> ${props.altitude_m.toLocaleString('fr-FR')} m</div>`
-                : '';
-            const views = props.views
-                ? `<div class="detail"><strong>Vues&nbsp;:</strong> ${props.views}</div>`
-                : '';
-            const commune = props.commune
-                ? `<div class="detail"><strong>Commune&nbsp;:</strong> ${props.commune}</div>`
-                : '';
-            const link = props.url
-                ? `<div class="detail" style="margin-top: 10px;"><a href="${props.url}" target="_blank" rel="noopener noreferrer" class="webcam-popup-link">Ouvrir le flux →</a></div>`
-                : '';
+        function escapeWebcamHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
 
-            return `
-                <div class="route-popup webcam-popup">
-                    <h3>${props.name || 'Webcam'}</h3>
-                    <div class="webcam-popup-badge" data-category="${props.category || ''}">${categoryLabel}</div>
-                    ${props.description ? `<p class="webcam-popup-desc">${props.description}</p>` : ''}
-                    ${commune}
-                    ${altitude}
-                    ${views}
-                    ${props.source ? `<div class="detail"><strong>Source&nbsp;:</strong> ${props.source}</div>` : ''}
-                    ${link}
-                </div>
-            `;
+        let webcamHlsLoaderPromise = null;
+
+        function loadWebcamHlsLibrary() {
+            if (window.Hls) return Promise.resolve(window.Hls);
+            if (webcamHlsLoaderPromise) return webcamHlsLoaderPromise;
+            webcamHlsLoaderPromise = new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js';
+                script.async = true;
+                script.onload = () => resolve(window.Hls);
+                script.onerror = () => reject(new Error('Chargement HLS impossible'));
+                document.head.appendChild(script);
+            });
+            return webcamHlsLoaderPromise;
+        }
+
+        function buildWebcamEmbedMarkup(props = {}) {
+            const embedUrl = props.embed_url || props.url;
+            const title = escapeWebcamHtml(props.name || 'Webcam');
+            const refreshMs = Number(props.refresh_ms) > 0 ? Number(props.refresh_ms) : 0;
+            const fallbackUrl = props.embed_fallback_url ? escapeWebcamHtml(props.embed_fallback_url) : '';
+
+            if (!embedUrl) {
+                return '<p class="webcam-popup-unavailable">Flux indisponible.</p>';
+            }
+
+            if (props.embed_type === 'image') {
+                return `<div class="webcam-popup-frame"><img class="webcam-popup-image" data-embed-url="${escapeWebcamHtml(embedUrl)}" data-refresh-ms="${refreshMs || 8000}" alt="${title}" loading="lazy"></div>`;
+            }
+
+            const videoAttrs = [
+                'class="webcam-popup-video"',
+                `data-embed-url="${escapeWebcamHtml(embedUrl)}"`,
+                `data-embed-type="${escapeWebcamHtml(props.embed_type || 'video')}"`,
+                `data-refresh-ms="${refreshMs || 0}"`,
+                fallbackUrl ? `data-fallback-url="${fallbackUrl}"` : '',
+                'autoplay',
+                'muted',
+                'playsinline',
+                'controls'
+            ].filter(Boolean).join(' ');
+
+            return `<div class="webcam-popup-frame"><video ${videoAttrs}></video></div>`;
+        }
+
+        function buildWebcamPopup(props = {}) {
+            return `<div class="route-popup webcam-popup">${buildWebcamEmbedMarkup(props)}</div>`;
+        }
+
+        function cacheBustUrl(url) {
+            const joiner = url.includes('?') ? '&' : '?';
+            return `${url}${joiner}_=${Date.now()}`;
+        }
+
+        function getWebcamVideoSourceUrl(video) {
+            return video.dataset.fallbackActive === '1'
+                ? video.dataset.fallbackUrl
+                : video.dataset.embedUrl;
+        }
+
+        function reloadWebcamVideo(marker, video) {
+            const base = getWebcamVideoSourceUrl(video);
+            if (!base) return;
+            video.src = cacheBustUrl(base);
+            video.load();
+            video.play().catch(() => {});
+        }
+
+        function bindWebcamLiveVideo(marker, video) {
+            video.onended = () => reloadWebcamVideo(marker, video);
+        }
+
+        function startWebcamVideoRefresh(marker, video, refreshMs) {
+            clearInterval(marker._webcamVideoTimer);
+            if (!refreshMs) return;
+            marker._webcamVideoTimer = window.setInterval(() => {
+                reloadWebcamVideo(marker, video);
+            }, refreshMs);
+        }
+
+        function activateWebcamImage(marker, image) {
+            const refreshMs = Number(image.dataset.refreshMs) || 8000;
+            const refreshImage = () => {
+                image.src = cacheBustUrl(image.dataset.embedUrl);
+            };
+            refreshImage();
+            clearInterval(marker._webcamImageTimer);
+            marker._webcamImageTimer = window.setInterval(refreshImage, refreshMs);
+        }
+
+        function activateWebcamVideo(marker, video) {
+            const embedType = video.dataset.embedType || 'video';
+            const refreshMs = Number(video.dataset.refreshMs) || (embedType === 'video' ? 4000 : 0);
+
+            const playMp4 = (url, { fallback = false } = {}) => {
+                video.dataset.fallbackActive = fallback ? '1' : '0';
+                bindWebcamLiveVideo(marker, video);
+                reloadWebcamVideo(marker, video);
+                startWebcamVideoRefresh(marker, video, refreshMs);
+            };
+
+            if (embedType === 'hls') {
+                loadWebcamHlsLibrary()
+                    .then(Hls => {
+                        if (Hls.isSupported()) {
+                            const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+                            marker._webcamHls = hls;
+                            hls.loadSource(video.dataset.embedUrl);
+                            hls.attachMedia(video);
+                            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                                video.play().catch(() => {});
+                            });
+                            hls.on(Hls.Events.ERROR, (_event, data) => {
+                                if (!data.fatal || !video.dataset.fallbackUrl) return;
+                                hls.destroy();
+                                marker._webcamHls = null;
+                                playMp4(video.dataset.fallbackUrl, { fallback: true });
+                            });
+                            return;
+                        }
+                        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                            video.src = video.dataset.embedUrl;
+                            video.play().catch(() => {
+                                if (video.dataset.fallbackUrl) {
+                                    playMp4(video.dataset.fallbackUrl, { fallback: true });
+                                }
+                            });
+                            return;
+                        }
+                        if (video.dataset.fallbackUrl) {
+                            playMp4(video.dataset.fallbackUrl, { fallback: true });
+                        }
+                    })
+                    .catch(() => {
+                        if (video.dataset.fallbackUrl) {
+                            playMp4(video.dataset.fallbackUrl, { fallback: true });
+                        }
+                    });
+                return;
+            }
+
+            playMp4(video.dataset.embedUrl);
+        }
+
+        function activateWebcamPopupMedia(marker) {
+            const popupEl = marker.getPopup()?.getElement();
+            if (!popupEl) return;
+
+            const image = popupEl.querySelector('.webcam-popup-image[data-embed-url]');
+            if (image) {
+                activateWebcamImage(marker, image);
+                return;
+            }
+
+            const video = popupEl.querySelector('.webcam-popup-video[data-embed-url]');
+            if (video) {
+                activateWebcamVideo(marker, video);
+            }
+        }
+
+        function deactivateWebcamPopupMedia(marker) {
+            clearInterval(marker._webcamImageTimer);
+            clearInterval(marker._webcamVideoTimer);
+            marker._webcamImageTimer = null;
+            marker._webcamVideoTimer = null;
+
+            if (marker._webcamHls) {
+                marker._webcamHls.destroy();
+                marker._webcamHls = null;
+            }
+
+            const popupEl = marker.getPopup()?.getElement();
+            if (!popupEl) return;
+
+            const video = popupEl.querySelector('.webcam-popup-video');
+            if (video) {
+                video.onended = null;
+                video.pause();
+                video.removeAttribute('src');
+                video.load();
+            }
         }
 
         function makeWebcamMarker(feature) {
@@ -2335,7 +2529,13 @@
             });
 
             marker.bindTooltip(props.name || 'Webcam', { direction: 'top', offset: [0, -10] });
-            marker.bindPopup(buildWebcamPopup(props));
+            marker.bindPopup(buildWebcamPopup(props), {
+                maxWidth: 440,
+                minWidth: 320,
+                className: 'webcam-leaflet-popup'
+            });
+            marker.on('popupopen', () => activateWebcamPopupMedia(marker));
+            marker.on('popupclose', () => deactivateWebcamPopupMedia(marker));
             return marker;
         }
 

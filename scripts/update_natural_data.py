@@ -159,33 +159,69 @@ def find_zone_for_point(
     return None
 
 
+REPLACEMENT_CHAR = "\ufffd"
+MOJIBAKE_REPLACEMENT = "ï¿½"
+
+# DataSud shapefiles store UTF-8 replacement bytes where accents were lost at source.
+DATASUD_TEXT_REPAIRS = (
+    ("Communaut" + REPLACEMENT_CHAR + " d" + REPLACEMENT_CHAR + "Agglom" + REPLACEMENT_CHAR + "ration", "Communauté d'Agglomération"),
+    ("Communaut" + REPLACEMENT_CHAR + " de communes", "Communauté de communes"),
+    ("d" + REPLACEMENT_CHAR + "Agglom" + REPLACEMENT_CHAR + "ration", "d'Agglomération"),
+    ("Agglom" + REPLACEMENT_CHAR + "ration", "Agglomération"),
+    ("Communaut" + REPLACEMENT_CHAR, "Communauté"),
+    ("D" + REPLACEMENT_CHAR + "partement", "Département"),
+    ("g" + REPLACEMENT_CHAR + "ologique", "géologique"),
+    ("Courth" + REPLACEMENT_CHAR + "zon", "Courthézon"),
+    ("Jonqui" + REPLACEMENT_CHAR + "res", "Jonquières"),
+    ("Malauc" + REPLACEMENT_CHAR + "ne", "Malaucène"),
+    ("M" + REPLACEMENT_CHAR + "rindol", "Mérindol"),
+    ("M" + REPLACEMENT_CHAR + "nerbes", "Ménerbes"),
+    ("Opp" + REPLACEMENT_CHAR + "de", "Oppède"),
+    ("Priv" + REPLACEMENT_CHAR, "Privé"),
+    ("priv" + REPLACEMENT_CHAR, "privé"),
+    ("Rhone Lez", "Rhône Lez"),
+)
+
+
+def _apply_datasud_text_repairs(text: str) -> str:
+    for wrong, right in DATASUD_TEXT_REPAIRS:
+        text = text.replace(wrong, right)
+    return text
+
+
+def normalize_french_text(value: str) -> str:
+    text = value.strip()
+    if not text:
+        return text
+
+    text = text.replace(MOJIBAKE_REPLACEMENT, REPLACEMENT_CHAR)
+    text = _apply_datasud_text_repairs(text)
+
+    if REPLACEMENT_CHAR not in text:
+        return text
+
+    for encoding in ("latin-1", "cp1252"):
+        try:
+            repaired = text.encode(encoding).decode("utf-8").strip()
+            if repaired and REPLACEMENT_CHAR not in repaired:
+                return _apply_datasud_text_repairs(repaired)
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            continue
+
+    return text
+
+
 def _decode_dbf_text(value: Any) -> str:
     if value is None:
         return ""
     if isinstance(value, bytes):
         for encoding in ("utf-8", "cp1252", "latin-1"):
             try:
-                return value.decode(encoding).strip()
+                return normalize_french_text(value.decode(encoding))
             except UnicodeDecodeError:
                 continue
-        return value.decode("latin-1", errors="replace").strip()
+        return normalize_french_text(value.decode("latin-1", errors="replace"))
     return normalize_french_text(str(value))
-
-
-def normalize_french_text(value: str) -> str:
-    text = value.strip()
-    if not text or "\ufffd" not in text and "ï¿½" not in text:
-        return text
-
-    for encoding in ("latin-1", "cp1252"):
-        try:
-            repaired = text.encode(encoding).decode("utf-8").strip()
-            if repaired and "\ufffd" not in repaired:
-                return repaired
-        except (UnicodeDecodeError, UnicodeEncodeError):
-            continue
-
-    return text
 
 
 def shapefile_zip_to_geojson(zip_bytes: bytes) -> dict[str, Any]:
