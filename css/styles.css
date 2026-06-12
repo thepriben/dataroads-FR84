@@ -1933,7 +1933,7 @@
         }
 
         .incubator-popup--ens .incubator-popup__hero {
-            padding: 10px 12px 9px;
+            padding: 8px 10px 6px;
             border-bottom: none;
         }
 
@@ -1941,8 +1941,8 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 5px;
-            margin-bottom: 5px;
+            gap: 4px;
+            margin-bottom: 3px;
         }
 
         .incubator-popup__meta-chip {
@@ -1992,46 +1992,61 @@
 
         .incubator-popup--ens .incubator-popup__title {
             margin: 0;
-            font-size: 0.94rem;
-            line-height: 1.22;
+            font-size: 0.9rem;
+            line-height: 1.15;
         }
 
         .incubator-popup__body--ens {
-            padding: 0 12px 8px;
+            padding: 2px 10px 5px;
             display: grid;
-            gap: 4px;
+            gap: 0;
         }
 
         .incubator-popup__line {
-            display: grid;
-            grid-template-columns: 68px 1fr;
-            gap: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0 5px;
             margin: 0;
-            font-size: 0.76rem;
-            line-height: 1.3;
+            padding: 2px 0;
+            font-size: 0.73rem;
+            line-height: 1.25;
         }
 
         .incubator-popup__line-label {
+            flex: 0 0 auto;
+            margin: 0;
             color: #60717c;
             font-weight: 700;
-            font-size: 0.66rem;
+            font-size: 0.62rem;
             text-transform: uppercase;
             letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+
+        .incubator-popup__line-label::after {
+            content: '·';
+            margin-left: 4px;
+            color: #b8c5cc;
+            font-weight: 400;
         }
 
         .incubator-popup__line-value {
+            flex: 1 1 8rem;
+            min-width: 0;
             color: #2c3e50;
             overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .incubator-popup__wd {
-            padding: 7px 12px 9px;
+            padding: 5px 10px 6px;
             border-top: 1px solid #e8eef2;
             background: #f6f9f7;
         }
 
         .incubator-popup__wd--loading {
-            padding: 6px 12px;
+            padding: 4px 10px;
         }
 
         .incubator-popup__wd-spinner {
@@ -2041,9 +2056,9 @@
         }
 
         .incubator-popup__wd-desc {
-            margin: 0 0 5px;
-            font-size: 0.72rem;
-            line-height: 1.3;
+            margin: 0 0 3px;
+            font-size: 0.68rem;
+            line-height: 1.2;
             color: #5b6770;
             font-style: italic;
         }
@@ -2052,7 +2067,7 @@
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
 
         .incubator-popup__wd-chip {
@@ -2108,9 +2123,9 @@
 
         .incubator-popup__facts {
             margin: 0;
-            padding: 10px 14px 12px;
+            padding: 6px 10px 8px;
             display: grid;
-            gap: 8px;
+            gap: 3px;
         }
 
         .incubator-popup__facts--compact {
@@ -2118,25 +2133,36 @@
         }
 
         .incubator-popup__fact {
-            display: grid;
-            grid-template-columns: 92px 1fr;
-            gap: 8px;
-            align-items: start;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0 5px;
         }
 
         .incubator-popup__fact dt {
             margin: 0;
-            font-size: 0.68rem;
+            flex: 0 0 auto;
+            font-size: 0.62rem;
             font-weight: 700;
             color: #60717c;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
+            white-space: nowrap;
+        }
+
+        .incubator-popup__fact dt::after {
+            content: '·';
+            margin-left: 4px;
+            color: #b8c5cc;
+            font-weight: 400;
         }
 
         .incubator-popup__fact dd {
             margin: 0;
-            font-size: 0.82rem;
-            line-height: 1.35;
+            flex: 1 1 8rem;
+            min-width: 0;
+            font-size: 0.73rem;
+            line-height: 1.25;
             color: #2c3e50;
             overflow-wrap: anywhere;
         }
@@ -2228,8 +2254,13 @@
         }
 
         .incubator-popup__cta {
-            margin: 0 14px 14px;
-            width: calc(100% - 28px);
+            margin: 0 10px 8px;
+            width: calc(100% - 20px);
+            padding: 6px 10px;
+        }
+
+        .incubator-popup--inat .incubator-popup__hero {
+            padding: 6px 10px 5px;
         }
 
         .bridge-zoom-hint,

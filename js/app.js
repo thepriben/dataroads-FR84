@@ -2824,6 +2824,37 @@
             `;
         }
 
+        function ensCommuneTokens(communes) {
+            return String(communes || '')
+                .split(',')
+                .map(token => token.trim().toLowerCase())
+                .filter(Boolean);
+        }
+
+        function stripEnsCommuneRedundancy(text, communes) {
+            const cleaned = repairEnsFrenchText(text || '').trim();
+            if (!cleaned) return '';
+
+            const tokens = ensCommuneTokens(communes);
+            const parts = cleaned.split(',').map(part => part.trim()).filter(Boolean);
+            const filtered = parts.filter(part => {
+                const lower = part.toLowerCase();
+                if (tokens.includes(lower)) return false;
+                const communeMatch = lower.match(/^communes? d[e']?\s+(.+)$/i);
+                if (communeMatch) {
+                    const communeName = communeMatch[1].trim().toLowerCase();
+                    if (tokens.some(token => communeName === token
+                        || communeName.startsWith(`${token} `)
+                        || token.startsWith(communeName))) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+
+            return filtered.join(', ');
+        }
+
         function incubatorPopupLine(label, value) {
             if (!value) return '';
             return `
@@ -2884,18 +2915,19 @@
         function buildSensitiveZonePopup(props = {}, wikidata = null, wikidataLoading = false) {
             const name = repairEnsFrenchText(props.name) || 'Espace naturel sensible';
             const areaText = props.area_ha ? `${props.area_ha.toLocaleString('fr-FR')} ha` : '';
-            const communes = props.communes ? escapeHtml(repairEnsFrenchText(props.communes)) : '';
+            const communesRaw = repairEnsFrenchText(props.communes || '');
+            const communes = communesRaw ? escapeHtml(communesRaw) : '';
             const habitat = props.habitat ? escapeHtml(repairEnsFrenchText(props.habitat)) : '';
-            const manager = props.manager ? escapeHtml(repairEnsFrenchText(props.manager)) : '';
-            const owner = props.owner ? escapeHtml(repairEnsFrenchText(props.owner)) : '';
+            const manager = stripEnsCommuneRedundancy(props.manager, communesRaw);
+            const owner = stripEnsCommuneRedundancy(props.owner, communesRaw);
             const heroChips = [
                 areaText ? `<span class="incubator-popup__meta-chip">${escapeHtml(areaText)}</span>` : '',
                 communes ? `<span class="incubator-popup__meta-chip">${communes}</span>` : ''
             ].filter(Boolean).join('');
             const bodyLines = [
                 incubatorPopupLine('Milieu', habitat),
-                incubatorPopupLine('Gestion', manager),
-                incubatorPopupLine('Propriété', owner)
+                manager ? incubatorPopupLine('Gestion', escapeHtml(manager)) : '',
+                owner ? incubatorPopupLine('Propriété', escapeHtml(owner)) : ''
             ].join('');
 
             return `
