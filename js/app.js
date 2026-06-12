@@ -1011,7 +1011,6 @@
             const sidebar = document.getElementById('appSidebar') || document.querySelector('.sidebar');
             const backdrop = document.getElementById('sidebarBackdrop');
             const collapseBtn = document.getElementById('sidebarCollapseBtn');
-            const reopenBtn = document.getElementById('sidebarReopenBtn');
             const headerLegendBtn = document.getElementById('headerLegendBtn');
             const mapLegendBtn = document.getElementById('mapLegendBtn');
             const dragHandle = document.getElementById('sidebarDragHandle');
@@ -1033,9 +1032,11 @@
             }
 
             function invalidateMapSoon() {
-                if (window.map && typeof window.map.invalidateSize === 'function') {
+                if (!window.map || typeof window.map.invalidateSize !== 'function') return;
+                requestAnimationFrame(() => {
+                    window.map.invalidateSize();
                     requestAnimationFrame(() => window.map.invalidateSize());
-                }
+                });
             }
 
             function setDragOffset(px) {
@@ -1053,7 +1054,6 @@
                 const mobile = isMobileSidebar();
                 const open = mobile ? mobileOpen : !desktopCollapsed;
                 collapseBtn?.setAttribute('aria-expanded', String(open));
-                reopenBtn?.setAttribute('aria-expanded', String(open));
                 headerLegendBtn?.setAttribute('aria-expanded', String(open));
                 mapLegendBtn?.setAttribute('aria-expanded', String(open));
                 backdrop?.setAttribute('aria-hidden', String(!mobile || !mobileOpen));
@@ -1118,7 +1118,6 @@
             window.openSidebarPanel = openSidebar;
 
             collapseBtn?.addEventListener('click', closeSidebar);
-            reopenBtn?.addEventListener('click', openSidebar);
             headerLegendBtn?.addEventListener('click', () => window.toggleSidebarPanel());
             mapLegendBtn?.addEventListener('click', () => window.toggleSidebarPanel());
             backdrop?.addEventListener('click', () => setMobileOpen(false));
