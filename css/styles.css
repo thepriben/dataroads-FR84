@@ -1927,6 +1927,211 @@
             margin-bottom: 8px;
         }
 
+        .ens-leaflet-popup .leaflet-popup-content-wrapper,
+        .inat-leaflet-popup .leaflet-popup-content-wrapper {
+            border-radius: 14px;
+            padding: 0;
+            overflow: hidden;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+        }
+
+        .ens-leaflet-popup .leaflet-popup-content,
+        .inat-leaflet-popup .leaflet-popup-content {
+            margin: 0;
+            width: min(320px, calc(100vw - 72px)) !important;
+            max-height: none;
+            overflow: visible;
+        }
+
+        .ens-leaflet-popup .leaflet-popup-tip,
+        .inat-leaflet-popup .leaflet-popup-tip {
+            background: #ffffff;
+        }
+
+        .incubator-popup {
+            font-family: 'DM Sans', sans-serif;
+            color: #2c3e50;
+            background: #ffffff;
+        }
+
+        .incubator-popup__hero {
+            padding: 14px 14px 12px;
+            border-bottom: 1px solid #e8eef2;
+        }
+
+        .incubator-popup__hero--ens {
+            background: linear-gradient(180deg, #f3faf6 0%, #ffffff 100%);
+        }
+
+        .incubator-popup__hero--inat {
+            background: linear-gradient(180deg, #f7faf8 0%, #ffffff 100%);
+        }
+
+        .incubator-popup__badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: #1b4332;
+            color: #ffffff;
+            font-size: 0.64rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .incubator-popup--inat .incubator-popup__badge {
+            background: var(--inat-color, #40916C);
+        }
+
+        .incubator-popup__title {
+            margin: 8px 0 0;
+            font-size: 1rem;
+            line-height: 1.25;
+            color: #1b4332;
+            font-weight: 700;
+        }
+
+        .incubator-popup__subtitle {
+            margin: 4px 0 0;
+            font-size: 0.78rem;
+            color: #5b6770;
+        }
+
+        .incubator-popup__photo {
+            display: block;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            background: #eef2f5;
+        }
+
+        .incubator-popup__facts {
+            margin: 0;
+            padding: 10px 14px 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .incubator-popup__facts--compact {
+            padding-top: 0;
+        }
+
+        .incubator-popup__fact {
+            display: grid;
+            grid-template-columns: 92px 1fr;
+            gap: 8px;
+            align-items: start;
+        }
+
+        .incubator-popup__fact dt {
+            margin: 0;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #60717c;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .incubator-popup__fact dd {
+            margin: 0;
+            font-size: 0.82rem;
+            line-height: 1.35;
+            color: #2c3e50;
+            overflow-wrap: anywhere;
+        }
+
+        .incubator-popup__pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .incubator-popup__pill.is-research {
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
+
+        .incubator-popup__pill.is-needs-id {
+            background: #fff8e1;
+            color: #8d6e00;
+        }
+
+        .incubator-popup__pill.is-casual {
+            background: #f4f6f8;
+            color: #60717c;
+        }
+
+        .incubator-popup__extra {
+            padding: 10px 14px 12px;
+            border-top: 1px solid #e8eef2;
+            background: #f8fafb;
+        }
+
+        .incubator-popup__extra--loading p {
+            margin: 0;
+            font-size: 0.76rem;
+            color: #60717c;
+        }
+
+        .incubator-popup__extra-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #60717c;
+            margin-bottom: 6px;
+        }
+
+        .incubator-popup__extra-desc {
+            margin: 0 0 8px;
+            font-size: 0.78rem;
+            line-height: 1.4;
+            color: #4f5f6b;
+        }
+
+        .incubator-popup__links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .incubator-popup__links a,
+        .incubator-popup__cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #1b4332;
+            color: #ffffff !important;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background 0.15s ease, transform 0.15s ease;
+        }
+
+        .incubator-popup__links a {
+            background: #ffffff;
+            color: #1b4332 !important;
+            border: 1px solid #c9d7ce;
+        }
+
+        .incubator-popup__links a:hover,
+        .incubator-popup__cta:hover {
+            transform: translateY(-1px);
+            filter: brightness(1.03);
+        }
+
+        .incubator-popup__cta {
+            margin: 0 14px 14px;
+            width: calc(100% - 28px);
+        }
+
         .bridge-zoom-hint,
         .weather-station-marker-wrapper {
             background: transparent;

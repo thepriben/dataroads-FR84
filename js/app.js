@@ -2410,7 +2410,9 @@
             unknown: '#40916C'
         };
 
-        const INATURALIST_MARKER_MIN_HIT_PX = 48;
+        const INATURALIST_MARKER_MIN_HIT_PX = 36;
+        const ENS_WIKIDATA_CACHE = new Map();
+        const ENS_WIKIDATA_LOADING = new Map();
 
         function getInaturalistMarkerColor(iconicTaxon, qualityGrade) {
             const base = INATURALIST_TAXON_COLORS[iconicTaxon] || INATURALIST_TAXON_COLORS.unknown;
@@ -2421,16 +2423,16 @@
 
         function inaturalistMarkerZoomScale(zoom) {
             const z = Number.isFinite(zoom) ? zoom : 11;
-            return Math.max(0.8, Math.min(2.1, 0.8 + (z - 8) * 0.13));
+            return Math.max(0.72, Math.min(1.65, 0.72 + (z - 8) * 0.09));
         }
 
         function inaturalistMarkerVisualSize(qualityGrade, zoom) {
-            const base = qualityGrade === 'research' ? 18 : (qualityGrade === 'needs_id' ? 17 : 16);
+            const base = qualityGrade === 'research' ? 13 : (qualityGrade === 'needs_id' ? 12 : 11);
             return Math.round(base * inaturalistMarkerZoomScale(zoom));
         }
 
         function inaturalistMarkerHitSize(zoom, visualSize) {
-            return Math.round(Math.max(INATURALIST_MARKER_MIN_HIT_PX, visualSize * 2.75));
+            return Math.round(Math.max(INATURALIST_MARKER_MIN_HIT_PX, visualSize * 2.35));
         }
 
         function makeInaturalistMarkerIcon(feature, zoom) {
@@ -2478,9 +2480,12 @@
             });
 
             marker._inatFeature = feature;
-            marker.bindPopup(buildInaturalistPopup(props), {
+            marker.bindPopup(() => buildInaturalistPopup(props), {
+                className: 'inat-leaflet-popup',
                 autoPan: true,
-                closeButton: true
+                closeButton: true,
+                maxWidth: 320,
+                minWidth: 260
             });
             marker.on('click', event => {
                 L.DomEvent.stopPropagation(event);
@@ -2539,7 +2544,7 @@
 
         function applyEnsLayerInteractivity(layer) {
             if (!layer) return;
-            const interactive = sensitiveZonesVisible && !inaturalistSensitivesVisible;
+            const interactive = sensitiveZonesVisible;
             layer.options.interactive = interactive;
             if (layer._path) {
                 layer._path.style.pointerEvents = interactive ? 'painted' : 'none';
@@ -2557,6 +2562,7 @@
                 if (!inaturalistSensitivesVisible) return;
                 const target = event.originalEvent?.target;
                 if (target?.closest?.('.inaturalist-sensitive-marker')) return;
+                if (target?.closest?.('path.leaflet-interactive, .leaflet-interactive')) return;
 
                 const marker = findNearestInaturalistMarker(event.latlng);
                 if (!marker) return;
@@ -2629,45 +2635,261 @@
             return text;
         }
 
-        function buildSensitiveZonePopup(props = {}) {
-            const areaText = props.area_ha ? `${props.area_ha.toLocaleString('fr-FR')} ha` : '—';
-            const communes = props.communes ? repairEnsFrenchText(props.communes) : '';
-            const habitat = props.habitat ? repairEnsFrenchText(props.habitat) : '';
-            const manager = props.manager ? repairEnsFrenchText(props.manager) : '';
-            const owner = props.owner ? repairEnsFrenchText(props.owner) : '';
+        function normalizeEnsSearchName(name) {
+            const repaired = repairEnsFrenchText(name || '').trim();
+            return repaired.replace(/^(Le|La|Les|L')\s+/i, '').trim();
+        }
+
+        function ensNameTokens(name) {
+            return normalizeEnsSearchName(name)
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/\p{Diacritic}/gu, '')
+                .split(/[^a-z0-9]+/)
+                .filter(token => token.length > 2 && !['des', 'les', 'du', 'de', 'dans', 'pour', 'zone', 'site'].includes(token));
+        }
+
+        function scoreEnsWikidataHit(ensName, hit) {
+            const tokens = ensNameTokens(ensName);
+            if (!tokens.length || !hit?.label) return 0;
+
+            const label = hit.label.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+            const desc = (hit.description || '').toLowerCase();
+            let score = 0;
+
+            tokens.forEach(token => {
+                if (label.includes(token)) score += 4;
+            });
+            if (/(protég|naturel|réserve|espace|forêt|parc|inpn|biotope|humide)/.test(desc)) score += 6;
+            if (/(commune|mairie|église|gare|route|cantonal)/.test(desc) && !/(nature|protég|forêt)/.test(desc)) score -= 4;
+            return score;
+        }
+
+        async function wikidataSearchEntities(query, limit = 6) {
+            if (!query) return [];
+            const params = new URLSearchParams({
+                action: 'wbsearchentities',
+                search: query,
+                language: 'fr',
+                uselang: 'fr',
+                format: 'json',
+                limit: String(limit),
+                origin: '*'
+            });
+            const response = await fetch(`https://www.wikidata.org/w/api.php?${params}`, { credentials: 'omit' });
+            if (!response.ok) return [];
+            const data = await response.json();
+            return data.search || [];
+        }
+
+        function formatEnsWikidataArea(claim) {
+            if (!claim?.value) return '';
+            const amount = String(claim.value.amount || '').replace(/^\+/, '');
+            const numeric = Number.parseFloat(amount);
+            if (!Number.isFinite(numeric)) return '';
+            const unit = claim.value.unit || '';
+            if (unit.endsWith('Q712226') || unit === '1') return `${numeric.toLocaleString('fr-FR')} ha`;
+            return `${numeric.toLocaleString('fr-FR')}`;
+        }
+
+        function buildEnsWikidataEnrichment(searchHit, entity) {
+            if (!searchHit?.id) return null;
+            const claims = entity ? extractWikidataValues(entity) : {};
+            const inpnClaim = claims.P1848?.[0]?.value;
+            const websiteClaim = claims.P856?.[0]?.value;
+            const inceptionClaim = claims.P571?.[0];
+            const areaClaim = claims.P2046?.[0];
+
+            return {
+                qid: searchHit.id,
+                label: searchHit.label,
+                description: entity?.descriptions?.fr?.value || searchHit.description || '',
+                inpnCode: typeof inpnClaim === 'string' ? inpnClaim : '',
+                website: typeof websiteClaim === 'string' ? websiteClaim : '',
+                inception: inceptionClaim ? formatWikidataValuePlain(inceptionClaim, {}) : '',
+                area: formatEnsWikidataArea(areaClaim),
+                url: `https://www.wikidata.org/wiki/${searchHit.id}`,
+                inpnUrl: typeof inpnClaim === 'string' ? `https://inpn.mnhn.fr/espace/protege/${inpnClaim}` : ''
+            };
+        }
+
+        async function resolveEnsWikidata(ensName) {
+            const key = normalizeEnsSearchName(ensName).toLowerCase();
+            if (!key) return null;
+            if (ENS_WIKIDATA_CACHE.has(key)) return ENS_WIKIDATA_CACHE.get(key);
+            if (ENS_WIKIDATA_LOADING.has(key)) return ENS_WIKIDATA_LOADING.get(key);
+
+            const promise = (async () => {
+                const queries = [ensName, normalizeEnsSearchName(ensName), `${normalizeEnsSearchName(ensName)} Vaucluse`];
+                const seen = new Set();
+                let best = null;
+                let bestScore = 0;
+
+                for (const query of queries) {
+                    const cleaned = String(query || '').trim();
+                    if (!cleaned || seen.has(cleaned)) continue;
+                    seen.add(cleaned);
+                    const hits = await wikidataSearchEntities(cleaned, 6);
+                    hits.forEach(hit => {
+                        const score = scoreEnsWikidataHit(ensName, hit);
+                        if (score > bestScore) {
+                            bestScore = score;
+                            best = hit;
+                        }
+                    });
+                    if (bestScore >= 12) break;
+                }
+
+                if (!best || bestScore < 6) {
+                    ENS_WIKIDATA_CACHE.set(key, null);
+                    return null;
+                }
+
+                const entity = await fetchWikidataItem(best.id).catch(() => null);
+                const enrichment = buildEnsWikidataEnrichment(best, entity);
+                ENS_WIKIDATA_CACHE.set(key, enrichment);
+                return enrichment;
+            })().finally(() => ENS_WIKIDATA_LOADING.delete(key));
+
+            ENS_WIKIDATA_LOADING.set(key, promise);
+            return promise;
+        }
+
+        function prefetchEnsWikidataEnrichment(features = []) {
+            const names = [...new Set((features || []).map(feature => feature.properties?.name).filter(Boolean))];
+            names.forEach(name => {
+                resolveEnsWikidata(name).catch(() => null);
+            });
+        }
+
+        function incubatorPopupFact(label, value) {
+            if (!value) return '';
             return `
-                <div class="route-popup sensitive-zone-popup">
-                    <h3>${repairEnsFrenchText(props.name) || 'Espace naturel sensible'}</h3>
-                    <div class="detail"><strong>Superficie&nbsp;:</strong> ${areaText}</div>
-                    ${communes ? `<div class="detail"><strong>Communes&nbsp;:</strong> ${communes}</div>` : ''}
-                    ${habitat ? `<div class="detail"><strong>Milieu&nbsp;:</strong> ${habitat}</div>` : ''}
-                    ${manager ? `<div class="detail"><strong>Gestionnaire&nbsp;:</strong> ${manager}</div>` : ''}
-                    ${owner ? `<div class="detail"><strong>Propriétaires&nbsp;:</strong> ${owner}</div>` : ''}
+                <div class="incubator-popup__fact">
+                    <dt>${label}</dt>
+                    <dd>${value}</dd>
                 </div>
             `;
         }
 
-        function buildInaturalistPopup(props = {}) {
-            const photoHtml = props.photo_url
-                ? `<img src="${props.photo_url}" alt="" class="inaturalist-popup-photo" loading="lazy">`
-                : '';
-            const qualityLabel = props.quality_grade === 'research'
-                ? 'Recherche'
-                : (props.quality_grade === 'needs_id' ? 'À identifier' : 'Casual');
+        function buildEnsWikidataPopupSection(wikidata, loading = false) {
+            if (loading) {
+                return `
+                    <section class="incubator-popup__extra incubator-popup__extra--loading">
+                        <div class="incubator-popup__extra-title">Complément Wikidata</div>
+                        <p>Recherche en cours…</p>
+                    </section>
+                `;
+            }
+            if (!wikidata) return '';
+
+            const facts = [
+                incubatorPopupFact('Libellé WD', escapeHtml(wikidata.label)),
+                wikidata.inpnCode
+                    ? incubatorPopupFact('Code INPN', `<a href="${escapeHtml(wikidata.inpnUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(wikidata.inpnCode)}</a>`)
+                    : '',
+                wikidata.area ? incubatorPopupFact('Superficie WD', escapeHtml(wikidata.area)) : '',
+                wikidata.inception ? incubatorPopupFact('Création', escapeHtml(wikidata.inception)) : ''
+            ].join('');
+
             return `
-                <div class="route-popup inaturalist-popup">
-                    ${photoHtml}
-                    <h3>${props.taxon_name || 'Observation'}</h3>
-                    ${props.scientific_name && props.scientific_name !== props.taxon_name
-                        ? `<div class="detail"><strong>Nom scientifique&nbsp;:</strong> <em>${props.scientific_name}</em></div>`
-                        : ''}
-                    <div class="detail"><strong>Date&nbsp;:</strong> ${formatInaturalistDate(props.observed_on)}</div>
-                    <div class="detail"><strong>Qualité&nbsp;:</strong> ${qualityLabel}</div>
-                    ${props.ens_name ? `<div class="detail"><strong>ENS&nbsp;:</strong> ${props.ens_name}</div>` : ''}
-                    ${props.user_login ? `<div class="detail"><strong>Observateur&nbsp;:</strong> ${props.user_login}</div>` : ''}
-                    ${props.url ? `<div class="detail"><a href="${props.url}" target="_blank" rel="noopener noreferrer">Voir sur iNaturalist</a></div>` : ''}
+                <section class="incubator-popup__extra">
+                    <div class="incubator-popup__extra-title">Complément Wikidata</div>
+                    ${wikidata.description ? `<p class="incubator-popup__extra-desc">${escapeHtml(wikidata.description)}</p>` : ''}
+                    ${facts ? `<dl class="incubator-popup__facts incubator-popup__facts--compact">${facts}</dl>` : ''}
+                    <div class="incubator-popup__links">
+                        <a href="${escapeHtml(wikidata.url)}" target="_blank" rel="noopener noreferrer">Wikidata</a>
+                        ${wikidata.website ? `<a href="${escapeHtml(wikidata.website)}" target="_blank" rel="noopener noreferrer">Site web</a>` : ''}
+                    </div>
+                </section>
+            `;
+        }
+
+        function buildSensitiveZonePopup(props = {}, wikidata = null, wikidataLoading = false) {
+            const areaText = props.area_ha ? `${props.area_ha.toLocaleString('fr-FR')} ha` : '';
+            const communes = props.communes ? escapeHtml(repairEnsFrenchText(props.communes)) : '';
+            const habitat = props.habitat ? escapeHtml(repairEnsFrenchText(props.habitat)) : '';
+            const manager = props.manager ? escapeHtml(repairEnsFrenchText(props.manager)) : '';
+            const owner = props.owner ? escapeHtml(repairEnsFrenchText(props.owner)) : '';
+            const facts = [
+                incubatorPopupFact('Superficie', areaText),
+                incubatorPopupFact('Communes', communes),
+                incubatorPopupFact('Milieu', habitat),
+                incubatorPopupFact('Gestionnaire', manager),
+                incubatorPopupFact('Propriétaires', owner)
+            ].join('');
+
+            return `
+                <div class="incubator-popup incubator-popup--ens">
+                    <div class="incubator-popup__hero incubator-popup__hero--ens">
+                        <span class="incubator-popup__badge">ENS · CD84</span>
+                        <h3 class="incubator-popup__title">${escapeHtml(repairEnsFrenchText(props.name) || 'Espace naturel sensible')}</h3>
+                    </div>
+                    <dl class="incubator-popup__facts">${facts}</dl>
+                    ${buildEnsWikidataPopupSection(wikidata, wikidataLoading)}
                 </div>
             `;
+        }
+
+        function inaturalistQualityMeta(qualityGrade) {
+            if (qualityGrade === 'research') return { label: 'Recherche', className: 'is-research' };
+            if (qualityGrade === 'needs_id') return { label: 'À identifier', className: 'is-needs-id' };
+            return { label: 'Casual', className: 'is-casual' };
+        }
+
+        function buildInaturalistPopup(props = {}) {
+            const quality = inaturalistQualityMeta(props.quality_grade);
+            const taxonColor = getInaturalistMarkerColor(props.iconic_taxon, props.quality_grade);
+            const photoHtml = props.photo_url
+                ? `<img src="${escapeHtml(props.photo_url)}" alt="" class="incubator-popup__photo" loading="lazy">`
+                : '';
+            const facts = [
+                incubatorPopupFact('Date', escapeHtml(formatInaturalistDate(props.observed_on))),
+                incubatorPopupFact('Qualité', `<span class="incubator-popup__pill ${quality.className}">${quality.label}</span>`),
+                props.ens_name ? incubatorPopupFact('ENS', escapeHtml(props.ens_name)) : '',
+                props.user_login ? incubatorPopupFact('Observateur', escapeHtml(props.user_login)) : ''
+            ].join('');
+
+            return `
+                <div class="incubator-popup incubator-popup--inat">
+                    ${photoHtml}
+                    <div class="incubator-popup__hero incubator-popup__hero--inat">
+                        <span class="incubator-popup__badge" style="--inat-color:${taxonColor};">${escapeHtml(props.iconic_taxon || 'Observation')}</span>
+                        <h3 class="incubator-popup__title">${escapeHtml(props.taxon_name || 'Observation')}</h3>
+                        ${props.scientific_name && props.scientific_name !== props.taxon_name
+                            ? `<p class="incubator-popup__subtitle"><em>${escapeHtml(props.scientific_name)}</em></p>`
+                            : ''}
+                    </div>
+                    <dl class="incubator-popup__facts">${facts}</dl>
+                    ${props.url ? `<a class="incubator-popup__cta" href="${escapeHtml(props.url)}" target="_blank" rel="noopener noreferrer">Voir sur iNaturalist</a>` : ''}
+                </div>
+            `;
+        }
+
+        function bindSensitiveZonePopup(layer, feature) {
+            const props = feature.properties || {};
+            layer.bindPopup(() => {
+                const key = normalizeEnsSearchName(props.name).toLowerCase();
+                const hasCache = ENS_WIKIDATA_CACHE.has(key);
+                const cached = hasCache ? ENS_WIKIDATA_CACHE.get(key) : null;
+                const pending = ENS_WIKIDATA_LOADING.has(key);
+                return buildSensitiveZonePopup(props, cached, pending && !hasCache);
+            }, {
+                className: 'ens-leaflet-popup',
+                autoPan: true,
+                closeButton: true,
+                maxWidth: 340,
+                minWidth: 280
+            });
+
+            layer.on('popupopen', async () => {
+                const key = normalizeEnsSearchName(props.name).toLowerCase();
+                if (!key || ENS_WIKIDATA_CACHE.has(key)) return;
+                layer.setPopupContent(buildSensitiveZonePopup(props, null, true));
+                const wikidata = await resolveEnsWikidata(props.name).catch(() => null);
+                if (typeof layer.isPopupOpen === 'function' && !layer.isPopupOpen()) return;
+                layer.setPopupContent(buildSensitiveZonePopup(props, wikidata, false));
+            });
         }
 
         function applySensitiveZonesVisibleUi() {
@@ -2812,11 +3034,12 @@
                         fillOpacity: 0.18
                     },
                     onEachFeature(feature, layer) {
-                        layer.bindPopup(buildSensitiveZonePopup(feature.properties || {}));
+                        bindSensitiveZonePopup(layer, feature);
                         layer.on('add', () => applyEnsLayerInteractivity(layer));
                     }
                 });
 
+                prefetchEnsWikidataEnrichment(features);
                 bindIncubatorLayerSyncHandlers();
 
                 sensitiveZonesLoaded = true;
@@ -5854,6 +6077,17 @@
             NW: 'nord-ouest'
         };
 
+        const BRIDGE_DIRECTION_COMPASS = {
+            N: { lat: 1, lng: 0 },
+            NE: { lat: 1, lng: 1 },
+            E: { lat: 0, lng: 1 },
+            SE: { lat: -1, lng: 1 },
+            S: { lat: -1, lng: 0 },
+            SW: { lat: -1, lng: -1 },
+            W: { lat: 0, lng: -1 },
+            NW: { lat: 1, lng: -1 }
+        };
+
         function normalizeBridgeRole(rawRole) {
             const role = String(rawRole || '').trim().toLowerCase();
             if (role === 'pier') return 'pillar';
@@ -6115,6 +6349,32 @@
             return 0.5;
         }
 
+        function bridgePerpendicularUnitVector(axis) {
+            if (!window.map || !axis) return null;
+            const start = window.map.latLngToContainerPoint(axis.start);
+            const end = window.map.latLngToContainerPoint(axis.end);
+            const axisLength = Math.hypot(end.x - start.x, end.y - start.y) || 1;
+            return {
+                x: -(end.y - start.y) / axisLength,
+                y: (end.x - start.x) / axisLength
+            };
+        }
+
+        function bridgePhotoSideForDirection(axis, along, directionKey) {
+            const compass = BRIDGE_DIRECTION_COMPASS[directionKey];
+            const perp = bridgePerpendicularUnitVector(axis);
+            if (!compass || !perp || !along) return null;
+
+            const testPx = 30;
+            const plus = bridgeOffsetLatLngByPixels(along, perp.x * testPx, perp.y * testPx);
+            const minus = bridgeOffsetLatLngByPixels(along, -perp.x * testPx, -perp.y * testPx);
+            const plusScore = ((plus.lat - along.lat) * compass.lat) + ((plus.lng - along.lng) * compass.lng);
+            const minusScore = ((minus.lat - along.lat) * compass.lat) + ((minus.lng - along.lng) * compass.lng);
+
+            if (Math.abs(plusScore - minusScore) < 1e-12) return 1;
+            return plusScore > minusScore ? 1 : -1;
+        }
+
         function bridgePhotoSchematicT(photo, group, abutmentParts) {
             const role = normalizeBridgeRole(photo.role);
             const part = bridgeFeatureInfoById.get(photo.partId);
@@ -6182,12 +6442,37 @@
 
             slotBuckets.forEach(items => {
                 items.sort((a, b) => a.photo.key.localeCompare(b.photo.key, 'fr'));
-                items.forEach((item, index) => {
-                    layout.set(item.photo.key, {
-                        t: item.t,
-                        side: index % 2 === 0 ? 1 : -1,
-                        ring: Math.floor(index / 2)
-                    });
+
+                const directed = [];
+                const undirected = [];
+                items.forEach(item => {
+                    if (item.photo.context?.direction) directed.push(item);
+                    else undirected.push(item);
+                });
+
+                const ringBySide = new Map();
+                directed.forEach(item => {
+                    const along = bridgeAxisPointAt(group.bridgeAxis, item.t);
+                    const side = bridgePhotoSideForDirection(
+                        group.bridgeAxis,
+                        along,
+                        item.photo.context.direction
+                    );
+                    if (side === null) {
+                        undirected.push(item);
+                        return;
+                    }
+                    const ring = ringBySide.get(side) || 0;
+                    ringBySide.set(side, ring + 1);
+                    layout.set(item.photo.key, { t: item.t, side, ring });
+                });
+
+                undirected.forEach((item, index) => {
+                    let side = index % 2 === 0 ? 1 : -1;
+                    if (ringBySide.has(side)) side = -side;
+                    const ring = ringBySide.get(side) || 0;
+                    ringBySide.set(side, ring + 1);
+                    layout.set(item.photo.key, { t: item.t, side, ring });
                 });
             });
 
@@ -6319,7 +6604,7 @@
             const bits = [
                 providerLabel(photo.provider),
                 photo.roleLabel,
-                photo.context?.directionLabel ? `vue ${photo.context.directionLabel}` : '',
+                photo.context?.directionLabel ? `côté ${photo.context.directionLabel}` : '',
                 photo.context?.year || '',
                 photo.context?.detail ? 'détail' : ''
             ].filter(Boolean);
@@ -6336,11 +6621,9 @@
                 ring: 0
             };
             const along = bridgeAxisPointAt(axis, layout.t);
-            const start = window.map.latLngToContainerPoint(axis.start);
-            const end = window.map.latLngToContainerPoint(axis.end);
-            const axisLength = Math.hypot(end.x - start.x, end.y - start.y) || 1;
-            const perpX = -(end.y - start.y) / axisLength;
-            const perpY = (end.x - start.x) / axisLength;
+            const perp = bridgePerpendicularUnitVector(axis);
+            const perpX = perp?.x ?? 0;
+            const perpY = perp?.y ?? 0;
             const offset = BRIDGE_PHOTO_OUTSIDE_BASE_PX + (layout.ring * BRIDGE_PHOTO_OUTSIDE_RING_PX);
             return bridgeOffsetLatLngByPixels(
                 along,
