@@ -7,6 +7,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-12
+
+### Added
+
+- Collapsible legend sidebar on desktop; slide-out drawer on mobile (swipe and drag to dismiss).
+
+### Changed
+
+- Bridge analysis panel: schematic view, photo gallery, and OSM metadata.
+
+### Fixed
+
+- Layer visibility icons no longer disappear after refreshing Bison Futé or construction data.
+- Bridge clusters remain clickable at zoom 12+ when the geometry profile is shown.
+
 ## [0.3.1] - 2026-06-06
 
 ### Added

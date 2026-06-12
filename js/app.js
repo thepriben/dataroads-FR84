@@ -289,7 +289,7 @@
             });
             Object.keys(FRESHNESS_SCHEDULES).forEach(updateRefreshFormulaCell);
             if (typeof syncLegendChrome === 'function') {
-                document.querySelectorAll('.legend-family').forEach(refreshFamilyMeta);
+                syncLegendChrome();
             }
         }
 
@@ -318,8 +318,44 @@
             });
         }
 
+        function syncLayerToggleIconsFromState() {
+            const hierarchyIcon = document.getElementById('hierarchyToggleIcon');
+            if (hierarchyIcon) {
+                const allVisible = hierarchyVisibility.regional
+                    && hierarchyVisibility.territorial
+                    && hierarchyVisibility.local;
+                const anyVisible = hierarchyVisibility.regional
+                    || hierarchyVisibility.territorial
+                    || hierarchyVisibility.local;
+                setToggleIcon(hierarchyIcon, anyVisible, { partial: anyVisible && !allVisible });
+            }
+
+            const layerStates = [
+                ['constructionToggleIcon', constructionVisible],
+                ['bicycleToggleIcon', bicycleVisible],
+                ['citiesToggleIcon', citiesVisible],
+                ['accidentToggleIcon', accidentsVisible],
+                ['trafficToggleIcon', trafficVisible],
+                ['weatherStationsToggleIcon', weatherStationsVisible],
+                ['bisonFuteToggleIcon', bisonFuteVisible],
+                ['bridgesToggleIcon', bridgeVisible],
+                ['sensitiveZonesToggleIcon', sensitiveZonesVisible],
+                ['inaturalistSensitivesToggleIcon', inaturalistSensitivesVisible],
+                ['webcamsToggleIcon', webcamsVisible]
+            ];
+
+            layerStates.forEach(([id, visible]) => {
+                const icon = document.getElementById(id);
+                if (icon) {
+                    icon.style.opacity = '';
+                    setToggleIcon(icon, visible);
+                }
+            });
+        }
+
         function syncLegendChrome() {
             syncFreshnessBadgeVisibility();
+            syncLayerToggleIconsFromState();
             document.querySelectorAll('.legend-family').forEach(refreshFamilyMeta);
             scheduleAppUrlSync();
         }
@@ -926,8 +962,12 @@
                 window.addEventListener('pointerup', onPointerUp);
             });
 
-            // Double-click: reset to default width
+            // Double-click: toggle full collapse (handled in setupSidebarCollapse when available)
             resizer.addEventListener('dblclick', () => {
+                if (typeof window.toggleSidebarPanel === 'function') {
+                    window.toggleSidebarPanel();
+                    return;
+                }
                 mainContent.style.removeProperty('--sidebar-width');
                 try { localStorage.removeItem('sidebarWidth'); } catch (_) {}
                 if (window.map && typeof window.map.invalidateSize === 'function') {
@@ -951,6 +991,209 @@
         }
 
         document.addEventListener('DOMContentLoaded', setupSidebarResizer);
+
+        // === Sidebar collapse (desktop) + drawer (mobile) ===
+        function setupSidebarCollapse() {
+            const MOBILE_MAX = 900;
+            const mobileQuery = window.matchMedia(`(max-width: ${MOBILE_MAX}px)`);
+            const mainContent = document.getElementById('mainContent') || document.querySelector('.main-content');
+            const sidebar = document.getElementById('appSidebar') || document.querySelector('.sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            const collapseBtn = document.getElementById('sidebarCollapseBtn');
+            const reopenBtn = document.getElementById('sidebarReopenBtn');
+            const headerLegendBtn = document.getElementById('headerLegendBtn');
+            const dragHandle = document.getElementById('sidebarDragHandle');
+            const resizer = document.getElementById('sidebarResizer');
+
+            if (!mainContent || !sidebar) return;
+
+            let desktopCollapsed = false;
+            try {
+                desktopCollapsed = localStorage.getItem('sidebarCollapsed') === '1';
+            } catch (_) { /* private mode */ }
+
+            let mobileOpen = false;
+            let dragOffset = 0;
+            let dragActive = false;
+
+            function isMobileSidebar() {
+                return mobileQuery.matches;
+            }
+
+            function invalidateMapSoon() {
+                if (window.map && typeof window.map.invalidateSize === 'function') {
+                    requestAnimationFrame(() => window.map.invalidateSize());
+                }
+            }
+
+            function setDragOffset(px) {
+                dragOffset = px;
+                sidebar.style.setProperty('--sidebar-drag-offset', `${px}px`);
+            }
+
+            function clearDragOffset() {
+                dragOffset = 0;
+                sidebar.classList.remove('is-dragging');
+                sidebar.style.removeProperty('--sidebar-drag-offset');
+            }
+
+            function updateAria() {
+                const mobile = isMobileSidebar();
+                const open = mobile ? mobileOpen : !desktopCollapsed;
+                collapseBtn?.setAttribute('aria-expanded', String(open));
+                reopenBtn?.setAttribute('aria-expanded', String(open));
+                headerLegendBtn?.setAttribute('aria-expanded', String(open));
+                backdrop?.setAttribute('aria-hidden', String(!mobile || !mobileOpen));
+                headerLegendBtn?.classList.toggle('is-active', mobile && mobileOpen);
+            }
+
+            function syncSidebarDom() {
+                const mobile = isMobileSidebar();
+                mainContent.classList.toggle('is-mobile-sidebar', mobile);
+
+                if (mobile) {
+                    mainContent.classList.remove('is-sidebar-collapsed');
+                    mainContent.classList.toggle('is-sidebar-open', mobileOpen);
+                    document.body.classList.toggle('sidebar-mobile-open', mobileOpen);
+                    if (!mobileOpen) clearDragOffset();
+                } else {
+                    mainContent.classList.remove('is-sidebar-open');
+                    document.body.classList.remove('sidebar-mobile-open');
+                    mainContent.classList.toggle('is-sidebar-collapsed', desktopCollapsed);
+                    clearDragOffset();
+                }
+
+                if (resizer) {
+                    resizer.hidden = mobile || desktopCollapsed;
+                }
+
+                updateAria();
+                invalidateMapSoon();
+            }
+
+            function setDesktopCollapsed(collapsed) {
+                desktopCollapsed = collapsed;
+                try {
+                    localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0');
+                } catch (_) { /* private mode */ }
+                syncSidebarDom();
+            }
+
+            function setMobileOpen(open) {
+                mobileOpen = open;
+                if (!open) clearDragOffset();
+                syncSidebarDom();
+            }
+
+            function openSidebar() {
+                if (isMobileSidebar()) setMobileOpen(true);
+                else setDesktopCollapsed(false);
+            }
+
+            function closeSidebar() {
+                if (isMobileSidebar()) setMobileOpen(false);
+                else setDesktopCollapsed(true);
+            }
+
+            window.toggleSidebarPanel = function() {
+                if (isMobileSidebar()) setMobileOpen(!mobileOpen);
+                else setDesktopCollapsed(!desktopCollapsed);
+            };
+
+            collapseBtn?.addEventListener('click', closeSidebar);
+            reopenBtn?.addEventListener('click', openSidebar);
+            headerLegendBtn?.addEventListener('click', () => {
+                if (isMobileSidebar()) setMobileOpen(!mobileOpen);
+                else openSidebar();
+            });
+            backdrop?.addEventListener('click', () => setMobileOpen(false));
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key !== 'Escape') return;
+                if (isMobileSidebar() && mobileOpen) setMobileOpen(false);
+            });
+
+            mobileQuery.addEventListener('change', syncSidebarDom);
+
+            // Swipe from left edge of the map to open on mobile
+            const mapStage = document.querySelector('.map-stage');
+            let edgeStartX = null;
+            let edgeStartY = null;
+
+            mapStage?.addEventListener('pointerdown', (event) => {
+                if (!isMobileSidebar() || mobileOpen) return;
+                if (event.pointerType === 'mouse' && event.button !== 0) return;
+                if (event.clientX > 22) return;
+                edgeStartX = event.clientX;
+                edgeStartY = event.clientY;
+            });
+
+            mapStage?.addEventListener('pointerup', (event) => {
+                if (edgeStartX == null || edgeStartY == null) return;
+                const dx = event.clientX - edgeStartX;
+                const dy = Math.abs(event.clientY - edgeStartY);
+                if (dx > 56 && dy < 80) setMobileOpen(true);
+                edgeStartX = null;
+                edgeStartY = null;
+            });
+
+            // Drag sidebar horizontally on mobile to dismiss
+            const dragSurface = dragHandle || sidebar;
+            let dragStartX = 0;
+            let dragStartOffset = 0;
+
+            const onDragMove = (event) => {
+                if (!dragActive || !isMobileSidebar() || !mobileOpen) return;
+                const delta = event.clientX - dragStartX;
+                const next = Math.min(0, dragStartOffset + delta);
+                setDragOffset(next);
+            };
+
+            const onDragEnd = () => {
+                if (!dragActive) return;
+                dragActive = false;
+                window.removeEventListener('pointermove', onDragMove);
+                window.removeEventListener('pointerup', onDragEnd);
+                window.removeEventListener('pointercancel', onDragEnd);
+
+                if (dragOffset < -72) {
+                    setMobileOpen(false);
+                } else {
+                    clearDragOffset();
+                }
+            };
+
+            dragSurface?.addEventListener('pointerdown', (event) => {
+                if (!isMobileSidebar() || !mobileOpen) return;
+                if (dragHandle && event.target !== dragHandle && !dragHandle.contains(event.target)) return;
+                dragActive = true;
+                dragStartX = event.clientX;
+                dragStartOffset = dragOffset;
+                sidebar.classList.add('is-dragging');
+                event.preventDefault();
+                window.addEventListener('pointermove', onDragMove);
+                window.addEventListener('pointerup', onDragEnd);
+                window.addEventListener('pointercancel', onDragEnd);
+            });
+
+            // Also allow dragging from the sidebar toolbar on mobile
+            const toolbar = sidebar.querySelector('.sidebar-toolbar');
+            toolbar?.addEventListener('pointerdown', (event) => {
+                if (!isMobileSidebar() || !mobileOpen) return;
+                if (event.target.closest('button')) return;
+                dragActive = true;
+                dragStartX = event.clientX;
+                dragStartOffset = dragOffset;
+                sidebar.classList.add('is-dragging');
+                window.addEventListener('pointermove', onDragMove);
+                window.addEventListener('pointerup', onDragEnd);
+                window.addEventListener('pointercancel', onDragEnd);
+            });
+
+            syncSidebarDom();
+        }
+
+        document.addEventListener('DOMContentLoaded', setupSidebarCollapse);
 
         let wazeLayer = null;
         let trafficMarkers = [];
@@ -988,6 +1231,7 @@
         const BRIDGE_PHOTO_MIN_ZOOM = 16;
         const BRIDGE_SCHEMATIC_MIN_ZOOM = 16;
         const BRIDGE_GEOMETRY_MIN_ZOOM = 12;
+        const BRIDGE_CLUSTER_DISSOLVE_ZOOM = 14;
         const BRIDGE_PHOTO_OUTSIDE_BASE_PX = 34;
         const BRIDGE_PHOTO_OUTSIDE_RING_PX = 15;
         const bridgePhotoProviderVisibility = {
@@ -1598,7 +1842,11 @@
 
             const zoom = window.map.getZoom();
             if (zoom < BRIDGE_GEOMETRY_MIN_ZOOM) {
-                hint.textContent = `Profil masqué à ce zoom · zoomez au niveau ${BRIDGE_GEOMETRY_MIN_ZOOM}+ pour afficher tablier, culées et piles.`;
+                hint.textContent = `Grappes actives · zoomez au niveau ${BRIDGE_GEOMETRY_MIN_ZOOM}+ pour le profil (tablier, culées, piles).`;
+                return;
+            }
+            if (zoom < BRIDGE_CLUSTER_DISSOLVE_ZOOM) {
+                hint.textContent = `Profil visible · grappes denses encore cliquables · photos au zoom ${BRIDGE_PHOTO_MIN_ZOOM}+.`;
                 return;
             }
             if (zoom < BRIDGE_PHOTO_MIN_ZOOM) {
@@ -1645,20 +1893,24 @@
                 updateBridgeGroupMarkerLayer();
                 updateBridgePhotoLayerVisibility();
             };
-            window.map.on('zoomend moveend', bridgeMapChangeHandler);
+            window.map.on('zoom zoomend moveend', bridgeMapChangeHandler);
         }
 
         function unbindBridgeMapChangeHandler() {
             if (!window.map || !bridgeMapChangeHandler) return;
-            window.map.off('zoomend moveend', bridgeMapChangeHandler);
+            window.map.off('zoom zoomend moveend', bridgeMapChangeHandler);
             bridgeMapChangeHandler = null;
         }
 
         function bridgeClusterRadiusPx(zoom) {
-            if (zoom >= BRIDGE_GEOMETRY_MIN_ZOOM) return 0;
+            if (zoom >= BRIDGE_CLUSTER_DISSOLVE_ZOOM) return 0;
+            if (zoom >= BRIDGE_GEOMETRY_MIN_ZOOM) {
+                // Zoom 12–13 : grappes conservées (clic pour zoomer) mais pastilles solo masquées.
+                return Math.round(12 * (BRIDGE_CLUSTER_DISSOLVE_ZOOM - zoom));
+            }
             if (zoom <= 10) return 72;
             // Rayon qui décroît progressivement : les ponts se séparent de proche en proche.
-            return Math.max(0, Math.round(72 * (BRIDGE_GEOMETRY_MIN_ZOOM - zoom) / 2));
+            return Math.max(12, Math.round(72 * (BRIDGE_GEOMETRY_MIN_ZOOM - zoom) / 2));
         }
 
         function bridgePhotoCountsForGroups(groups) {
@@ -2665,14 +2917,32 @@
             });
         }
 
+        function clearConstructionPolylines() {
+            constructionPolylines.forEach(polyline => {
+                if (window.map?.hasLayer(polyline)) window.map.removeLayer(polyline);
+            });
+            constructionPolylines = [];
+        }
+
+        function syncConstructionPolylinesOnMap() {
+            constructionPolylines.forEach(polyline => {
+                const onMap = window.map?.hasLayer(polyline);
+                if (constructionVisible && !onMap) polyline.addTo(window.map);
+                if (!constructionVisible && onMap) window.map.removeLayer(polyline);
+            });
+        }
+
+        function applyConstructionLayerUi() {
+            if (constructionVisible) applyConstructionVisibleUi();
+            else applyConstructionHiddenUi();
+        }
+
         window.toggleConstruction = function() {
             constructionVisible = !constructionVisible;
             console.log('🔵 toggleConstruction →', constructionVisible);
 
             if (!constructionVisible) {
-                constructionPolylines.forEach(polyline => {
-                    if (window.map.hasLayer(polyline)) window.map.removeLayer(polyline);
-                });
+                syncConstructionPolylinesOnMap();
                 applyConstructionHiddenUi();
                 syncLegendChrome();
                 console.log('✗ Routes en construction masquées');
@@ -2682,15 +2952,13 @@
             // To show: if never loaded, start local fetch (instant).
             // No fake 30 s timer: this is just a local GeoJSON read.
             if (constructionPolylines.length === 0) {
-                const icon = document.getElementById('constructionToggleIcon');
-                if (icon) icon.style.opacity = '0.5';
+                applyConstructionVisibleUi();
+                syncLegendChrome();
                 window.loadConstructionRoads();
                 return;
             }
 
-            constructionPolylines.forEach(polyline => {
-                if (!window.map.hasLayer(polyline)) polyline.addTo(window.map);
-            });
+            syncConstructionPolylinesOnMap();
             applyConstructionVisibleUi();
             syncLegendChrome();
             console.log(`✓ ${constructionPolylines.length} polyline(s) construction affichée(s)`);
@@ -3273,32 +3541,52 @@
 
         // ========== ROAD EVENTS / BISON FUTÉ ==========
 
-        window.toggleBisonFute = function() {
-            bisonFuteVisible = !bisonFuteVisible;
-
-            const icon = document.getElementById('bisonFuteToggleIcon');
+        function applyBisonFuteVisibleUi() {
             const title = document.querySelector('.legend-section:has([id="bisonFuteToggleIcon"]) .legend-title');
             const legendItems = document.querySelectorAll('[data-bison-fute]');
+            if (title) title.style.fontWeight = '700';
+            legendItems.forEach(item => {
+                item.style.opacity = '1';
+            });
+        }
 
+        function applyBisonFuteHiddenUi() {
+            const title = document.querySelector('.legend-section:has([id="bisonFuteToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-bison-fute]');
+            if (title) title.style.fontWeight = '600';
+            legendItems.forEach(item => {
+                item.style.opacity = '0.5';
+            });
+        }
+
+        function syncBisonFuteMarkersOnMap() {
+            bisonFuteMarkers.forEach(marker => {
+                const onMap = window.map?.hasLayer(marker);
+                if (bisonFuteVisible && !onMap) marker.addTo(window.map);
+                if (!bisonFuteVisible && onMap) window.map.removeLayer(marker);
+            });
+        }
+
+        function clearBisonFuteMarkers() {
+            bisonFuteMarkers.forEach(marker => {
+                if (window.map?.hasLayer(marker)) window.map.removeLayer(marker);
+            });
+            bisonFuteMarkers = [];
+        }
+
+        function applyBisonFuteLayerUi() {
+            if (bisonFuteVisible) applyBisonFuteVisibleUi();
+            else applyBisonFuteHiddenUi();
+        }
+
+        window.toggleBisonFute = function() {
+            bisonFuteVisible = !bisonFuteVisible;
+            syncBisonFuteMarkersOnMap();
             if (bisonFuteVisible) {
-                bisonFuteMarkers.forEach(marker => {
-                    if (!window.map.hasLayer(marker)) marker.addTo(window.map);
-                });
-                setToggleIcon(icon, true);
-                if (title) title.style.fontWeight = '700';
-                legendItems.forEach(item => {
-                    item.style.opacity = '1';
-                });
+                applyBisonFuteVisibleUi();
                 console.log(`✓ ${bisonFuteMarkers.length} événements routiers affichés`);
             } else {
-                bisonFuteMarkers.forEach(marker => {
-                    if (window.map.hasLayer(marker)) window.map.removeLayer(marker);
-                });
-                setToggleIcon(icon, false);
-                if (title) title.style.fontWeight = '600';
-                legendItems.forEach(item => {
-                    item.style.opacity = '0.5';
-                });
+                applyBisonFuteHiddenUi();
                 console.log('✗ Événements routiers masqués');
             }
             syncLegendChrome();
@@ -5809,21 +6097,118 @@
             });
         }
 
+        function bridgeViewerOsmLink(group) {
+            const tags = group.anchorInfo?.tags || {};
+            const osmType = tags.osm_type || String(group.anchorInfo?.id || group.id).split('/')[0];
+            const osmId = tags.osm_id || String(group.anchorInfo?.id || group.id).split('/')[1];
+            if (!osmType || !osmId) return '';
+            return `https://www.openstreetmap.org/${osmType}/${osmId}`;
+        }
+
+        function buildBridgeViewerMetaChips(group) {
+            const tags = group.anchorInfo?.tags || {};
+            const chips = [];
+            if (tags['bridge:structure']) chips.push({ label: 'Structure', value: tags['bridge:structure'] });
+            if (tags.material) chips.push({ label: 'Matériau', value: tags.material });
+            if (tags.length) chips.push({ label: 'Longueur', value: `${tags.length} m` });
+            if (tags.ref) chips.push({ label: 'Réf.', value: tags.ref });
+            if (tags.operator || tags.owner) chips.push({ label: 'Gestion', value: tags.operator || tags.owner });
+
+            if (!chips.length) return '';
+
+            return `
+                <div class="bridge-viewer-meta">
+                    ${chips.map(chip => `
+                        <span class="bridge-viewer-meta-chip">
+                            <strong>${escapeHtml(chip.label)}</strong>
+                            ${escapeHtml(String(chip.value))}
+                        </span>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function buildBridgeViewerStats(group) {
+            const pillarCount = group.features.filter(info => info.role === 'pillar').length;
+            const abutmentCount = group.features.filter(info => info.role === 'abutment').length;
+            const panoramaxCount = group.photos.filter(photo => photo.provider === 'panoramax').length;
+            const mapillaryCount = group.photos.filter(photo => photo.provider === 'mapillary').length;
+
+            const stats = [
+                ['Photos', group.photos.length],
+                ['Éléments', group.features.length],
+                ['Piles', pillarCount],
+                ['Culées', abutmentCount]
+            ].filter(([, value]) => value > 0);
+
+            if (!stats.length) return '';
+
+            return `
+                <div class="bridge-viewer-stats">
+                    ${stats.map(([label, value]) => `
+                        <span class="bridge-viewer-stat">
+                            <strong>${value}</strong>
+                            <span>${label.toLowerCase()}</span>
+                        </span>
+                    `).join('')}
+                    ${panoramaxCount ? `<span class="bridge-viewer-stat"><strong>${panoramaxCount}</strong><span>panoramax</span></span>` : ''}
+                    ${mapillaryCount ? `<span class="bridge-viewer-stat"><strong>${mapillaryCount}</strong><span>mapillary</span></span>` : ''}
+                </div>
+            `;
+        }
+
+        function buildBridgePhotoGrid(group, selectedPhotoKey) {
+            if (group.photos.length <= 1) return '';
+
+            return `
+                <section class="bridge-viewer-section bridge-viewer-section--gallery">
+                    <h3 class="bridge-viewer-section-title">Galerie · ${group.photos.length} clichés</h3>
+                    <div class="bridge-photo-grid">
+                        ${group.photos.map(photo => `
+                            <button
+                                type="button"
+                                class="bridge-photo-card${selectedPhotoKey === photo.key ? ' is-active' : ''}"
+                                data-bridge-photo-key="${escapeHtml(photo.key)}"
+                            >
+                                ${photo.provider === 'panoramax'
+                                    ? `<img src="${panoramaxImageUrl(photo.id, 'thumb')}" alt="" loading="lazy">`
+                                    : `<span class="bridge-photo-card-placeholder">Mapillary</span>`}
+                                <span class="bridge-photo-card-meta">
+                                    <span class="bridge-photo-card-source">${escapeHtml(providerLabel(photo.provider))}</span>
+                                    <span class="bridge-photo-card-part">${escapeHtml(photo.partLabel)}</span>
+                                </span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </section>
+            `;
+        }
+
         function buildBridgeViewerHero(photo) {
             if (!photo) {
                 return '<div class="bridge-viewer-empty">Aucune photo Panoramax ou Mapillary n\'est taguée sur cet ouvrage.</div>';
             }
 
+            const badgeClass = photo.provider === 'panoramax'
+                ? 'bridge-viewer-hero-badge--panoramax'
+                : 'bridge-viewer-hero-badge--mapillary';
+
             if (photo.provider === 'panoramax') {
                 return `
-                    <a class="bridge-viewer-hero-link" href="${panoramaxPageUrl(photo.id)}" target="_blank" rel="noopener noreferrer">
-                        <img class="bridge-viewer-hero-img" src="${panoramaxImageUrl(photo.id, 'sd')}" alt="${escapeHtml(bridgePhotoMetaLabel(photo))}" loading="lazy">
-                    </a>
+                    <div class="bridge-viewer-hero-inner">
+                        <a class="bridge-viewer-hero-link" href="${panoramaxPageUrl(photo.id)}" target="_blank" rel="noopener noreferrer">
+                            <img class="bridge-viewer-hero-img" src="${panoramaxImageUrl(photo.id, 'sd')}" alt="${escapeHtml(bridgePhotoMetaLabel(photo))}" loading="lazy">
+                        </a>
+                        <span class="bridge-viewer-hero-badge ${badgeClass}">Panoramax</span>
+                    </div>
                 `;
             }
 
             return `
-                <iframe class="bridge-viewer-hero-frame" src="${mapillaryEmbedUrl(photo.id)}" title="${escapeHtml(bridgePhotoMetaLabel(photo))}" allowfullscreen loading="lazy"></iframe>
+                <div class="bridge-viewer-hero-inner">
+                    <iframe class="bridge-viewer-hero-frame" src="${mapillaryEmbedUrl(photo.id)}" title="${escapeHtml(bridgePhotoMetaLabel(photo))}" allowfullscreen loading="lazy"></iframe>
+                    <span class="bridge-viewer-hero-badge ${badgeClass}">Mapillary</span>
+                </div>
             `;
         }
 
@@ -5898,6 +6283,14 @@
             `;
         }
 
+        function bindBridgeViewerPhotoSelectors(content, group) {
+            content.querySelectorAll('[data-bridge-photo-key]').forEach(button => {
+                button.addEventListener('click', () => {
+                    renderBridgeViewer(group, button.dataset.bridgePhotoKey);
+                });
+            });
+        }
+
         function renderBridgeViewer(group, selectedPhotoKey) {
             const panel = document.getElementById('bridgeViewerPanel');
             const title = document.getElementById('bridgeViewerTitle');
@@ -5913,8 +6306,17 @@
                 .map(style => `<span class="bridge-part-pill" style="--bridge-part-color:${style.color};">${escapeHtml(style.label)}</span>`)
                 .join('');
 
+            const osmLink = bridgeViewerOsmLink(group);
+            const subtitleBits = [
+                `${group.photos.length} photo${group.photos.length > 1 ? 's' : ''}`,
+                `${group.features.length} élément${group.features.length > 1 ? 's' : ''} OSM`
+            ];
+            if (group.anchorInfo?.tags?.['bridge:structure']) {
+                subtitleBits.push(String(group.anchorInfo.tags['bridge:structure']).replace(/_/g, ' '));
+            }
+
             title.textContent = group.title;
-            subtitle.textContent = `${group.photos.length} photo${group.photos.length > 1 ? 's' : ''} · ${group.features.length} élément${group.features.length > 1 ? 's' : ''} OSM · vue en plan`;
+            subtitle.textContent = subtitleBits.join(' · ');
 
             const topPhotos = [];
             const bottomPhotos = [];
@@ -5932,32 +6334,44 @@
                 .join('');
 
             content.innerHTML = `
-                <div class="bridge-schematic">
-                    <div class="bridge-schematic-stage">
-                        <div class="bridge-schematic-photos bridge-schematic-photos--top">${schematicTop}</div>
-                        ${buildBridgeSchematicStructure(group)}
-                        <div class="bridge-schematic-photos bridge-schematic-photos--bottom">${schematicBottom}</div>
+                ${buildBridgeViewerStats(group)}
+                ${buildBridgeViewerMetaChips(group)}
+                <section class="bridge-viewer-section bridge-viewer-section--schematic">
+                    <h3 class="bridge-viewer-section-title">Vue schématique</h3>
+                    <div class="bridge-schematic">
+                        <div class="bridge-schematic-stage">
+                            <div class="bridge-schematic-photos bridge-schematic-photos--top">${schematicTop}</div>
+                            ${buildBridgeSchematicStructure(group)}
+                            <div class="bridge-schematic-photos bridge-schematic-photos--bottom">${schematicBottom}</div>
+                        </div>
                     </div>
-                </div>
-                <div class="bridge-viewer-hero">
-                    ${buildBridgeViewerHero(selectedPhoto)}
-                </div>
-                ${selectedPhoto ? `
-                    <div class="bridge-viewer-selected">
-                        <span class="bridge-part-pill" style="--bridge-part-color:${selectedPhoto.color};">${escapeHtml(selectedPhoto.partLabel)}</span>
-                        <span>${escapeHtml(bridgePhotoMetaLabel(selectedPhoto))}</span>
-                        <a href="${bridgePhotoExternalUrl(selectedPhoto)}" target="_blank" rel="noopener noreferrer">Source →</a>
+                </section>
+                <section class="bridge-viewer-section bridge-viewer-section--hero">
+                    <h3 class="bridge-viewer-section-title">Photo sélectionnée</h3>
+                    <div class="bridge-viewer-hero">
+                        ${buildBridgeViewerHero(selectedPhoto)}
                     </div>
+                    ${selectedPhoto ? `
+                        <div class="bridge-viewer-selected">
+                            <span class="bridge-part-pill" style="--bridge-part-color:${selectedPhoto.color};">${escapeHtml(selectedPhoto.partLabel)}</span>
+                            <span class="bridge-viewer-selected-meta">${escapeHtml(bridgePhotoMetaLabel(selectedPhoto))}</span>
+                            <a href="${bridgePhotoExternalUrl(selectedPhoto)}" target="_blank" rel="noopener noreferrer">Ouvrir la source</a>
+                        </div>
+                    ` : ''}
+                </section>
+                ${roleBadges ? `
+                    <section class="bridge-viewer-section bridge-viewer-section--parts">
+                        <h3 class="bridge-viewer-section-title">Composition OSM</h3>
+                        <div class="bridge-viewer-parts">${roleBadges}</div>
+                    </section>
                 ` : ''}
-                <div class="bridge-viewer-parts">${roleBadges}</div>
+                ${buildBridgePhotoGrid(group, selectedPhoto?.key)}
+                ${osmLink ? `
+                    <a class="bridge-viewer-osm-link" href="${osmLink}" target="_blank" rel="noopener noreferrer">Voir sur OpenStreetMap →</a>
+                ` : ''}
             `;
 
-            content.querySelectorAll('[data-bridge-photo-key]').forEach(button => {
-                button.addEventListener('click', () => {
-                    renderBridgeViewer(group, button.dataset.bridgePhotoKey);
-                });
-            });
-
+            bindBridgeViewerPhotoSelectors(content, group);
             panel.classList.add('active');
         }
 
@@ -6651,7 +7065,8 @@
                     generatedAt: data._cache?.generated_at,
                     scheduleKey: 'osm'
                 });
-                syncLegendChrome();
+
+                clearConstructionPolylines();
 
                 const constructionWays = (data.features || [])
                     .map(geoJsonLineFeatureToWay)
@@ -6680,7 +7095,7 @@
                         weight: styles.weight,
                         opacity: 0.9,
                         dashArray: styles.dashArray
-                    }).addTo(window.map);
+                    });
 
                     constructionPolylines.push(polyline);
 
@@ -6749,13 +7164,16 @@
                     });
                 }
 
-                applyConstructionVisibleUi();
+                syncConstructionPolylinesOnMap();
+                applyConstructionLayerUi();
+                syncLegendChrome();
                 tryApplyAppUrlState();
             } catch (error) {
                 console.error('Erreur chargement routes en construction:', error);
                 document.getElementById('count-construction').textContent = '0';
                 document.getElementById('count-proposed').textContent = '0';
-                applyConstructionVisibleUi();
+                applyConstructionLayerUi();
+                syncLegendChrome();
             }
         };
 
@@ -6825,7 +7243,8 @@
                     scheduleKey: 'external',
                     errorMsg: data._cache?.error
                 });
-                syncLegendChrome();
+
+                clearBisonFuteMarkers();
                 
                 if (!data.features || data.features.length === 0) {
                     console.log('ℹ️ Aucun événement Info Routière dans le GeoJSON local');
@@ -6836,6 +7255,8 @@
                             vintages: { bisonFute: 'Cache 3 h · Info Routière' }
                         });
                     }
+                    applyBisonFuteLayerUi();
+                    syncLegendChrome();
                     return;
                 }
                 
@@ -6958,15 +7379,21 @@
                     });
                 }
                 
+                syncBisonFuteMarkersOnMap();
+                applyBisonFuteLayerUi();
+
                 if (totalEvents > 0) {
                     console.log(`✓ Événements Bison Futé affichés:`, eventsCount);
                 } else {
                     console.log('ℹ️ Aucun événement Bison Futé dans la zone du Vaucluse actuellement');
                 }
+                syncLegendChrome();
                 tryApplyAppUrlState();
             } catch (error) {
                 console.error('❌ Erreur lors du chargement Bison Futé:', error);
                 console.log('ℹ️ Bison Futé couvre principalement le RRN (autoroutes, nationales)');
+                applyBisonFuteLayerUi();
+                syncLegendChrome();
             }
         }
 

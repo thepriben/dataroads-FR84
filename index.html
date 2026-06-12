@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260612-21">
+    <link rel="stylesheet" href="css/styles.css?v=20260612-25">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -39,6 +39,9 @@
                 <div class="subtitle">Département de Vaucluse • Outils Numériques Routiers</div>
             </div>
             <div class="header-actions">
+                <button type="button" class="header-legend-btn" id="headerLegendBtn" title="Ouvrir la légende" aria-label="Ouvrir la légende" aria-controls="appSidebar" aria-expanded="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                </button>
                 <button type="button" class="header-kpi-btn" id="dashboardHeaderBtn" onclick="toggleDashboardPanel()" title="Chiffres clés du Vaucluse">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 16V9"/><path d="M12 16V5"/><path d="M17 16v-6"/></svg>
                     <span>Chiffres clés</span>
@@ -54,8 +57,14 @@
             </div>
         </div>
 
-        <div class="main-content">
-            <div class="sidebar">
+        <div class="main-content" id="mainContent">
+            <div class="sidebar" id="appSidebar">
+                <div class="sidebar-toolbar">
+                    <span class="sidebar-toolbar-label">Légende</span>
+                    <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Replier la légende" aria-label="Replier la légende" aria-controls="appSidebar" aria-expanded="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                </div>
                 <div class="sidebar-scroll">
                 <section class="legend-family" data-family="factual" data-expanded="false">
                     <div class="legend-family-header">
@@ -298,19 +307,19 @@
                     <span class="freshness-badge" id="freshness-bison-fute" data-schedule-key="external"></span>
 
                     <div class="legend-item" data-bison-fute="travaux" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color" style="background: transparent; width: 18px; height: 18px; text-align: center; line-height: 18px;">🚧</div>
+                        <div class="legend-color legend-swatch-emoji" aria-hidden="true">🚧</div>
                         <div class="legend-label">Travaux</div>
                         <div class="legend-count"></div>
                     </div>
 
                     <div class="legend-item" data-bison-fute="bouchons" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color" style="background: transparent; width: 18px; height: 18px; text-align: center; line-height: 18px;">🚗</div>
+                        <div class="legend-color legend-swatch-emoji" aria-hidden="true">🚗</div>
                         <div class="legend-label">Bouchons</div>
                         <div class="legend-count"></div>
                     </div>
 
                     <div class="legend-item" data-bison-fute="accidents" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color" style="background: transparent; width: 18px; height: 18px; text-align: center; line-height: 18px;">⚠️</div>
+                        <div class="legend-color legend-swatch-emoji" aria-hidden="true">⚠️</div>
                         <div class="legend-label">Accidents en cours</div>
                         <div class="legend-count"></div>
                     </div>
@@ -575,11 +584,17 @@
                         <a class="sidebar-foot-guide" href="guide.html" title="Guide utilisateur">Guide</a>
                     </div>
                 </div>
+                <div class="sidebar-drag-handle" id="sidebarDragHandle" aria-hidden="true" title="Glisser pour replier"></div>
             </div>
 
-            <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Redimensionner la barre latérale" tabindex="0" title="Glissez pour redimensionner la barre latérale"></div>
+            <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Redimensionner la barre latérale" tabindex="0" title="Glissez pour redimensionner · double-clic pour replier"></div>
 
             <div class="map-stage">
+                <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+                <button type="button" class="sidebar-reopen-btn" id="sidebarReopenBtn" title="Afficher la légende" aria-label="Afficher la légende" aria-controls="appSidebar" aria-expanded="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span>Légende</span>
+                </button>
                 <!-- Barre d'outils unifiée : modes spéciaux groupés en haut à droite -->
                 <div class="map-toolbar" role="toolbar" aria-label="Modes d'affichage spéciaux">
                     <button type="button" class="map-tool map-tool--compact" onclick="window.resetMapView && window.resetMapView()" id="mapResetBtn" title="Revenir à la vue initiale du département" aria-label="Revenir à la vue initiale du département">
@@ -614,11 +629,14 @@
 
                 <div class="bridge-viewer-panel" id="bridgeViewerPanel" role="dialog" aria-labelledby="bridgeViewerTitle" aria-modal="false">
                     <div class="bridge-viewer-header">
-                        <div>
+                        <div class="bridge-viewer-heading">
+                            <p class="bridge-viewer-kicker">Analyse · ouvrage d'art</p>
                             <h2 id="bridgeViewerTitle">Ouvrage d'art</h2>
                             <p id="bridgeViewerSubtitle">Photos de terrain</p>
                         </div>
-                        <button type="button" class="bridge-viewer-close" onclick="window.closeBridgeViewer && window.closeBridgeViewer();" aria-label="Fermer la visionneuse">×</button>
+                        <button type="button" class="bridge-viewer-close" onclick="window.closeBridgeViewer && window.closeBridgeViewer();" aria-label="Fermer la visionneuse">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
                     </div>
                     <div class="bridge-viewer-content" id="bridgeViewerContent"></div>
                 </div>
@@ -653,6 +671,6 @@
     </script>
     <script src="js/api.js?v=20260606-1"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260612-21"></script>
+    <script src="js/app.js?v=20260612-25"></script>
 </body>
 </html>
