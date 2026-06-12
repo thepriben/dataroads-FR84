@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-06-13
+
+### Fixed
+
+- iNaturalist clicks still missed intermittently with ENS visible: map snap-to-nearest observation, ENS pointer-events re-applied after pan/zoom, and explicit popup on marker click.
+
+## [0.3.6] - 2026-06-13
+
+### Changed
+
+- iNaturalist markers scale with zoom (48px+ hit area); ENS polygons are non-interactive while observations are shown.
+
 ## [0.3.5] - 2026-06-13
 
 ### Changed

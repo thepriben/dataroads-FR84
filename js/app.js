@@ -1244,6 +1244,8 @@
         let inaturalistSensitivesVisible = false;
         let inaturalistSensitivesLoaded = false;
         let inaturalistMapZoomHandler = null;
+        let inaturalistMapClickHandler = null;
+        let incubatorMapSyncHandler = null;
         let webcamsLayerGroup = null;
         let webcamsVisible = false;
         let webcamsLoaded = false;
@@ -2470,7 +2472,7 @@
             const marker = L.marker([coords[1], coords[0]], {
                 icon: makeInaturalistMarkerIcon(feature, mapZoom),
                 pane: 'markerPane',
-                riseOnHover: true,
+                riseOnHover: false,
                 interactive: true,
                 zIndexOffset: 1400
             });
@@ -2480,7 +2482,42 @@
                 autoPan: true,
                 closeButton: true
             });
+            marker.on('click', event => {
+                L.DomEvent.stopPropagation(event);
+                marker.openPopup();
+            });
             return marker;
+        }
+
+        function inaturalistMarkerSnapRadiusPx(zoom) {
+            const visual = inaturalistMarkerVisualSize('research', zoom);
+            return Math.round(inaturalistMarkerHitSize(zoom, visual) / 2 + 10);
+        }
+
+        function findNearestInaturalistMarker(latlng) {
+            if (!window.map || !inaturalistSensitivesVisible || !inaturalistSensitiveMarkers.length) {
+                return null;
+            }
+
+            const clickPoint = window.map.latLngToContainerPoint(latlng);
+            const snapRadius = inaturalistMarkerSnapRadiusPx(window.map.getZoom());
+            let bestMarker = null;
+            let bestDistance = snapRadius;
+
+            inaturalistSensitiveMarkers.forEach(marker => {
+                if (!window.map.hasLayer(marker)) return;
+                const markerPoint = window.map.latLngToContainerPoint(marker.getLatLng());
+                const distance = Math.hypot(
+                    markerPoint.x - clickPoint.x,
+                    markerPoint.y - clickPoint.y
+                );
+                if (distance <= bestDistance) {
+                    bestDistance = distance;
+                    bestMarker = marker;
+                }
+            });
+
+            return bestMarker;
         }
 
         function refreshInaturalistMarkerSizes() {
@@ -2500,14 +2537,43 @@
             window.map.on('zoomend', inaturalistMapZoomHandler);
         }
 
-        function setSensitiveZonesMapInteractivity(enabled) {
+        function applyEnsLayerInteractivity(layer) {
+            if (!layer) return;
+            const interactive = sensitiveZonesVisible && !inaturalistSensitivesVisible;
+            layer.options.interactive = interactive;
+            if (layer._path) {
+                layer._path.style.pointerEvents = interactive ? 'painted' : 'none';
+            }
+        }
+
+        function refreshSensitiveZonesInteractivity() {
             if (!sensitiveZonesLayer) return;
-            sensitiveZonesLayer.eachLayer(layer => {
-                layer.options.interactive = enabled;
-                if (layer._path) {
-                    layer._path.style.pointerEvents = enabled ? '' : 'none';
-                }
-            });
+            sensitiveZonesLayer.eachLayer(applyEnsLayerInteractivity);
+        }
+
+        function bindInaturalistMapClickHandler() {
+            if (!window.map || inaturalistMapClickHandler) return;
+            inaturalistMapClickHandler = event => {
+                if (!inaturalistSensitivesVisible) return;
+                const target = event.originalEvent?.target;
+                if (target?.closest?.('.inaturalist-sensitive-marker')) return;
+
+                const marker = findNearestInaturalistMarker(event.latlng);
+                if (!marker) return;
+
+                marker.openPopup();
+                L.DomEvent.stopPropagation(event);
+            };
+            window.map.on('click', inaturalistMapClickHandler);
+        }
+
+        function bindIncubatorLayerSyncHandlers() {
+            if (!window.map) return;
+            if (!incubatorMapSyncHandler) {
+                incubatorMapSyncHandler = () => syncIncubatorMapLayerOrder();
+                window.map.on('zoomend moveend', incubatorMapSyncHandler);
+            }
+            bindInaturalistMapClickHandler();
         }
 
         function raiseInaturalistSensitiveMarkers() {
@@ -2524,9 +2590,7 @@
                     sensitiveZonesLayer.bringToBack();
                 }
             }
-            setSensitiveZonesMapInteractivity(
-                sensitiveZonesVisible && !inaturalistSensitivesVisible
-            );
+            refreshSensitiveZonesInteractivity();
             raiseInaturalistSensitiveMarkers();
         }
 
@@ -2749,8 +2813,11 @@
                     },
                     onEachFeature(feature, layer) {
                         layer.bindPopup(buildSensitiveZonePopup(feature.properties || {}));
+                        layer.on('add', () => applyEnsLayerInteractivity(layer));
                     }
                 });
+
+                bindIncubatorLayerSyncHandlers();
 
                 sensitiveZonesLoaded = true;
                 const countEl = document.getElementById('count-sensitive-zones');
@@ -2798,6 +2865,7 @@
                     inaturalistSensitiveLayerGroup.addLayer(marker);
                 });
                 bindInaturalistMapZoomHandler();
+                bindIncubatorLayerSyncHandlers();
 
                 inaturalistSensitivesLoaded = true;
                 const countEl = document.getElementById('count-inaturalist-sensitive');
