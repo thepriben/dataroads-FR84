@@ -123,17 +123,17 @@ Travaux, bouchons, accidents en cours (flux DATEX II / Info Routière), filtrés
 
 === [family:incubator] Incubateur ===
 
-Couches expérimentales : ouvrages d'art, environnement, biodiversité, webcams recensées. Seule la '''couche ponts''' affiche une pastille d'actualisation (tous les 5 jours).
+Couches expérimentales : ouvrages d'art, environnement, biodiversité, webcams recensées. Seule la '''couche ponts''' affiche une pastille d'actualisation (bi-hebdo, lun. & jeu.).
 
 ==== [layer:layer-ponts] Couche ponts ====
 
 Ouvrages d'art OSM du département : tablier, culées, piles. Affichage adapté au zoom :
 
 * Zoom lointain — grappes (nombre de ponts ou de photos).
-* Zoom ≥ 12 — profil des éléments (tablier, culées, piles) affiché directement sur la carte.
+* Zoom ≥ 12 — profil des éléments (tablier, culées, piles) ; les grappes disparaissent.
 * Zoom ≥ 16 — photos Panoramax / Mapillary le long de l'ouvrage.
 
-'''Comment :''' activer la couche puis zoomer : le profil apparaît sans clic dès le zoom 12. Cliquer une grappe au zoom lointain pour zoomer progressivement ; cliquer un élément ou une photo pour ouvrir la '''visionneuse''' (plan schématique + photo principale). Les boutons Panoramax / Mapillary filtrent les sources photo.
+'''Comment :''' activer la couche puis zoomer : le profil apparaît sans clic dès le zoom 12. Au zoom lointain, cliquer une grappe pour zoomer progressivement ; cliquer un élément ou une photo pour ouvrir la '''visionneuse''' (plan schématique + photo principale). Les boutons Panoramax / Mapillary filtrent les sources photo.
 
 ==== [layer:layer-ens] Espaces naturels sensibles (ENS) ====
 
@@ -145,7 +145,7 @@ Polygones CD84 (DataSud). Superficie, communes, gestionnaire.
 
 Observations filtrées par intersection avec les ENS du 84.
 
-'''Comment :''' activer la couche ; cliquer un point pour espèce, date, lien iNaturalist.
+'''Comment :''' activer la couche ; cliquer le cercle coloré (zone de clic élargie) pour espèce, date, lien iNaturalist. Compatible avec la couche ENS affichée en même temps.
 
 ==== [layer:layer-webcams] Webcams ====
 
@@ -207,7 +207,7 @@ Sous la plupart des couches, une pastille indique quand les données ont été g
 
 * '''OSM''' (routes, véloroutes, communes, constructions) — mise à jour bi-hebdomadaire (workflow GitHub).
 * '''Externe''' (comptages, Bison Futé) — toutes les 3 h.
-* '''Incubateur''' (ponts OSM) — tous les 5 jours.
+* '''Incubateur''' (ponts OSM) — bi-hebdo (lun. & jeu.).
 * '''Météo''' — live navigateur, ~10 min.
 * '''Statique''' (limite 84, accidents 2024) — snapshot versionné, mise à jour manuelle.
 

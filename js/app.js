@@ -79,9 +79,10 @@
                 intervalMs: 3 * 60 * 60 * 1000
             },
             incubator: {
-                label: 'Tous les 5 jours',
-                source: 'Couche ponts OSM (workflow incubateur)',
-                intervalMs: 5 * 24 * 60 * 60 * 1000
+                label: 'Bi-hebdo (lun. & jeu.)',
+                source: 'Couche ponts OSM (workflow OSM GeoJSON)',
+                cron: '17 3 * * 1,4',
+                intervalMs: 3.5 * 24 * 60 * 60 * 1000
             },
             static: {
                 label: 'Figé dans le dépôt — mise à jour manuelle',
@@ -188,7 +189,7 @@
             } else if (scheduleKey === 'external') {
                 lines.push('Toutes les 3 h · xx:23 UTC');
             } else if (scheduleKey === 'incubator') {
-                lines.push('Tous les 5 jours');
+                lines.push('Bi-hebdo · lun. & jeu. 03:17 UTC');
             }
 
             if (config.cron) {
@@ -2406,11 +2407,81 @@
             unknown: '#40916C'
         };
 
+        const INATURALIST_MARKER_HIT_PX = 40;
+
         function getInaturalistMarkerColor(iconicTaxon, qualityGrade) {
             const base = INATURALIST_TAXON_COLORS[iconicTaxon] || INATURALIST_TAXON_COLORS.unknown;
             if (qualityGrade === 'research') return base;
             if (qualityGrade === 'needs_id') return base;
             return base;
+        }
+
+        function inaturalistMarkerVisualSize(qualityGrade) {
+            if (qualityGrade === 'research') return 16;
+            if (qualityGrade === 'needs_id') return 15;
+            return 14;
+        }
+
+        function makeInaturalistSensitiveMarker(feature) {
+            const props = feature.properties || {};
+            const coords = feature.geometry?.coordinates;
+            if (!coords) return null;
+
+            const color = getInaturalistMarkerColor(props.iconic_taxon, props.quality_grade);
+            const visualSize = inaturalistMarkerVisualSize(props.quality_grade);
+            const hitSize = INATURALIST_MARKER_HIT_PX;
+            const qualityClass = props.quality_grade === 'casual'
+                ? ' is-casual'
+                : (props.quality_grade === 'needs_id' ? ' is-needs-id' : ' is-research');
+            const label = props.taxon_name || 'Observation iNaturalist';
+
+            const marker = L.marker([coords[1], coords[0]], {
+                icon: L.divIcon({
+                    className: 'inaturalist-sensitive-marker-wrapper',
+                    html: `
+                        <button
+                            type="button"
+                            class="inaturalist-sensitive-marker${qualityClass}"
+                            style="width:${hitSize}px;height:${hitSize}px;"
+                            aria-label="${String(label).replace(/"/g, '&quot;')}"
+                        >
+                            <span
+                                class="inaturalist-sensitive-marker-dot"
+                                style="--inat-color:${color};width:${visualSize}px;height:${visualSize}px;"
+                            ></span>
+                        </button>
+                    `,
+                    iconSize: [hitSize, hitSize],
+                    iconAnchor: [hitSize / 2, hitSize / 2]
+                }),
+                pane: 'markerPane',
+                riseOnHover: true,
+                interactive: true,
+                zIndexOffset: 1400
+            });
+
+            marker.bindPopup(buildInaturalistPopup(props), {
+                autoPan: true,
+                closeButton: true
+            });
+            return marker;
+        }
+
+        function raiseInaturalistSensitiveMarkers() {
+            if (!inaturalistSensitivesVisible) return;
+            inaturalistSensitiveMarkers.forEach(marker => {
+                if (typeof marker.bringToFront === 'function') marker.bringToFront();
+            });
+        }
+
+        function syncIncubatorMapLayerOrder() {
+            if (!window.map) return;
+            if (sensitiveZonesVisible && inaturalistSensitivesVisible && sensitiveZonesLayer) {
+                if (typeof sensitiveZonesLayer.bringToBack === 'function') {
+                    sensitiveZonesLayer.bringToBack();
+                }
+            }
+            raiseInaturalistSensitiveMarkers();
         }
 
         function formatInaturalistDate(value) {
@@ -2544,6 +2615,7 @@
             const onMap = window.map.hasLayer(sensitiveZonesLayer);
             if (sensitiveZonesVisible && !onMap) sensitiveZonesLayer.addTo(window.map);
             if (!sensitiveZonesVisible && onMap) window.map.removeLayer(sensitiveZonesLayer);
+            syncIncubatorMapLayerOrder();
         }
 
         function syncInaturalistSensitivesOnMap() {
@@ -2551,6 +2623,7 @@
             const onMap = window.map.hasLayer(inaturalistSensitiveLayerGroup);
             if (inaturalistSensitivesVisible && !onMap) inaturalistSensitiveLayerGroup.addTo(window.map);
             if (!inaturalistSensitivesVisible && onMap) window.map.removeLayer(inaturalistSensitiveLayerGroup);
+            syncIncubatorMapLayerOrder();
         }
 
         window.toggleSensitiveZones = function() {
@@ -2672,20 +2745,8 @@
 
                 inaturalistSensitiveLayerGroup = L.layerGroup();
                 features.forEach(feature => {
-                    const props = feature.properties || {};
-                    const coords = feature.geometry?.coordinates;
-                    if (!coords) return;
-
-                    const color = getInaturalistMarkerColor(props.iconic_taxon, props.quality_grade);
-                    const marker = L.circleMarker([coords[1], coords[0]], {
-                        radius: props.quality_grade === 'research' ? 6 : 5,
-                        fillColor: color,
-                        color: '#ffffff',
-                        weight: 1.5,
-                        opacity: 0.9,
-                        fillOpacity: props.quality_grade === 'casual' ? 0.55 : 0.8
-                    });
-                    marker.bindPopup(buildInaturalistPopup(props));
+                    const marker = makeInaturalistSensitiveMarker(feature);
+                    if (!marker) return;
                     inaturalistSensitiveMarkers.push(marker);
                     inaturalistSensitiveLayerGroup.addLayer(marker);
                 });

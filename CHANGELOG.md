@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-06-13
+
+### Changed
+
+- iNaturalist markers use a 40px hit target on the marker pane (above ENS polygons); visual dots are 14–16px.
+- Incubator bridge freshness label aligned with the real bi-weekly OSM GeoJSON workflow (Mon & Thu).
+- User guide and bridge zoom hint updated for current cluster/geometry behaviour.
+
+### Fixed
+
+- iNaturalist observations were hard to click when ENS zones were visible: enlarged targets and correct layer stacking.
+
 ## [0.3.4] - 2026-06-13
 
 ### Fixed
