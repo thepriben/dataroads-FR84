@@ -1128,9 +1128,13 @@
             return !!(state?.view && Number.isFinite(state.view.z));
         }
 
+        const INITIAL_APP_URL_STATE = parseAppUrlState();
+        const INITIAL_URL_HAS_VIEW = appUrlHasView(INITIAL_APP_URL_STATE);
+
         let suppressAppUrlSync = false;
         let appUrlSyncTimer = null;
-        let appUrlStateApplied = false;
+        let appUrlViewApplied = false;
+        let appUrlLayersApplied = false;
         let appUrlLayersPending = null;
         let appUrlFamiliesPending = null;
 
@@ -1207,8 +1211,16 @@
         function scheduleAppUrlSync() {
             if (suppressAppUrlSync) return;
             clearTimeout(appUrlSyncTimer);
-            appUrlSyncTimer = setTimeout(syncAppUrlState, 350);
+            appUrlSyncTimer = setTimeout(syncAppUrlState, 200);
         }
+
+        function flushAppUrlSync() {
+            clearTimeout(appUrlSyncTimer);
+            appUrlSyncTimer = null;
+            syncAppUrlState();
+        }
+
+        window.addEventListener('pagehide', flushAppUrlSync);
 
         function setHierarchyLevelIfNeeded(hierarchy, desired) {
             if (hierarchyVisibility[hierarchy] === desired) return;
@@ -1309,19 +1321,42 @@
             window.map.setView([state.view.lat, state.view.lng], state.view.z, { animate: false });
         }
 
+        function applyAppUrlViewFromLocation() {
+            if (appUrlViewApplied || !window.map) return false;
+
+            const state = parseAppUrlState();
+            if (!appUrlHasView(state)) return false;
+
+            suppressAppUrlSync = true;
+            applyAppUrlView(state);
+            appUrlViewApplied = true;
+            suppressAppUrlSync = false;
+            scheduleAppUrlSync();
+            return true;
+        }
+
+        function reassertInitialUrlViewIfNeeded() {
+            if (!INITIAL_URL_HAS_VIEW || !window.map) return;
+            suppressAppUrlSync = true;
+            applyAppUrlView(INITIAL_APP_URL_STATE);
+            appUrlViewApplied = true;
+            suppressAppUrlSync = false;
+        }
+
         function tryApplyAppUrlState() {
-            if (appUrlStateApplied || !window.map) return;
+            if (!window.map) return;
+
+            applyAppUrlViewFromLocation();
+            if (appUrlLayersApplied) return;
 
             const state = parseAppUrlState();
             if (!state) {
-                appUrlStateApplied = true;
+                appUrlLayersApplied = true;
                 return;
             }
 
             suppressAppUrlSync = true;
             try {
-                if (appUrlHasView(state)) applyAppUrlView(state);
-
                 if (appUrlLayersPending) {
                     if (!window.routePolylines) return;
                     const ready = applyAppUrlLayersFromSet(appUrlLayersPending);
@@ -1333,15 +1368,16 @@
                     appUrlFamiliesPending = null;
                 }
 
-                appUrlStateApplied = true;
+                appUrlLayersApplied = true;
             } finally {
                 suppressAppUrlSync = false;
-                if (appUrlStateApplied) scheduleAppUrlSync();
+                if (appUrlLayersApplied) scheduleAppUrlSync();
             }
         }
 
         window.addEventListener('popstate', () => {
-            appUrlStateApplied = false;
+            appUrlViewApplied = false;
+            appUrlLayersApplied = false;
             appUrlLayersPending = null;
             appUrlFamiliesPending = null;
             initAppUrlStateFromLocation();
@@ -2929,12 +2965,12 @@
         window.addEventListener('DOMContentLoaded', function() {
         
         // Initialize map centered on Vaucluse (default view is tighter than full extent)
-        const launchUrlState = parseAppUrlState();
-        const launchCenter = appUrlHasView(launchUrlState)
-            ? [launchUrlState.view.lat, launchUrlState.view.lng]
+        const launchCenter = INITIAL_URL_HAS_VIEW
+            ? [INITIAL_APP_URL_STATE.view.lat, INITIAL_APP_URL_STATE.view.lng]
             : [DEFAULT_MAP_VIEW.lat, DEFAULT_MAP_VIEW.lng];
-        const launchZoom = appUrlHasView(launchUrlState) ? launchUrlState.view.z : DEFAULT_MAP_VIEW.zoom;
+        const launchZoom = INITIAL_URL_HAS_VIEW ? INITIAL_APP_URL_STATE.view.z : DEFAULT_MAP_VIEW.zoom;
         window.map = L.map('map').setView(launchCenter, launchZoom);
+        if (INITIAL_URL_HAS_VIEW) appUrlViewApplied = true;
         if (window.map.attributionControl) {
             window.map.attributionControl.setPrefix(
                 '<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">Leaflet</a>'
@@ -3025,8 +3061,10 @@
 
                 vaucluseDefaultBounds = boundaryLayer.getBounds();
 
-                if (!appUrlHasView(parseAppUrlState())) {
+                if (!INITIAL_URL_HAS_VIEW) {
                     applyDefaultMapView({ animate: false });
+                } else {
+                    reassertInitialUrlViewIfNeeded();
                 }
                 tryApplyAppUrlState();
                 scheduleAppUrlSync();
@@ -3414,6 +3452,7 @@
                     // Sync map + legend with default hidden layers
                     updateHierarchyDisplay();
                     tryApplyAppUrlState();
+                    reassertInitialUrlViewIfNeeded();
 
                     // Initialize label display
                     updateRouteLabels();
