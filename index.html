@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260612-27">
+    <link rel="stylesheet" href="css/styles.css?v=20260612-28">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -592,6 +592,9 @@
             <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
             <div class="map-stage">
+                <button type="button" class="sidebar-gutter" id="sidebarGutterBtn" title="Afficher la légende" aria-label="Afficher la légende" aria-controls="appSidebar" aria-expanded="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
                 <!-- Barre d'outils unifiée : modes spéciaux groupés en haut à droite -->
                 <div class="map-toolbar" role="toolbar" aria-label="Modes d'affichage spéciaux">
                     <button type="button" class="map-tool map-tool--compact map-tool--legend" id="mapLegendBtn" title="Afficher ou masquer la légende" aria-label="Afficher ou masquer la légende" aria-controls="appSidebar" aria-expanded="false">

@@ -1013,6 +1013,7 @@
             const collapseBtn = document.getElementById('sidebarCollapseBtn');
             const headerLegendBtn = document.getElementById('headerLegendBtn');
             const mapLegendBtn = document.getElementById('mapLegendBtn');
+            const gutterBtn = document.getElementById('sidebarGutterBtn');
             const dragHandle = document.getElementById('sidebarDragHandle');
             const resizer = document.getElementById('sidebarResizer');
 
@@ -1056,6 +1057,8 @@
                 collapseBtn?.setAttribute('aria-expanded', String(open));
                 headerLegendBtn?.setAttribute('aria-expanded', String(open));
                 mapLegendBtn?.setAttribute('aria-expanded', String(open));
+                gutterBtn?.setAttribute('aria-expanded', String(open));
+                if (gutterBtn) gutterBtn.hidden = open;
                 backdrop?.setAttribute('aria-hidden', String(!mobile || !mobileOpen));
                 headerLegendBtn?.classList.toggle('is-active', open);
                 mapLegendBtn?.classList.toggle('is-active', open);
@@ -1120,6 +1123,7 @@
             collapseBtn?.addEventListener('click', closeSidebar);
             headerLegendBtn?.addEventListener('click', () => window.toggleSidebarPanel());
             mapLegendBtn?.addEventListener('click', () => window.toggleSidebarPanel());
+            gutterBtn?.addEventListener('click', openSidebar);
             backdrop?.addEventListener('click', () => setMobileOpen(false));
 
             document.addEventListener('keydown', (event) => {
