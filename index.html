@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260612-25">
+    <link rel="stylesheet" href="css/styles.css?v=20260612-26">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -589,14 +589,18 @@
 
             <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Redimensionner la barre latérale" tabindex="0" title="Glissez pour redimensionner · double-clic pour replier"></div>
 
+            <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+            <button type="button" class="sidebar-reopen-btn" id="sidebarReopenBtn" title="Afficher la légende" aria-label="Afficher la légende" aria-controls="appSidebar" aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Légende</span>
+            </button>
+
             <div class="map-stage">
-                <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
-                <button type="button" class="sidebar-reopen-btn" id="sidebarReopenBtn" title="Afficher la légende" aria-label="Afficher la légende" aria-controls="appSidebar" aria-expanded="false">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                    <span>Légende</span>
-                </button>
                 <!-- Barre d'outils unifiée : modes spéciaux groupés en haut à droite -->
                 <div class="map-toolbar" role="toolbar" aria-label="Modes d'affichage spéciaux">
+                    <button type="button" class="map-tool map-tool--compact map-tool--legend" id="mapLegendBtn" title="Afficher ou masquer la légende" aria-label="Afficher ou masquer la légende" aria-controls="appSidebar" aria-expanded="false">
+                        <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+                    </button>
                     <button type="button" class="map-tool map-tool--compact" onclick="window.resetMapView && window.resetMapView()" id="mapResetBtn" title="Revenir à la vue initiale du département" aria-label="Revenir à la vue initiale du département">
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 10v9h14v-9"/><path d="M10 21v-6h4v6"/></svg></span>
                     </button>
@@ -671,6 +675,6 @@
     </script>
     <script src="js/api.js?v=20260606-1"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260612-25"></script>
+    <script src="js/app.js?v=20260612-26"></script>
 </body>
 </html>

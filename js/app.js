@@ -917,6 +917,7 @@
 
             const MIN_WIDTH = 220;
             const MAX_WIDTH = 560;
+            const COLLAPSE_WIDTH = 150;
 
             // Restore saved width
             try {
@@ -932,8 +933,13 @@
             const onPointerMove = (event) => {
                 if (!dragging) return;
                 const rect = mainContent.getBoundingClientRect();
-                const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, event.clientX - rect.left));
-                pendingWidth = next;
+                const raw = event.clientX - rect.left;
+                pendingWidth = raw;
+                if (raw < COLLAPSE_WIDTH) {
+                    mainContent.style.setProperty('--sidebar-width', `${MIN_WIDTH}px`);
+                    return;
+                }
+                const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, raw));
                 mainContent.style.setProperty('--sidebar-width', `${next}px`);
             };
 
@@ -944,9 +950,14 @@
                 resizer.classList.remove('is-dragging');
                 window.removeEventListener('pointermove', onPointerMove);
                 window.removeEventListener('pointerup', onPointerUp);
-                if (pendingWidth != null) {
-                    try { localStorage.setItem('sidebarWidth', String(Math.round(pendingWidth))); } catch (_) {}
+                if (pendingWidth != null && pendingWidth < COLLAPSE_WIDTH) {
+                    if (typeof window.collapseSidebarPanel === 'function') {
+                        window.collapseSidebarPanel();
+                    }
+                } else if (pendingWidth != null && pendingWidth >= MIN_WIDTH) {
+                    try { localStorage.setItem('sidebarWidth', String(Math.round(Math.min(MAX_WIDTH, pendingWidth)))); } catch (_) {}
                 }
+                pendingWidth = null;
                 if (window.map && typeof window.map.invalidateSize === 'function') {
                     window.map.invalidateSize();
                 }
@@ -1002,6 +1013,7 @@
             const collapseBtn = document.getElementById('sidebarCollapseBtn');
             const reopenBtn = document.getElementById('sidebarReopenBtn');
             const headerLegendBtn = document.getElementById('headerLegendBtn');
+            const mapLegendBtn = document.getElementById('mapLegendBtn');
             const dragHandle = document.getElementById('sidebarDragHandle');
             const resizer = document.getElementById('sidebarResizer');
 
@@ -1043,8 +1055,11 @@
                 collapseBtn?.setAttribute('aria-expanded', String(open));
                 reopenBtn?.setAttribute('aria-expanded', String(open));
                 headerLegendBtn?.setAttribute('aria-expanded', String(open));
+                mapLegendBtn?.setAttribute('aria-expanded', String(open));
                 backdrop?.setAttribute('aria-hidden', String(!mobile || !mobileOpen));
-                headerLegendBtn?.classList.toggle('is-active', mobile && mobileOpen);
+                headerLegendBtn?.classList.toggle('is-active', open);
+                mapLegendBtn?.classList.toggle('is-active', open);
+                document.body.classList.toggle('legend-panel-open', open);
             }
 
             function syncSidebarDom() {
@@ -1099,21 +1114,26 @@
                 if (isMobileSidebar()) setMobileOpen(!mobileOpen);
                 else setDesktopCollapsed(!desktopCollapsed);
             };
+            window.collapseSidebarPanel = closeSidebar;
+            window.openSidebarPanel = openSidebar;
 
             collapseBtn?.addEventListener('click', closeSidebar);
             reopenBtn?.addEventListener('click', openSidebar);
-            headerLegendBtn?.addEventListener('click', () => {
-                if (isMobileSidebar()) setMobileOpen(!mobileOpen);
-                else openSidebar();
-            });
+            headerLegendBtn?.addEventListener('click', () => window.toggleSidebarPanel());
+            mapLegendBtn?.addEventListener('click', () => window.toggleSidebarPanel());
             backdrop?.addEventListener('click', () => setMobileOpen(false));
 
             document.addEventListener('keydown', (event) => {
                 if (event.key !== 'Escape') return;
-                if (isMobileSidebar() && mobileOpen) setMobileOpen(false);
+                const mobile = isMobileSidebar();
+                const open = mobile ? mobileOpen : !desktopCollapsed;
+                if (open) closeSidebar();
             });
 
-            mobileQuery.addEventListener('change', syncSidebarDom);
+            mobileQuery.addEventListener('change', () => {
+                if (mobileQuery.matches) mobileOpen = false;
+                syncSidebarDom();
+            });
 
             // Swipe from left edge of the map to open on mobile
             const mapStage = document.querySelector('.map-stage');
