@@ -78,11 +78,10 @@
                 cron: '23 */3 * * *',
                 intervalMs: 3 * 60 * 60 * 1000
             },
-            natural: {
-                label: 'Toutes les 3 h — à xx:23 UTC',
-                source: 'ENS DataSud + iNaturalist (workflow externe)',
-                cron: '23 */3 * * *',
-                intervalMs: 3 * 60 * 60 * 1000
+            incubator: {
+                label: 'Tous les 5 jours',
+                source: 'Couche ponts OSM (workflow incubateur)',
+                intervalMs: 5 * 24 * 60 * 60 * 1000
             },
             static: {
                 label: 'Figé dans le dépôt — mise à jour manuelle',
@@ -186,8 +185,10 @@
 
             if (scheduleKey === 'osm' || scheduleKey === 'wikidata') {
                 lines.push('Bi-hebdo · lun. & jeu. 03:17 UTC');
-            } else if (scheduleKey === 'external' || scheduleKey === 'natural') {
+            } else if (scheduleKey === 'external') {
                 lines.push('Toutes les 3 h · xx:23 UTC');
+            } else if (scheduleKey === 'incubator') {
+                lines.push('Tous les 5 jours');
             }
 
             if (config.cron) {
@@ -1459,12 +1460,6 @@
                     return bicycleVisible;
                 case 'freshness-bridges':
                     return bridgeVisible;
-                case 'freshness-sensitive-zones':
-                    return sensitiveZonesVisible;
-                case 'freshness-inaturalist-sensitive':
-                    return inaturalistSensitivesVisible;
-                case 'freshness-webcams':
-                    return webcamsVisible;
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
@@ -2197,11 +2192,6 @@
             try {
                 const data = await window.InforouteApi.fetchGeoJson('sensitive-natural-zones');
                 const features = data.features || [];
-                renderFreshnessBadge(document.getElementById('freshness-sensitive-zones'), {
-                    generatedAt: data._cache?.generated_at,
-                    scheduleKey: 'natural',
-                    errorMsg: data._cache?.error
-                });
 
                 if (sensitiveZonesLayer) {
                     window.map?.removeLayer(sensitiveZonesLayer);
@@ -2240,10 +2230,6 @@
                 console.log(`✓ ${features.length} espaces naturels sensibles chargés`);
             } catch (error) {
                 console.error('Erreur chargement ENS:', error);
-                renderFreshnessBadge(document.getElementById('freshness-sensitive-zones'), {
-                    scheduleKey: 'natural',
-                    errorMsg: error.message
-                });
                 if (!wantVisible) applySensitiveZonesHiddenUi();
                 sensitiveZonesVisible = false;
                 syncLegendChrome();
@@ -2255,11 +2241,6 @@
             try {
                 const data = await window.InforouteApi.fetchGeoJson('inaturalist-sensitive-zones');
                 const features = data.features || [];
-                renderFreshnessBadge(document.getElementById('freshness-inaturalist-sensitive'), {
-                    generatedAt: data._cache?.generated_at,
-                    scheduleKey: 'natural',
-                    errorMsg: data._cache?.error
-                });
 
                 if (inaturalistSensitiveLayerGroup) {
                     window.map?.removeLayer(inaturalistSensitiveLayerGroup);
@@ -2306,10 +2287,6 @@
                 console.log(`✓ ${features.length} observations iNaturalist (ENS) chargées`);
             } catch (error) {
                 console.error('Erreur chargement iNaturalist ENS:', error);
-                renderFreshnessBadge(document.getElementById('freshness-inaturalist-sensitive'), {
-                    scheduleKey: 'natural',
-                    errorMsg: error.message
-                });
                 if (!wantVisible) applyInaturalistSensitivesHiddenUi();
                 inaturalistSensitivesVisible = false;
                 syncLegendChrome();
@@ -2614,11 +2591,6 @@
             try {
                 const data = await window.InforouteApi.fetchGeoJson('webcams');
                 const features = data.features || [];
-                renderFreshnessBadge(document.getElementById('freshness-webcams'), {
-                    generatedAt: data._cache?.generated_at,
-                    scheduleKey: 'static',
-                    errorMsg: data._cache?.error
-                });
 
                 if (webcamsLayerGroup) {
                     window.map?.removeLayer(webcamsLayerGroup);
@@ -2649,10 +2621,6 @@
                 console.log(`✓ ${features.length} webcams chargées`);
             } catch (error) {
                 console.error('Erreur chargement webcams:', error);
-                renderFreshnessBadge(document.getElementById('freshness-webcams'), {
-                    scheduleKey: 'static',
-                    errorMsg: error.message
-                });
                 if (!wantVisible) applyWebcamsHiddenUi();
                 webcamsVisible = false;
                 syncLegendChrome();
@@ -6090,7 +6058,7 @@
                     const data = await window.InforouteApi.fetchGeoJson('bridges');
                     renderFreshnessBadge(document.getElementById('freshness-bridges'), {
                         generatedAt: data._cache?.generated_at,
-                        scheduleKey: 'osm'
+                        scheduleKey: 'incubator'
                     });
 
                     bridgeGroups = buildBridgeGroups(data.features || []);
@@ -6109,7 +6077,7 @@
                     console.error('Erreur chargement ponts:', error);
                     setBridgeLegendCounts([]);
                     renderFreshnessBadge(document.getElementById('freshness-bridges'), {
-                        scheduleKey: 'osm',
+                        scheduleKey: 'incubator',
                         errorMsg: error.message
                     });
                     applyBridgesHiddenUi();

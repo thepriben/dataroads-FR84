@@ -176,7 +176,7 @@
 
             <article class="guide-family" data-family="incubator" id="incubator">
                 <h3>Incubateur</h3>
-                <p>Couches expérimentales : ouvrages d'art, environnement, biodiversité, webcams recensées.</p>
+                <p>Couches expérimentales : ouvrages d'art, environnement, biodiversité, webcams recensées. Seule la <strong>couche ponts</strong> affiche une pastille d'actualisation (tous les 5 jours).</p>
 
                 <div class="guide-layer" id="layer-ponts">
                     <h4>Couche ponts</h4>
@@ -229,7 +229,7 @@
 
                 <div class="guide-layer" id="layer-refresh">
                     <h4>Formule de rafraîchissement</h4>
-                    <p>Calendrier par source (OSM, Wikidata, externe, nature, météo, statique) et état du dernier rafraîchissement.</p>
+                    <p>Calendrier par source (OSM, Wikidata, externe, incubateur, météo, statique) et état du dernier rafraîchissement.</p>
                 </div>
             </article>
         </section>
@@ -271,13 +271,13 @@
 
         <section class="guide-section" id="fraicheur">
             <h2>Fraîcheur des données</h2>
-            <p>Sous chaque couche, une pastille indique quand les données ont été générées et quand le prochain rafraîchissement est prévu.</p>
+            <p>Sous la plupart des couches, une pastille indique quand les données ont été générées et quand le prochain rafraîchissement est prévu. Pas d'indicateur pour les espaces naturels sensibles, iNaturalist ni les webcams.</p>
             <ul>
-                <li><strong>OSM</strong> (routes, véloroutes, communes, constructions, ponts) — mise à jour bi-hebdomadaire (workflow GitHub).</li>
+                <li><strong>OSM</strong> (routes, véloroutes, communes, constructions) — mise à jour bi-hebdomadaire (workflow GitHub).</li>
                 <li><strong>Externe</strong> (comptages, Bison Futé) — toutes les 3 h.</li>
-                <li><strong>Nature</strong> (ENS, iNaturalist) — toutes les 3 h.</li>
+                <li><strong>Incubateur</strong> (ponts OSM) — tous les 5 jours.</li>
                 <li><strong>Météo</strong> — live navigateur, ~10 min.</li>
-                <li><strong>Statique</strong> (limite 84, accidents 2024, webcams) — snapshot versionné, mise à jour manuelle.</li>
+                <li><strong>Statique</strong> (limite 84, accidents 2024) — snapshot versionné, mise à jour manuelle.</li>
             </ul>
             <p class="guide-hint">Le détail complet est dans <em>Outils &amp; méta → Formule de rafraîchissement</em>.</p>
         </section>

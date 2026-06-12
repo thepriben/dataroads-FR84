@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260612-18">
+    <link rel="stylesheet" href="css/styles.css?v=20260612-19">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -339,7 +339,7 @@
                         <span>Couche ponts</span>
                         <span id="bridgesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
-                    <span class="freshness-badge" id="freshness-bridges" data-schedule-key="osm"></span>
+                    <span class="freshness-badge" id="freshness-bridges" data-schedule-key="incubator"></span>
 
                     <div class="legend-item legend-item-summary" data-bridge="total" style="pointer-events: none; opacity: 0.5;">
                         <div class="legend-color" style="background: rgba(44, 62, 80, 0.12); border: 2px solid #2C3E50; height: 13px; width: 24px; border-radius: 3px;"></div>
@@ -382,7 +382,6 @@
                         <span>Espaces naturels sensibles</span>
                         <span id="sensitiveZonesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
-                    <span class="freshness-badge" id="freshness-sensitive-zones" data-schedule-key="natural"></span>
                     <div class="legend-item" data-sensitive-zone="ens" style="pointer-events: none; opacity: 0.5;">
                         <div class="legend-color sensitive-zone-swatch"></div>
                         <div class="legend-label">ENS CD84 (polygones)</div>
@@ -396,7 +395,6 @@
                         <span>Observations iNaturalist</span>
                         <span id="inaturalistSensitivesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
-                    <span class="freshness-badge" id="freshness-inaturalist-sensitive" data-schedule-key="natural"></span>
                     <div class="legend-item" data-inaturalist="observation" style="pointer-events: none; opacity: 0.5;">
                         <div class="legend-color inaturalist-swatch"></div>
                         <div class="legend-label">Dans les ENS</div>
@@ -410,7 +408,6 @@
                         <span>Webcams</span>
                         <span id="webcamsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
-                    <span class="freshness-badge" id="freshness-webcams" data-schedule-key="static"></span>
                     <div class="legend-item" data-webcam="traffic" style="pointer-events: none; opacity: 0.5;">
                         <div class="legend-color webcam-swatch webcam-swatch--traffic"></div>
                         <div class="legend-label">Trafic CD84</div>
@@ -506,7 +503,7 @@
                     <div class="refresh-formula">
                         <div class="refresh-formula-row" data-schedule-key="osm">
                             <div>
-                                <div class="refresh-formula-label">OSM (routes, véloroutes, communes, constructions, ponts)</div>
+                                <div class="refresh-formula-label">OSM (routes, véloroutes, communes, constructions)</div>
                                 <div style="font-size:0.7rem;color:#7f8c8d;">Source&nbsp;: Overpass → workflow GitHub Actions</div>
                             </div>
                             <div class="refresh-formula-meta" id="refreshMetaOsm">
@@ -534,13 +531,13 @@
                             </div>
                         </div>
 
-                        <div class="refresh-formula-row" data-schedule-key="natural">
+                        <div class="refresh-formula-row" data-schedule-key="incubator">
                             <div>
-                                <div class="refresh-formula-label">Nature (ENS, iNaturalist)</div>
-                                <div style="font-size:0.7rem;color:#7f8c8d;">DataSud + API iNaturalist</div>
+                                <div class="refresh-formula-label">Incubateur (ponts OSM)</div>
+                                <div style="font-size:0.7rem;color:#7f8c8d;">Workflow GitHub Actions</div>
                             </div>
-                            <div class="refresh-formula-meta" id="refreshMetaNatural">
-                                Toutes les 3 h · xx:23 UTC<br>—
+                            <div class="refresh-formula-meta" id="refreshMetaIncubator">
+                                Tous les 5 jours<br>—
                             </div>
                         </div>
 
@@ -656,6 +653,6 @@
     </script>
     <script src="js/api.js?v=20260606-1"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260612-18"></script>
+    <script src="js/app.js?v=20260612-19"></script>
 </body>
 </html>
