@@ -21,13 +21,16 @@
             --family-realtime: #E67E22;
             --family-incubator: #0E7490;
             --family-tools: #16A085;
+            --page-padding: 4px;
+            --header-height: 48px;
+            --sidebar-foot-height: 32px;
         }
 
         body {
             font-family: 'DM Sans', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 8px;
+            padding: var(--page-padding);
             color: var(--text-dark);
             overflow-x: hidden;
         }
@@ -46,11 +49,6 @@
             .container {
                 max-width: 1880px;
             }
-        }
-
-        :root {
-            --header-height: 50px;
-            --sidebar-foot-height: 34px;
         }
 
         .header {
@@ -226,13 +224,13 @@
 
         @media (max-width: 640px) {
             :root {
-                --header-height: 66px;
+                --header-height: 62px;
             }
 
             .header {
                 flex-wrap: wrap;
-                gap: 8px;
-                padding: 8px 12px;
+                gap: 6px;
+                padding: 6px 12px;
             }
 
             .header-titles {
@@ -250,8 +248,8 @@
             display: grid;
             grid-template-columns: var(--sidebar-width, 320px) 6px minmax(0, 1fr);
             gap: 0;
-            height: calc(100vh - var(--header-height) - 16px);
-            min-height: 600px;
+            height: calc(100vh - var(--header-height) - 2 * var(--page-padding));
+            min-height: 580px;
             position: relative;
             overflow: hidden;
         }
@@ -316,7 +314,7 @@
             min-width: 0;
             overflow-y: auto;
             overflow-x: hidden;
-            padding: 16px 14px;
+            padding: 12px 12px;
         }
 
         .sidebar-foot {
@@ -363,16 +361,16 @@
         }
 
         .legend-section {
-            margin-bottom: 30px;
+            margin-bottom: 22px;
         }
 
         .legend-title {
-            font-size: 0.85rem;
+            font-size: 0.82rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
             color: var(--text-light);
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             font-family: 'JetBrains Mono', monospace;
             min-width: 0;
             overflow-wrap: anywhere;
@@ -424,8 +422,8 @@
             display: flex;
             align-items: center;
             min-width: 0;
-            padding: 12px;
-            margin-bottom: 8px;
+            padding: 9px 10px;
+            margin-bottom: 6px;
             background: white;
             border-radius: 8px;
             border: 1px solid var(--border);
@@ -2526,7 +2524,7 @@
 
         /* === Familles de sections de la sidebar === */
         .legend-family {
-            margin: 0 0 18px 0;
+            margin: 0 0 14px 0;
             border-radius: 8px;
             border: 1px solid rgba(0, 0, 0, 0.06);
             border-left: 4px solid var(--family-accent, #95A5A6);
@@ -2569,14 +2567,14 @@
         .legend-family-expand {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex: 1;
             min-width: 0;
-            padding: 10px 0 10px 14px;
+            padding: 8px 0 8px 12px;
         }
 
         .legend-family-chevron-btn {
-            padding: 10px 14px 10px 4px;
+            padding: 8px 12px 8px 4px;
             flex-shrink: 0;
         }
 
@@ -2636,12 +2634,12 @@
         }
 
         .legend-family-body {
-            padding: 4px 10px 10px 10px;
+            padding: 2px 8px 8px 8px;
         }
 
         /* Les sections enfantes d'une famille n'ont plus besoin de leur grosse marge */
         .legend-family-body .legend-section {
-            margin: 0 0 12px 0;
+            margin: 0 0 10px 0;
         }
 
         .legend-family-body .legend-section:last-child {
