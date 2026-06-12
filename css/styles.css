@@ -586,6 +586,14 @@
             box-shadow: 0 2px 8px rgba(44, 62, 80, 0.22);
         }
 
+        .map-tool--compact {
+            padding: 7px 9px;
+        }
+
+        .map-tool--compact .map-tool-icon--svg {
+            margin: 0;
+        }
+
         .map-tool.is-active.is-bounce {
             animation: mapToolBounce 2.4s ease-in-out infinite;
         }

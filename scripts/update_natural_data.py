@@ -39,6 +39,32 @@ VAUCLUSE_BBOX = {
     "nelng": 5.85,
 }
 
+# Source shapefile DBF labels are mojibaked on DataSud; keep canonical French names by record order.
+CANONICAL_ENS_NAMES = (
+    "Les zones humides du Calavon",
+    "Le site des platrières",
+    "La forêt de la Plate",
+    "La forêt des cèdres du petit Luberon",
+    "Le vallon de l'Aiguebrun",
+    "Les marnes Aptiennes de la Tuilière",
+    "L'arboretum départemental de Beauregard",
+    "La zone humide des Confines",
+    "La forêt départementale de Venasque",
+    "La forêt de la Pérégine et du ravin du Défend",
+    "La forêt départementale de Sivergues",
+    "L'étang salé",
+    "La colline de Piécaud",
+    "Les collines du lac du Paty",
+    "La Garrigue",
+    "Les mares de la Pavouyère",
+    "La zone humide de Belle-ile",
+    "La colline de la Buyère",
+    "Les prés des Poulivets",
+    "Les Salettes et Vallat de Marquetton",
+    "Le Marais de l'Ile Vieille",
+    "La forêt départementale du Groseau",
+)
+
 
 def fetch_bytes(url: str, timeout: int = 120) -> bytes:
     request = urllib.request.Request(
@@ -137,8 +163,29 @@ def _decode_dbf_text(value: Any) -> str:
     if value is None:
         return ""
     if isinstance(value, bytes):
+        for encoding in ("utf-8", "cp1252", "latin-1"):
+            try:
+                return value.decode(encoding).strip()
+            except UnicodeDecodeError:
+                continue
         return value.decode("latin-1", errors="replace").strip()
-    return str(value).strip()
+    return normalize_french_text(str(value))
+
+
+def normalize_french_text(value: str) -> str:
+    text = value.strip()
+    if not text or "\ufffd" not in text and "ï¿½" not in text:
+        return text
+
+    for encoding in ("latin-1", "cp1252"):
+        try:
+            repaired = text.encode(encoding).decode("utf-8").strip()
+            if repaired and "\ufffd" not in repaired:
+                return repaired
+        except (UnicodeDecodeError, UnicodeEncodeError):
+            continue
+
+    return text
 
 
 def shapefile_zip_to_geojson(zip_bytes: bytes) -> dict[str, Any]:
@@ -213,7 +260,12 @@ def shapefile_zip_to_geojson(zip_bytes: bytes) -> dict[str, Any]:
 
                 geometry = {"type": "Polygon", "coordinates": polygons}
 
-                name = field_value(record, "nom_site", "NOM_SITE", "name")
+                raw_name = field_value(record, "nom_site", "NOM_SITE", "name")
+                name = (
+                    CANONICAL_ENS_NAMES[index - 1]
+                    if index - 1 < len(CANONICAL_ENS_NAMES)
+                    else normalize_french_text(raw_name)
+                )
                 area_raw = field_value(record, "superficie", "SUPERFICIE", "area")
                 try:
                     area_m2 = float(area_raw.replace(",", ".")) if area_raw else 0.0
@@ -229,10 +281,18 @@ def shapefile_zip_to_geojson(zip_bytes: bytes) -> dict[str, Any]:
                             "zone_type": "ens",
                             "name": name or f"ENS {index}",
                             "area_ha": round(area_m2 / 10_000, 1) if area_m2 else None,
-                            "communes": field_value(record, "communes", "COMMUNES"),
-                            "owner": field_value(record, "proprietai", "PROPRIETAI"),
-                            "manager": field_value(record, "gestionnai", "GESTIONNAI"),
-                            "habitat": field_value(record, "type_milie", "TYPE_MILIE"),
+                            "communes": normalize_french_text(
+                                field_value(record, "communes", "COMMUNES")
+                            ),
+                            "owner": normalize_french_text(
+                                field_value(record, "proprietai", "PROPRIETAI")
+                            ),
+                            "manager": normalize_french_text(
+                                field_value(record, "gestionnai", "GESTIONNAI")
+                            ),
+                            "habitat": normalize_french_text(
+                                field_value(record, "type_milie", "TYPE_MILIE")
+                            ),
                             "source": "CD84 / DataSud",
                         },
                     }
@@ -427,6 +487,31 @@ def build_inaturalist_geojson(zones: list[dict[str, Any]]) -> dict[str, Any]:
     return data
 
 
+def sync_inaturalist_ens_names(ens_features: list[dict[str, Any]]) -> bool:
+    """Refresh ens_name labels in the cached iNaturalist layer after ENS renames."""
+    path = DATA_DIR / "inaturalist-sensitive-zones.geojson"
+    if not path.exists():
+        return False
+
+    names_by_id = {
+        feature.get("id"): (feature.get("properties") or {}).get("name")
+        for feature in ens_features
+    }
+    data = json.loads(path.read_text(encoding="utf-8"))
+    changed = False
+    for feature in data.get("features", []):
+        props = feature.setdefault("properties", {})
+        ens_id = props.get("ens_id")
+        next_name = names_by_id.get(ens_id)
+        if next_name and props.get("ens_name") != next_name:
+            props["ens_name"] = next_name
+            changed = True
+
+    if not changed:
+        return False
+    return write_json_if_changed(path, data)
+
+
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -437,6 +522,10 @@ def main() -> int:
         f"data/external/sensitive-natural-zones.geojson: {ens_state}, "
         f"{len(ens_data['features'])} features"
     )
+
+    inat_names_changed = sync_inaturalist_ens_names(ens_data["features"])
+    if inat_names_changed:
+        print("data/external/inaturalist-sensitive-zones.geojson: updated ENS labels")
 
     inat_data = build_inaturalist_geojson(ens_data["features"])
     inat_changed = write_json_if_changed(

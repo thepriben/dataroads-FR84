@@ -1014,6 +1014,12 @@
 
         const APP_URL_FAMILY_IDS = ['factual', 'stats', 'realtime', 'incubator'];
 
+        const DEFAULT_MAP_VIEW = Object.freeze({
+            lat: 44.08,
+            lng: 5.28,
+            zoom: 10.25
+        });
+
         function parseAppUrlState() {
             const params = new URLSearchParams(window.location.search);
             const state = { families: [], layers: [], layersExplicit: false };
@@ -2819,12 +2825,12 @@
         // Wait until everything is loaded (DOM + Leaflet)
         window.addEventListener('DOMContentLoaded', function() {
         
-        // Initialize map centered on Vaucluse (refined after boundary load)
+        // Initialize map centered on Vaucluse (default view is tighter than full extent)
         const launchUrlState = parseAppUrlState();
         const launchCenter = appUrlHasView(launchUrlState)
             ? [launchUrlState.view.lat, launchUrlState.view.lng]
-            : [44.05, 5.15];
-        const launchZoom = appUrlHasView(launchUrlState) ? launchUrlState.view.z : 13;
+            : [DEFAULT_MAP_VIEW.lat, DEFAULT_MAP_VIEW.lng];
+        const launchZoom = appUrlHasView(launchUrlState) ? launchUrlState.view.z : DEFAULT_MAP_VIEW.zoom;
         window.map = L.map('map').setView(launchCenter, launchZoom);
         if (window.map.attributionControl) {
             window.map.attributionControl.setPrefix(
@@ -2832,6 +2838,18 @@
             );
         }
         window.map.on('moveend zoomend', scheduleAppUrlSync);
+
+        window.resetMapView = function() {
+            if (!window.map) return;
+            suppressAppUrlSync = true;
+            window.map.setView(
+                [DEFAULT_MAP_VIEW.lat, DEFAULT_MAP_VIEW.lng],
+                DEFAULT_MAP_VIEW.zoom,
+                { animate: true }
+            );
+            suppressAppUrlSync = false;
+            syncAppUrlState();
+        };
 
         // Plain CartoDB Positron basemap
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -2910,10 +2928,12 @@
                     }
                 }).addTo(window.map);
                 
-                // Fit view to the department unless the URL already defines the viewport
                 if (!appUrlHasView(parseAppUrlState())) {
-                    map.fitBounds(boundaryLayer.getBounds(), { padding: [6, 6], maxZoom: 13 });
-                    map.setZoom(Math.min(map.getZoom() + 1, 13));
+                    map.setView(
+                        [DEFAULT_MAP_VIEW.lat, DEFAULT_MAP_VIEW.lng],
+                        DEFAULT_MAP_VIEW.zoom,
+                        { animate: false }
+                    );
                 }
                 tryApplyAppUrlState();
                 scheduleAppUrlSync();

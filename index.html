@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260612-2">
+    <link rel="stylesheet" href="css/styles.css?v=20260612-3">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -31,7 +31,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <a class="header-logo-link" href="https://www.vaucluse.fr/" target="_blank" rel="noopener noreferrer" title="Département de Vaucluse — vaucluse.fr">
+            <a class="header-logo-link" href="./" title="dataroads-FR84 — accueil">
                 <img class="header-logo-mark" src="assets/cd84-logo-mark.jpg" width="34" height="34" alt="Département de Vaucluse">
             </a>
             <div class="header-titles">
@@ -553,6 +553,9 @@
             <div class="map-stage">
                 <!-- Barre d'outils unifiée : modes spéciaux groupés en haut à droite -->
                 <div class="map-toolbar" role="toolbar" aria-label="Modes d'affichage spéciaux">
+                    <button type="button" class="map-tool map-tool--compact" onclick="window.resetMapView && window.resetMapView()" id="mapResetBtn" title="Revenir à la vue initiale du département" aria-label="Revenir à la vue initiale du département">
+                        <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 10v9h14v-9"/><path d="M10 21v-6h4v6"/></svg></span>
+                    </button>
                     <button type="button" class="map-tool" onclick="window.toggleTraffic && window.toggleTraffic()" id="wazeBtn" title="Afficher les stations de comptage CD84 (couche statistiques)">
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-8"/><path d="M22 20V8"/></svg></span>
                         <span class="map-tool-label">Comptages CD84</span>
@@ -621,6 +624,6 @@
     </script>
     <script src="js/api.js?v=20260606-1"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260612-1"></script>
+    <script src="js/app.js?v=20260612-3"></script>
 </body>
 </html>
