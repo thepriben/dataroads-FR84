@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build guide.html from docs/guide.md (stdlib only)."""
+"""Build guide.html from docs/guide.wiki (stdlib only, MediaWiki-style syntax)."""
 
 from __future__ import annotations
 
@@ -9,21 +9,19 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "docs" / "guide.md"
+SOURCE = ROOT / "docs" / "guide.wiki"
 OUTPUT = ROOT / "guide.html"
 
-H2_RE = re.compile(r"^## (.+?) \{#([^}]+)\}\s*$", re.MULTILINE)
-FAMILY_RE = re.compile(r"^### \[family:([^\]]+)\] (.+?)\s*$", re.MULTILINE)
-LAYER_RE = re.compile(r"^#### \[layer:([^\]]+)\] (.+?)\s*$", re.MULTILINE)
-INCLUDE_RE = re.compile(
-    r"^@include ([^\s]+) (.+?)\s*$",
-    re.MULTILINE,
-)
+H2_RE = re.compile(r"^== (.+?) \{#([^}]+)\} ==\s*$", re.MULTILINE)
+FAMILY_RE = re.compile(r"^=== \[family:([^\]]+)\] (.+?) ===\s*$", re.MULTILINE)
+LAYER_RE = re.compile(r"^==== \[layer:([^\]]+)\] (.+?) ====\s*$", re.MULTILINE)
+INCLUDE_RE = re.compile(r"^\{\{include:([^|]+)\|(.+?)\}\}\s*$", re.MULTILINE)
+HINT_RE = re.compile(r"^\{\{hint\|(.+?)\}\}\s*$", re.MULTILINE)
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->\s*", re.DOTALL)
 HTML_BLOCK_RE = re.compile(r"(<[^>]+>.*?</[^>]+>|<[^>]+/>)", re.DOTALL)
-INLINE_CODE_RE = re.compile(r"`([^`]+)`")
-BOLD_RE = re.compile(r"\*\*([^*]+)\*\*")
-ITALIC_RE = re.compile(r"(?<!\*)\*([^*]+)\*(?!\*)")
+WIKI_CODE_RE = re.compile(r"\{\{\{([^}]+)\}\}\}")
+WIKI_BOLD_RE = re.compile(r"'''([^']+)'''")
+WIKI_ITALIC_RE = re.compile(r"''([^']+)''")
 
 
 def parse_front_matter(text: str) -> tuple[dict[str, str], str]:
@@ -55,18 +53,40 @@ def inline_format(text: str) -> str:
             out.append(part)
             continue
         chunk = html.escape(part, quote=False)
-        chunk = INLINE_CODE_RE.sub(r"<code>\1</code>", chunk)
-        chunk = BOLD_RE.sub(r"<strong>\1</strong>", chunk)
-        chunk = ITALIC_RE.sub(r"<em>\1</em>", chunk)
+        chunk = WIKI_CODE_RE.sub(r"<code>\1</code>", chunk)
+        chunk = WIKI_BOLD_RE.sub(r"<strong>\1</strong>", chunk)
+        chunk = WIKI_ITALIC_RE.sub(r"<em>\1</em>", chunk)
         out.append(chunk)
     return "".join(out)
 
 
-def md_to_html(fragment: str) -> str:
+def expand_macros(fragment: str) -> str:
+    def include_replace(match: re.Match[str]) -> str:
+        rel_path, caption = match.group(1).strip(), match.group(2).strip()
+        asset = ROOT / rel_path
+        if not asset.is_file():
+            raise FileNotFoundError(f"Include introuvable : {rel_path}")
+        if asset.suffix.lower() == ".svg":
+            svg = asset.read_text(encoding="utf-8").strip()
+            return (
+                f'<figure class="guide-figure">\n{svg}\n'
+                f"<figcaption>{inline_format(caption)}</figcaption>\n</figure>"
+            )
+        raise ValueError(f"Type d'inclusion non géré : {rel_path}")
+
+    def hint_replace(match: re.Match[str]) -> str:
+        return f'<p class="guide-hint">{inline_format(match.group(1).strip())}</p>'
+
+    fragment = INCLUDE_RE.sub(include_replace, fragment)
+    return HINT_RE.sub(hint_replace, fragment)
+
+
+def wiki_to_html(fragment: str) -> str:
     fragment = HTML_COMMENT_RE.sub("", fragment).strip()
     if not fragment:
         return ""
 
+    fragment = expand_macros(fragment)
     blocks = re.split(r"\n\s*\n", fragment)
     html_parts: list[str] = []
 
@@ -80,9 +100,9 @@ def md_to_html(fragment: str) -> str:
             continue
 
         lines = block.splitlines()
-        if all(line.lstrip().startswith("- ") for line in lines):
+        if all(re.match(r"^\*\s+", line) for line in lines):
             items = "\n".join(
-                f"<li>{inline_format(line.lstrip()[2:].strip())}</li>"
+                f"<li>{inline_format(re.sub(r'^\*\s+', '', line).strip())}</li>"
                 for line in lines
             )
             html_parts.append(f"<ul>\n{items}\n</ul>")
@@ -94,28 +114,11 @@ def md_to_html(fragment: str) -> str:
     return "\n".join(html_parts)
 
 
-def expand_includes(fragment: str) -> str:
-    def replace(match: re.Match[str]) -> str:
-        rel_path, caption = match.group(1), match.group(2)
-        asset = ROOT / rel_path
-        if not asset.is_file():
-            raise FileNotFoundError(f"Include introuvable : {rel_path}")
-        if asset.suffix.lower() == ".svg":
-            svg = asset.read_text(encoding="utf-8").strip()
-            return (
-                f'<figure class="guide-figure">\n{svg}\n'
-                f"<figcaption>{inline_format(caption)}</figcaption>\n</figure>"
-            )
-        raise ValueError(f"Type d'inclusion non géré : {rel_path}")
-
-    return INCLUDE_RE.sub(replace, fragment)
-
-
 def wrap_lead(body: str) -> str:
-    first_h2 = body.find("\n## ")
-    if first_h2 == -1:
+    first_h2 = re.search(r"\n== ", body)
+    if not first_h2:
         return ""
-    lead = HTML_COMMENT_RE.sub("", body[:first_h2]).strip()
+    lead = HTML_COMMENT_RE.sub("", body[: first_h2.start()]).strip()
     if not lead:
         return ""
     paragraph = " ".join(line.strip() for line in lead.splitlines())
@@ -125,12 +128,12 @@ def wrap_lead(body: str) -> str:
 def build_families_section(content: str) -> str:
     parts = FAMILY_RE.split(content)
     if len(parts) < 3:
-        return md_to_html(expand_includes(content))
+        return wiki_to_html(content)
 
     html_parts: list[str] = []
     intro = parts[0].strip()
     if intro:
-        html_parts.append(md_to_html(expand_includes(intro)))
+        html_parts.append(wiki_to_html(intro))
 
     index = 1
     while index + 2 <= len(parts):
@@ -141,7 +144,7 @@ def build_families_section(content: str) -> str:
 
         layer_parts = LAYER_RE.split(family_body)
         family_intro = layer_parts[0].strip()
-        family_intro_html = md_to_html(expand_includes(family_intro))
+        family_intro_html = wiki_to_html(family_intro)
 
         layers_html: list[str] = []
         layer_index = 1
@@ -150,7 +153,7 @@ def build_families_section(content: str) -> str:
             layer_title = layer_parts[layer_index + 1].strip()
             layer_body = layer_parts[layer_index + 2].strip()
             layer_index += 3
-            layer_html = md_to_html(expand_includes(layer_body))
+            layer_html = wiki_to_html(layer_body)
             layers_html.append(
                 f'<div class="guide-layer" id="{layer_id}">\n'
                 f"<h4>{html.escape(layer_title)}</h4>\n{layer_html}\n</div>"
@@ -168,7 +171,7 @@ def build_families_section(content: str) -> str:
 def build_sections(body: str) -> tuple[list[tuple[str, str, str]], str]:
     matches = list(H2_RE.finditer(body))
     if not matches:
-        raise ValueError("Aucune section ## … {#id} trouvée dans docs/guide.md")
+        raise ValueError("Aucune section == … {#id} == trouvée dans docs/guide.wiki")
 
     lead_html = wrap_lead(body)
     sections: list[tuple[str, str, str]] = []
@@ -183,7 +186,7 @@ def build_sections(body: str) -> tuple[list[tuple[str, str, str]], str]:
         if section_id == "familles":
             inner = build_families_section(content)
         else:
-            inner = md_to_html(expand_includes(content))
+            inner = wiki_to_html(content)
 
         sections.append((section_id, title, inner))
 
