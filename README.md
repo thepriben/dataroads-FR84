@@ -69,6 +69,16 @@ Puis ouvrir :
 http://localhost:8080/
 ```
 
+## Guide utilisateur
+
+Le guide (`guide.html`) est généré depuis `docs/guide.md` :
+
+```bash
+python3 scripts/build_guide.py
+```
+
+Après modification du Markdown, régénérer la page puis committer `docs/guide.md` et `guide.html` ensemble.
+
 ## Topo technique
 
 L'architecture des données est séparée par usage :
