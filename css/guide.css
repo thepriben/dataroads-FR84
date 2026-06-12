@@ -1,0 +1,227 @@
+/* Guide utilisateur — sobre, aligné sur dataroads-FR84 */
+
+:root {
+    --text: #2d3436;
+    --muted: #636e72;
+    --border: #dfe6e9;
+    --accent: #3498db;
+    --family-factual: #2c3e50;
+    --family-stats: #8e44ad;
+    --family-realtime: #e67e22;
+    --family-incubator: #0e7490;
+    --family-tools: #16a085;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 0.94rem;
+    line-height: 1.55;
+    color: var(--text);
+    background: #f4f6f8;
+}
+
+.guide-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 28px 20px 48px;
+}
+
+.guide-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.guide-top a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.guide-top a:hover {
+    text-decoration: underline;
+}
+
+.guide-top-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--muted);
+}
+
+.guide-wrap h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+}
+
+.guide-lead {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-bottom: 28px;
+}
+
+.guide-toc {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 36px;
+}
+
+.guide-toc h2 {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 10px;
+    font-weight: 700;
+}
+
+.guide-toc ol {
+    padding-left: 1.2rem;
+    font-size: 0.86rem;
+}
+
+.guide-toc li {
+    margin: 4px 0;
+}
+
+.guide-toc a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.guide-toc a:hover {
+    color: var(--accent);
+}
+
+.guide-figure {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 20px 0 28px;
+}
+
+.guide-figure svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.guide-figure figcaption {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: center;
+}
+
+.guide-section {
+    margin-bottom: 40px;
+}
+
+.guide-section > h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--border);
+}
+
+.guide-family {
+    margin: 24px 0;
+    border-left: 4px solid #95a5a6;
+    padding-left: 16px;
+}
+
+.guide-family[data-family="factual"] { border-color: var(--family-factual); }
+.guide-family[data-family="stats"] { border-color: var(--family-stats); }
+.guide-family[data-family="realtime"] { border-color: var(--family-realtime); }
+.guide-family[data-family="incubator"] { border-color: var(--family-incubator); }
+.guide-family[data-family="tools"] { border-color: var(--family-tools); }
+
+.guide-family h3 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+}
+
+.guide-family > p {
+    font-size: 0.86rem;
+    color: var(--muted);
+    margin-bottom: 14px;
+}
+
+.guide-layer {
+    margin: 14px 0 18px;
+}
+
+.guide-layer h4 {
+    font-size: 0.88rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.guide-layer p,
+.guide-layer ul {
+    font-size: 0.86rem;
+    color: var(--text);
+}
+
+.guide-layer ul {
+    padding-left: 1.15rem;
+    margin-top: 6px;
+}
+
+.guide-layer li {
+    margin: 3px 0;
+}
+
+.guide-hint {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-style: italic;
+    margin-top: 6px;
+}
+
+.guide-kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+    background: #eef2f5;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+
+.guide-foot {
+    margin-top: 48px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: center;
+}
+
+@media (max-width: 560px) {
+    .guide-wrap {
+        padding: 20px 14px 36px;
+    }
+}

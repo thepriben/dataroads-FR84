@@ -330,12 +330,19 @@
             flex-shrink: 0;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
             gap: 8px;
             min-height: var(--sidebar-foot-height);
             padding: 6px 12px;
             border-top: 1px solid var(--border);
             background: #fafbfc;
+        }
+
+        .sidebar-foot-meta {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            flex-shrink: 0;
         }
 
         .sidebar-foot-repo {
@@ -367,6 +374,27 @@
             content: '·';
             margin-right: 8px;
             opacity: 0.7;
+        }
+
+        .sidebar-foot-guide {
+            color: #95a5a6;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.58rem;
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: color 0.18s;
+        }
+
+        .sidebar-foot-guide::before {
+            content: '·';
+            margin: 0 8px;
+            opacity: 0.7;
+            color: #bdc3c7;
+        }
+
+        .sidebar-foot-guide:hover {
+            color: #3498DB;
         }
 
         .legend-section {

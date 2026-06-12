@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide utilisateur — dataroads-FR84</title>
+    <meta name="description" content="Guide d'utilisation de la carte interactive du réseau routier départemental du Vaucluse (CD84).">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/guide.css?v=1">
+</head>
+<body>
+    <div class="guide-wrap">
+        <header class="guide-top">
+            <a href="./">← Retour à la carte</a>
+            <span class="guide-top-meta">dataroads-FR84</span>
+        </header>
+
+        <h1>Guide utilisateur</h1>
+        <p class="guide-lead">
+            Carte web du réseau routier départemental du Vaucluse (84). Ce guide décrit les usages courants :
+            afficher une couche, lire la carte, utiliser les outils. Prototype CD84 — données locales et sources ouvertes.
+        </p>
+
+        <nav class="guide-toc" aria-label="Sommaire">
+            <h2>Sommaire</h2>
+            <ol>
+                <li><a href="#interface">Interface générale</a></li>
+                <li><a href="#navigation">Navigation sur la carte</a></li>
+                <li><a href="#controles">Contrôles de visibilité</a></li>
+                <li><a href="#factual">Cartographie factuelle</a></li>
+                <li><a href="#stats">Données statistiques</a></li>
+                <li><a href="#realtime">Temps réel</a></li>
+                <li><a href="#incubator">Incubateur</a></li>
+                <li><a href="#toolbar">Barre d'outils carte</a></li>
+                <li><a href="#header">En-tête</a></li>
+                <li><a href="#tools">Outils &amp; méta</a></li>
+                <li><a href="#url">URL et partage</a></li>
+                <li><a href="#fraicheur">Fraîcheur des données</a></li>
+            </ol>
+        </nav>
+
+        <section class="guide-section" id="interface">
+            <h2>Interface générale</h2>
+            <p>
+                L'écran se partage en trois zones : l'en-tête (titre, météo, chiffres clés), la barre latérale gauche (légende et outils),
+                et la carte. La légende défile à l'intérieur de la colonne ; la carte occupe tout l'espace restant.
+            </p>
+            <figure class="guide-figure">
+                <svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Schéma de l'interface">
+                    <rect width="640" height="360" fill="#f8f9fa"/>
+                    <rect x="8" y="8" width="624" height="40" rx="4" fill="#2c3e50"/>
+                    <text x="20" y="33" fill="#fff" font-family="DM Sans,sans-serif" font-size="11" font-weight="700">En-tête · météo · Chiffres clés</text>
+                    <rect x="8" y="56" width="180" height="296" rx="4" fill="#fff" stroke="#dfe6e9"/>
+                    <text x="20" y="78" fill="#636e72" font-family="DM Sans,sans-serif" font-size="9" font-weight="700">BARRE LATÉRALE</text>
+                    <rect x="16" y="86" width="164" height="22" rx="3" fill="#f4f6f8"/>
+                    <rect x="16" y="114" width="164" height="22" rx="3" fill="#f4f6f8"/>
+                    <rect x="16" y="142" width="164" height="22" rx="3" fill="#f4f6f8"/>
+                    <text x="20" y="200" fill="#95a5a6" font-family="DM Sans,sans-serif" font-size="8">… familles &amp; couches …</text>
+                    <rect x="16" y="318" width="164" height="24" rx="3" fill="#fafbfc" stroke="#dfe6e9"/>
+                    <text x="20" y="334" fill="#7f8c8d" font-family="JetBrains Mono,monospace" font-size="7">repo · version · Guide</text>
+                    <rect x="196" y="56" width="436" height="296" rx="4" fill="#e8ecef" stroke="#dfe6e9"/>
+                    <text x="210" y="200" fill="#95a5a6" font-family="DM Sans,sans-serif" font-size="12">CARTE</text>
+                    <rect x="500" y="68" width="120" height="28" rx="6" fill="#fff" stroke="#dfe6e9"/>
+                    <text x="510" y="86" fill="#4a5568" font-family="DM Sans,sans-serif" font-size="8">Outils carte</text>
+                </svg>
+                <figcaption>Vue d'ensemble : légende à gauche, carte à droite, outils en haut à droite de la carte.</figcaption>
+            </figure>
+        </section>
+
+        <section class="guide-section" id="navigation">
+            <h2>Navigation sur la carte</h2>
+            <ul>
+                <li><strong>Déplacer</strong> — clic maintenu + glisser, ou trackpad.</li>
+                <li><strong>Zoomer</strong> — molette, pincement tactile, ou double-clic pour zoomer (double-clic avec <span class="guide-kbd">Maj</span> pour dézoomer).</li>
+                <li><strong>Vue initiale</strong> — bouton maison dans la barre d'outils (coin supérieur droit de la carte) : recentre le Vaucluse au zoom par défaut.</li>
+                <li><strong>Redimensionner la légende</strong> — glisser la barre verticale entre la légende et la carte ; double-clic pour revenir à la largeur par défaut.</li>
+            </ul>
+            <p class="guide-hint">Au chargement, seule la limite du département est visible : activez les couches dont vous avez besoin.</p>
+        </section>
+
+        <section class="guide-section" id="controles">
+            <h2>Contrôles de visibilité</h2>
+            <p>Deux niveaux complémentaires :</p>
+            <ul>
+                <li>
+                    <strong>Œil de rubrique</strong> (à droite du nom de famille, ex. <em>2/3</em>) —
+                    affiche ou masque toutes les couches de la rubrique d'un coup.
+                </li>
+                <li>
+                    <strong>Œil de couche</strong> (à droite du titre de section) —
+                    affiche ou masque une seule couche.
+                </li>
+            </ul>
+            <p>
+                Cliquez sur le <strong>nom de la rubrique</strong> ou le chevron pour déplier / replier le contenu dans la barre latérale
+                (sans changer la visibilité sur la carte).
+            </p>
+            <p class="guide-hint">Les pastilles grises sous chaque couche indiquent la fraîcheur des données (voir § Fraîcheur).</p>
+        </section>
+
+        <section class="guide-section" id="familles">
+            <h2>Rubriques et couches</h2>
+
+            <article class="guide-family" data-family="factual" id="factual">
+                <h3>Cartographie factuelle</h3>
+                <p>Réseau, territoire et aménagements de base issus surtout d'OpenStreetMap.</p>
+
+                <div class="guide-layer" id="layer-territoire">
+                    <h4>Territoire — Limite du Vaucluse (84)</h4>
+                    <p>Toujours affichée. Contour en pointillés du département ; repère pour le cadrage.</p>
+                </div>
+
+                <div class="guide-layer" id="layer-hierarchie">
+                    <h4>Hiérarchie du réseau</h4>
+                    <p>Trois niveaux de routes départementales, chacun avec une couleur :</p>
+                    <ul>
+                        <li><strong>Rouge</strong> — réseau d'intérêt régional (ex. D900).</li>
+                        <li><strong>Orange</strong> — réseau de développement territorial.</li>
+                        <li><strong>Bleu</strong> — réseau d'intérêt local.</li>
+                    </ul>
+                    <p><strong>Comment :</strong> cliquez le titre <em>Hiérarchie du Réseau</em> ou chaque ligne pour activer un niveau. Les panonceaux de numéro de route apparaissent au zoom suffisant. Cliquez un tronçon pour une fiche (nom, surface, liens OSM / Wikidata).</p>
+                </div>
+
+                <div class="guide-layer" id="layer-veloroutes">
+                    <h4>Véloroutes</h4>
+                    <p>Itinéraires cyclables OSM (<code>route=bicycle</code>). Totaux en kilomètres : Via Rhôna (EV17), Méditerranée (EV8), Via Venaissia (V861), itinéraires locaux.</p>
+                    <p><strong>Comment :</strong> activer via l'œil de section. Les véloroutes structurantes sont mises en avant par la couleur.</p>
+                </div>
+
+                <div class="guide-layer" id="layer-construction">
+                    <h4>Routes en construction</h4>
+                    <p>Tronçons tagués construction ou projet dans OSM.</p>
+                    <p><strong>Comment :</strong> activer la couche ; les tronçons s'affichent sur la carte. Compteurs dans la légende.</p>
+                </div>
+
+                <div class="guide-layer" id="layer-villes">
+                    <h4>Villes principales</h4>
+                    <p>Chefs-lieux et grandes communes (centres + libellés).</p>
+                    <p><strong>Comment :</strong> activer la couche pour les repères toponymiques.</p>
+                </div>
+            </article>
+
+            <article class="guide-family" data-family="stats" id="stats">
+                <h3>Données statistiques</h3>
+                <p>Données historiques ou agrégées — à charger à la demande pour ne pas surcharger la carte.</p>
+
+                <div class="guide-layer" id="layer-accidents">
+                    <h4>Accidentologie</h4>
+                    <p>Accidents du millésime 2024 (BAAC), classés : mortels, blessés hospitalisés, blessés légers.</p>
+                    <p><strong>Comment :</strong> activer la couche ; cliquez un marqueur pour le détail (date, route, commune).</p>
+                </div>
+
+                <div class="guide-layer" id="layer-comptages">
+                    <h4>Stations de comptage</h4>
+                    <p>Stations CD84 (data.gouv.fr), classées par trafic : élevé (&gt; 20 k véh/j), moyen, faible.</p>
+                    <p><strong>Comment :</strong> activer dans la légende <em>ou</em> via le bouton <strong>Comptages CD84</strong> sur la carte (les deux restent synchronisés). Clic sur une station : MJA, part PL, année.</p>
+                </div>
+            </article>
+
+            <article class="guide-family" data-family="realtime" id="realtime">
+                <h3>Temps réel</h3>
+                <p>Signaux récents : météo et trafic annoncé.</p>
+
+                <div class="guide-layer" id="layer-meteo-stations">
+                    <h4>Stations météo</h4>
+                    <p>Quelques stations du département (Open-Meteo). Données courantes : température, vent, humidité.</p>
+                    <p><strong>Comment :</strong> activer la couche ; cliquer un marqueur pour la fiche. Une station est aussi tirée au hasard dans l'en-tête.</p>
+                </div>
+
+                <div class="guide-layer" id="layer-bison">
+                    <h4>Événements routiers (Bison Futé)</h4>
+                    <p>Travaux, bouchons, accidents en cours (flux DATEX II / Info Routière), filtrés sur la zone.</p>
+                    <p><strong>Comment :</strong> activer la couche ; icônes sur la carte, popup au clic.</p>
+                </div>
+            </article>
+
+            <article class="guide-family" data-family="incubator" id="incubator">
+                <h3>Incubateur</h3>
+                <p>Couches expérimentales : ouvrages d'art, environnement, biodiversité.</p>
+
+                <div class="guide-layer" id="layer-ponts">
+                    <h4>Couche ponts</h4>
+                    <p>Ouvrages d'art OSM du département : tablier, culées, piles. Affichage adapté au zoom :</p>
+                    <ul>
+                        <li>Zoom lointain — grappes (nombre de ponts ou de photos).</li>
+                        <li>Zoom ≥ 14 — géométrie des éléments.</li>
+                        <li>Zoom ≥ 16 — photos Panoramax / Mapillary le long de l'ouvrage.</li>
+                    </ul>
+                    <p><strong>Comment :</strong> activer la couche ; cliquer une grappe pour zoomer progressivement ; cliquer un pont ou une photo pour ouvrir la <strong>visionneuse</strong> (vue en plan schématique + photo principale). Les boutons Panoramax / Mapillary filtrent les sources photo.</p>
+                </div>
+
+                <div class="guide-layer" id="layer-ens">
+                    <h4>Espaces naturels sensibles (ENS)</h4>
+                    <p>Polygones CD84 (DataSud). Superficie, communes, gestionnaire.</p>
+                    <p><strong>Comment :</strong> activer la couche ; cliquer un polygone pour la fiche.</p>
+                </div>
+
+                <div class="guide-layer" id="layer-inat">
+                    <h4>Observations iNaturalist</h4>
+                    <p>Observations filtrées par intersection avec les ENS du 84.</p>
+                    <p><strong>Comment :</strong> activer la couche ; cliquer un point pour espèce, date, lien iNaturalist.</p>
+                </div>
+            </article>
+
+            <article class="guide-family" data-family="tools" id="tools">
+                <h3>Outils &amp; méta</h3>
+                <p>Recherche, qualité des données, statistiques réseau, calendrier de mise à jour. Pas de couche carte supplémentaire (sauf panneau qualité).</p>
+
+                <div class="guide-layer" id="layer-recherche">
+                    <h4>Rechercher une route</h4>
+                    <p>Champ de recherche (ex. <code>D900</code>, <code>D4</code>) et liste filtrée. Clic sur une route : centrage carte, surbrillance, fiche dans <em>Informations Route</em>.</p>
+                </div>
+
+                <div class="guide-layer" id="layer-qualite">
+                    <h4>Qualité OSM / Wikidata</h4>
+                    <p>Résumé dans la barre latérale : couverture Wikidata, relations OSM. Bouton <strong>Panneau détaillé</strong> : panneau sur la carte (métriques, routes sans Wikidata, sans relation).</p>
+                </div>
+
+                <div class="guide-layer" id="layer-reseau">
+                    <h4>Informations réseau</h4>
+                    <p>Compteurs : nombre de routes, tronçons OSM, longueur cumulée, trafic MJA min/max, ponts, tunnels.</p>
+                </div>
+
+                <div class="guide-layer" id="layer-refresh">
+                    <h4>Formule de rafraîchissement</h4>
+                    <p>Calendrier par source (OSM, Wikidata, externe, nature, météo, statique) et état du dernier rafraîchissement.</p>
+                </div>
+            </article>
+        </section>
+
+        <section class="guide-section" id="toolbar">
+            <h2>Barre d'outils carte</h2>
+            <p>En haut à droite de la carte :</p>
+            <ul>
+                <li><strong>Maison</strong> — vue initiale du département.</li>
+                <li><strong>Comptages CD84</strong> — active la couche stations de comptage (sync avec la légende).</li>
+                <li><strong>Convois except.</strong> — met en évidence le réseau régional et territorial, atténue le local (aide au gabarit exceptionnel).</li>
+                <li><strong>Limitations</strong> — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, pictogrammes hauteur / poids sur ponts et passages remarquables.</li>
+            </ul>
+            <p class="guide-hint">Les boutons actifs sont soulignés visuellement (fond sombre).</p>
+        </section>
+
+        <section class="guide-section" id="header">
+            <h2>En-tête</h2>
+            <ul>
+                <li><strong>Logo</strong> — retour à l'accueil de l'application.</li>
+                <li><strong>Chiffres clés</strong> — ouvre un panneau plein écran : indicateurs réseau (routes, trafic, véloroutes, qualité OSM, etc.). Fermer par × ou clic à l'extérieur.</li>
+                <li><strong>Météo</strong> — un aperçu d'une station du département (température, conditions). Pour toutes les stations, utiliser la couche <em>Stations météo</em>.</li>
+            </ul>
+        </section>
+
+        <section class="guide-section" id="url">
+            <h2>URL et partage</h2>
+            <p>
+                L'adresse du navigateur se met à jour quand vous déplacez ou zoomez la carte et quand vous changez les couches visibles.
+                Paramètres utiles :
+            </p>
+            <ul>
+                <li><code>z</code>, <code>lat</code>, <code>lng</code> — zoom et centre.</li>
+                <li><code>ly</code> — couches actives (codes courts : <code>hr</code>, <code>ht</code>, <code>hl</code>, <code>ens</code>, <code>inat</code>, <code>bridges</code>, etc.).</li>
+                <li><code>fam</code> — rubriques entièrement ouvertes (optionnel si <code>ly</code> est précis).</li>
+            </ul>
+            <p>Copiez l'URL pour retrouver la même vue après rechargement.</p>
+        </section>
+
+        <section class="guide-section" id="fraicheur">
+            <h2>Fraîcheur des données</h2>
+            <p>Sous chaque couche, une pastille indique quand les données ont été générées et quand le prochain rafraîchissement est prévu.</p>
+            <ul>
+                <li><strong>OSM</strong> (routes, véloroutes, communes, constructions, ponts) — mise à jour bi-hebdomadaire (workflow GitHub).</li>
+                <li><strong>Externe</strong> (comptages, Bison Futé) — toutes les 3 h.</li>
+                <li><strong>Nature</strong> (ENS, iNaturalist) — toutes les 3 h.</li>
+                <li><strong>Météo</strong> — live navigateur, ~10 min.</li>
+                <li><strong>Statique</strong> (limite 84, accidents 2024) — snapshot versionné, mise à jour manuelle.</li>
+            </ul>
+            <p class="guide-hint">Le détail complet est dans <em>Outils &amp; méta → Formule de rafraîchissement</em>.</p>
+        </section>
+
+        <footer class="guide-foot">
+            dataroads-FR84 — prototype CD84 · <a href="https://github.com/thepriben/dataroads-FR84" style="color:#3498db;">dépôt GitHub</a>
+        </footer>
+    </div>
+</body>
+</html>
