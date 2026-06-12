@@ -1690,7 +1690,6 @@
             } else if (window.map.hasLayer(bridgeGeometryLayerGroup)) {
                 window.map.removeLayer(bridgeGeometryLayerGroup);
             }
-            bringBridgeGroupMarkersToFront();
         }
 
         function handleBridgeClusterMarkerClick(cluster) {
@@ -1784,19 +1783,23 @@
         }
 
         function syncBridgeLayersOnMap() {
-            if (!window.map || !bridgeGeometryLayerGroup || !bridgePhotoLayerGroup) return;
+            if (!window.map) return;
 
             if (bridgeVisible) {
-                if (bridgeGroupMarkerLayerGroup && !window.map.hasLayer(bridgeGroupMarkerLayerGroup)) {
+                if (!bridgeGroupMarkerLayerGroup || !bridgePhotoLayerGroup) return;
+
+                if (!window.map.hasLayer(bridgeGroupMarkerLayerGroup)) {
                     bridgeGroupMarkerLayerGroup.addTo(window.map);
                 }
                 if (!window.map.hasLayer(bridgePhotoLayerGroup)) bridgePhotoLayerGroup.addTo(window.map);
                 bindBridgeMapChangeHandler();
                 applyBridgesVisibleUi();
-                updateBridgeGeometryVisibility();
+                // Populate cluster markers before geometry/photo layers (geometry toggle used to throw and skip this).
                 updateBridgeGroupMarkerLayer();
+                updateBridgeGeometryVisibility();
                 updateBridgePhotoLayerVisibility();
             } else {
+                if (!bridgeGeometryLayerGroup || !bridgePhotoLayerGroup) return;
                 if (window.map.hasLayer(bridgeGeometryLayerGroup)) window.map.removeLayer(bridgeGeometryLayerGroup);
                 if (bridgeGroupMarkerLayerGroup && window.map.hasLayer(bridgeGroupMarkerLayerGroup)) {
                     window.map.removeLayer(bridgeGroupMarkerLayerGroup);
