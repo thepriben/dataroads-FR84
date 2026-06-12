@@ -2451,7 +2451,7 @@
                     <button
                         type="button"
                         class="inaturalist-sensitive-marker${qualityClass}"
-                        style="width:${hitSize}px;height:${hitSize}px;"
+                        style="width:${visualSize}px;height:${visualSize}px;"
                         aria-label="${String(label).replace(/"/g, '&quot;')}"
                     >
                         <span
@@ -2545,9 +2545,14 @@
         function applyEnsLayerInteractivity(layer) {
             if (!layer) return;
             const interactive = sensitiveZonesVisible;
-            layer.options.interactive = interactive;
+            if (layer.options.interactive !== interactive) {
+                layer.options.interactive = interactive;
+                if (typeof layer._updateInteractive === 'function') {
+                    layer._updateInteractive();
+                }
+            }
             if (layer._path) {
-                layer._path.style.pointerEvents = interactive ? 'painted' : 'none';
+                layer._path.style.pointerEvents = interactive ? 'auto' : 'none';
             }
         }
 
@@ -2847,7 +2852,7 @@
                 incubatorPopupFact('Date', escapeHtml(formatInaturalistDate(props.observed_on))),
                 incubatorPopupFact('Qualité', `<span class="incubator-popup__pill ${quality.className}">${quality.label}</span>`),
                 props.ens_name ? incubatorPopupFact('ENS', escapeHtml(props.ens_name)) : '',
-                props.user_login ? incubatorPopupFact('Observateur', escapeHtml(props.user_login)) : ''
+                props.user_login ? incubatorPopupFact('Obs.', escapeHtml(props.user_login)) : ''
             ].join('');
 
             return `
@@ -2945,7 +2950,10 @@
         function syncSensitiveZonesOnMap() {
             if (!sensitiveZonesLayer || !window.map) return;
             const onMap = window.map.hasLayer(sensitiveZonesLayer);
-            if (sensitiveZonesVisible && !onMap) sensitiveZonesLayer.addTo(window.map);
+            if (sensitiveZonesVisible && !onMap) {
+                sensitiveZonesLayer.addTo(window.map);
+                requestAnimationFrame(() => refreshSensitiveZonesInteractivity());
+            }
             if (!sensitiveZonesVisible && onMap) window.map.removeLayer(sensitiveZonesLayer);
             syncIncubatorMapLayerOrder();
         }
@@ -3033,7 +3041,9 @@
                         fillColor: '#40916C',
                         fillOpacity: 0.18
                     },
+                    interactive: true,
                     onEachFeature(feature, layer) {
+                        layer.options.interactive = true;
                         bindSensitiveZonePopup(layer, feature);
                         layer.on('add', () => applyEnsLayerInteractivity(layer));
                     }

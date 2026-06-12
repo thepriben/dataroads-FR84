@@ -1801,7 +1801,7 @@
             justify-content: center;
             background: transparent !important;
             border: none !important;
-            pointer-events: auto !important;
+            pointer-events: none !important;
         }
 
         .inaturalist-sensitive-marker {
@@ -1812,11 +1812,10 @@
             margin: 0;
             border: none;
             background: transparent;
-            cursor: pointer;
             appearance: none;
             -webkit-appearance: none;
             touch-action: manipulation;
-            pointer-events: auto;
+            pointer-events: none;
         }
 
         .inaturalist-sensitive-marker-dot {
@@ -1825,6 +1824,8 @@
             border: 2px solid #ffffff;
             background: var(--inat-color, #40916C);
             box-shadow: 0 1px 6px rgba(0, 0, 0, 0.28);
+            cursor: pointer;
+            pointer-events: auto;
             transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
 
