@@ -1942,7 +1942,6 @@
             updateBridgeGeometryVisibility();
             updateBridgeGroupMarkerLayer();
             updateBridgePhotoLayerVisibility();
-            ensureBasemapVisible();
             setBridgeMapZoomingState(false);
         }
 
@@ -2275,11 +2274,9 @@
             }
         }
 
-        function refreshMapAfterBridgeLayerChange() {
-            if (!window.map) return;
-            ensureBasemapVisible();
-            if (typeof window.refreshBasemapTiles === 'function') {
-                window.refreshBasemapTiles();
+        function scheduleBasemapRecovery() {
+            if (typeof window.scheduleBasemapRecovery === 'function') {
+                window.scheduleBasemapRecovery();
             }
         }
 
@@ -2329,7 +2326,7 @@
                 maxZoom: 11,
                 animate: true
             });
-            window.map.once('moveend', refreshMapAfterBridgeLayerChange);
+            window.map.once('moveend', scheduleBasemapRecovery);
         }
 
         function syncBridgeLayersOnMap() {
@@ -2346,8 +2343,7 @@
                 applyBridgesVisibleUi();
                 // Populate cluster markers before geometry/photo layers (geometry toggle used to throw and skip this).
                 refreshBridgeMapLayers();
-                ensureBasemapVisible();
-                refreshMapAfterBridgeLayerChange();
+                scheduleBasemapRecovery();
             } else {
                 resetBridgeZoomUiState();
                 if (!bridgeGeometryLayerGroup || !bridgePhotoLayerGroup) return;
@@ -3816,36 +3812,54 @@
             attribution: '© OpenStreetMap contributors © CARTO',
             subdomains: 'abcd',
             maxZoom: 20,
-            keepBuffer: 3,
-            updateWhenZooming: true,
-            updateWhenIdle: true
+            keepBuffer: 2
         }).addTo(window.map);
 
         let basemapTileRetryTimer = null;
+        let basemapRecoveryTimer = null;
+
+        function basemapHasLoadedTiles() {
+            const pane = window.map?.getPane?.('tilePane');
+            return Boolean(pane?.querySelector('img.leaflet-tile-loaded'));
+        }
+
         window.ensureBasemapVisible = function() {
             if (!window.map || !window.basemapLayer) return;
             if (!window.map.hasLayer(window.basemapLayer)) {
                 window.basemapLayer.addTo(window.map);
             }
-            if (typeof window.basemapLayer.bringToBack === 'function') {
-                window.basemapLayer.bringToBack();
-            }
         };
-        window.refreshBasemapTiles = function() {
-            if (typeof window.basemapLayer?.redraw !== 'function') return;
-            window.basemapLayer.redraw();
+
+        window.scheduleBasemapRecovery = function() {
+            if (basemapRecoveryTimer) clearTimeout(basemapRecoveryTimer);
+            basemapRecoveryTimer = window.setTimeout(() => {
+                basemapRecoveryTimer = null;
+                window.ensureBasemapVisible();
+                if (!window.map) return;
+                if (!basemapHasLoadedTiles()) {
+                    window.map.invalidateSize({ pan: false });
+                }
+            }, 280);
         };
+
         window.basemapLayer.on('tileerror', () => {
             if (basemapTileRetryTimer) return;
             basemapTileRetryTimer = window.setTimeout(() => {
                 basemapTileRetryTimer = null;
                 window.ensureBasemapVisible();
-                window.refreshBasemapTiles();
-            }, 320);
+                if (!basemapHasLoadedTiles() && window.map) {
+                    window.map.invalidateSize({ pan: false });
+                }
+            }, 480);
         });
-        window.map.on('zoomend', () => {
+
+        window.map.whenReady(() => {
             window.ensureBasemapVisible();
-            window.refreshBasemapTiles();
+            window.map.invalidateSize({ pan: false });
+            requestAnimationFrame(() => {
+                window.map.invalidateSize({ pan: false });
+                window.scheduleBasemapRecovery();
+            });
         });
 
         // Official list of Vaucluse municipalities (for filtering)

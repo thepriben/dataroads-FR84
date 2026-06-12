@@ -7,6 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-06-13
+
+### Fixed
+
+- Blank basemap after page refresh with bridges active: stop clearing Carto tiles on every zoom end; recover with a soft layout check instead of `redraw()`.
+
 ## [0.3.3] - 2026-06-13
 
 ### Changed
