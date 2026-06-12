@@ -1234,6 +1234,7 @@
         let bridgeDataLoaded = false;
         let bridgeLoadPromise = null;
         let bridgeVisible = false;
+        let bridgeOverviewFitted = false;
         let sensitiveZonesLayer = null;
         let sensitiveZonesVisible = false;
         let sensitiveZonesLoaded = false;
@@ -2190,6 +2191,26 @@
             return marker;
         }
 
+        function ensureBasemapVisible() {
+            if (!window.map || !window.basemapLayer) return;
+            if (!window.map.hasLayer(window.basemapLayer)) {
+                window.basemapLayer.addTo(window.map);
+            }
+        }
+
+        function refreshMapAfterBridgeLayerChange() {
+            if (!window.map) return;
+            const refresh = () => {
+                ensureBasemapVisible();
+                window.map.invalidateSize({ pan: false });
+                if (typeof window.basemapLayer?.redraw === 'function') {
+                    window.basemapLayer.redraw();
+                }
+            };
+            refresh();
+            requestAnimationFrame(refresh);
+        }
+
         function bringBridgeGroupMarkersToFront() {
             if (!bridgeGroupMarkerLayerGroup || !window.map?.hasLayer(bridgeGroupMarkerLayerGroup)) return;
             // L.layerGroup has no bringToFront — only child layers (paths) may support it.
@@ -2213,11 +2234,17 @@
             bringBridgeGroupMarkersToFront();
         }
 
+        function fitBridgeOverviewIfNeeded() {
+            if (bridgeOverviewFitted) return;
+            fitBridgeOverview();
+            bridgeOverviewFitted = true;
+        }
+
         function fitBridgeOverview() {
             const validBounds = bridgeGroups
                 .map(group => group.bounds)
                 .filter(bounds => bounds?.isValid?.());
-            if (!validBounds.length) return;
+            if (!validBounds.length || !window.map) return;
 
             const bounds = validBounds.reduce((acc, item) => {
                 acc.extend(item);
@@ -2229,6 +2256,7 @@
                 maxZoom: 11,
                 animate: true
             });
+            window.map.once('moveend', refreshMapAfterBridgeLayerChange);
         }
 
         function syncBridgeLayersOnMap() {
@@ -2247,6 +2275,8 @@
                 updateBridgeGroupMarkerLayer();
                 updateBridgeGeometryVisibility();
                 updateBridgePhotoLayerVisibility();
+                ensureBasemapVisible();
+                refreshMapAfterBridgeLayerChange();
             } else {
                 if (!bridgeGeometryLayerGroup || !bridgePhotoLayerGroup) return;
                 if (window.map.hasLayer(bridgeGeometryLayerGroup)) window.map.removeLayer(bridgeGeometryLayerGroup);
@@ -2281,7 +2311,7 @@
             }
 
             syncBridgeLayersOnMap();
-            fitBridgeOverview();
+            fitBridgeOverviewIfNeeded();
         };
 
         window.toggleBridgePhotoProvider = function(provider) {
@@ -3709,8 +3739,8 @@
             applyDefaultMapView({ animate: true });
         };
 
-        // Plain CartoDB Positron basemap
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        // Plain CartoDB Positron basemap (référence conservée pour rétablir le fond si besoin)
+        window.basemapLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '© OpenStreetMap contributors © CARTO',
             subdomains: 'abcd',
             maxZoom: 20
@@ -6026,33 +6056,6 @@
             );
         }
 
-        function buildBridgePopup(group, info) {
-            const tags = info.tags || {};
-            const photosLabel = group.photos.length
-                ? `${group.photos.length} photo${group.photos.length > 1 ? 's' : ''}`
-                : 'aucune photo taguée';
-            const osmType = tags.osm_type || String(info.id).split('/')[0];
-            const osmId = tags.osm_id || String(info.id).split('/')[1];
-            const osmLink = osmType && osmId ? `https://www.openstreetmap.org/${osmType}/${osmId}` : '';
-
-            return `
-                <div class="route-popup bridge-popup">
-                    <h3>Ouvrage d'art</h3>
-                    <div class="detail"><strong>Groupe&nbsp;:</strong> ${escapeHtml(group.title)}</div>
-                    <div class="detail"><strong>Élément&nbsp;:</strong> <span class="bridge-part-pill" style="--bridge-part-color:${info.color};">${escapeHtml(info.roleLabel)}</span></div>
-                    ${tags['bridge:structure'] ? `<div class="detail"><strong>Structure&nbsp;:</strong> ${escapeHtml(tags['bridge:structure'])}</div>` : ''}
-                    ${tags.material ? `<div class="detail"><strong>Matériau&nbsp;:</strong> ${escapeHtml(tags.material)}</div>` : ''}
-                    ${tags.operator || tags.owner ? `<div class="detail"><strong>Gestionnaire&nbsp;:</strong> ${escapeHtml(tags.operator || tags.owner)}</div>` : ''}
-                    <div class="detail"><strong>Photos&nbsp;:</strong> ${photosLabel}</div>
-                    ${osmLink ? `
-                        <div class="detail" style="margin-top: 10px;">
-                            <a href="${osmLink}" target="_blank" rel="noopener noreferrer" style="color: #3498DB; font-weight: 600; text-decoration: none;">Voir l'élément OSM →</a>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }
-
         function buildBridgePhotoPopup(photo, group) {
             const preview = photo.provider === 'panoramax'
                 ? `<img class="bridge-photo-popup-img" src="${panoramaxImageUrl(photo.id, 'thumb')}" alt="" loading="lazy">`
@@ -6490,7 +6493,6 @@
                     if (!group) return;
 
                     bridgeFeatureLayersById.set(info.id, layer);
-                    layer.bindPopup(buildBridgePopup(group, info));
                     layer.on('click', () => openBridgeViewer(group.id, { fit: true }));
                     layer.on('mouseover', () => {
                         if (activeBridgeGroupId !== group.id && layer.setStyle) {
@@ -6527,7 +6529,7 @@
             if (bridgeDataLoaded) {
                 if (show) bridgeVisible = true;
                 syncBridgeLayersOnMap();
-                if (show) fitBridgeOverview();
+                if (show) fitBridgeOverviewIfNeeded();
                 return bridgeGroups;
             }
 
@@ -6535,7 +6537,7 @@
                 await bridgeLoadPromise;
                 if (show) bridgeVisible = true;
                 syncBridgeLayersOnMap();
-                if (show) fitBridgeOverview();
+                if (show) fitBridgeOverviewIfNeeded();
                 return bridgeGroups;
             }
 
@@ -6555,7 +6557,7 @@
 
                     if (show) bridgeVisible = true;
                     syncBridgeLayersOnMap();
-                    if (show) fitBridgeOverview();
+                    if (show) fitBridgeOverviewIfNeeded();
                     console.log(`✓ ${bridgeGroups.length} groupe(s) de ponts chargés`);
                     tryApplyAppUrlState();
                     return bridgeGroups;
