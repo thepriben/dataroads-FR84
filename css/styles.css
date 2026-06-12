@@ -21,28 +21,36 @@
             --family-realtime: #E67E22;
             --family-incubator: #0E7490;
             --family-tools: #16A085;
-            --page-padding: 4px;
+            --page-padding: 2px;
             --header-height: 48px;
             --sidebar-foot-height: 32px;
+        }
+
+        html {
+            height: 100%;
         }
 
         body {
             font-family: 'DM Sans', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            height: 100%;
             padding: var(--page-padding);
             color: var(--text-dark);
-            overflow-x: hidden;
+            overflow: hidden;
         }
 
         .container {
             max-width: 100%;
             width: 100%;
+            height: 100%;
             margin: 0 auto;
             background: white;
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
 
         @media (min-width: 1900px) {
@@ -55,6 +63,7 @@
             background: linear-gradient(135deg, #1f2933 0%, #2c3e50 100%);
             color: white;
             padding: 6px 16px;
+            flex-shrink: 0;
             min-height: var(--header-height);
             position: relative;
             overflow: hidden;
@@ -248,8 +257,8 @@
             display: grid;
             grid-template-columns: var(--sidebar-width, 320px) 6px minmax(0, 1fr);
             gap: 0;
-            height: calc(100vh - var(--header-height) - 2 * var(--page-padding));
-            min-height: 580px;
+            flex: 1;
+            min-height: 0;
             position: relative;
             overflow: hidden;
         }
