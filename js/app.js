@@ -1753,15 +1753,38 @@
 
         function handleBridgeClusterMarkerClick(cluster) {
             if (cluster.isCluster && cluster.bridgeCount > 1) {
-                const bounds = cluster.groups.reduce((acc, group) => {
+                const currentZoom = window.map.getZoom();
+                const zoomBump = cluster.bridgeCount > 24 ? 3 : 2;
+                const targetZoom = Math.min(currentZoom + zoomBump, 18);
+
+                const validGroups = cluster.groups.filter(group => group.bounds?.isValid?.());
+                if (!validGroups.length) {
+                    window.map.setView(cluster.center, targetZoom, { animate: true });
+                    return;
+                }
+
+                const bounds = validGroups.reduce((acc, group) => {
                     acc.extend(group.bounds);
                     return acc;
-                }, L.latLngBounds(cluster.groups[0].bounds.getSouthWest(), cluster.groups[0].bounds.getNorthEast()));
-                window.map.fitBounds(bounds, {
-                    padding: [72, 72],
-                    maxZoom: Math.min(20, window.map.getZoom() + 2),
-                    animate: true
-                });
+                }, L.latLngBounds(
+                    validGroups[0].bounds.getSouthWest(),
+                    validGroups[0].bounds.getNorthEast()
+                ));
+
+                if (bounds.isValid()) {
+                    const fitZoom = window.map.getBoundsZoom(bounds, false, L.point(48, 48));
+                    // Large clusters span the whole view: fitBounds would zoom out instead of drilling in.
+                    if (fitZoom > currentZoom && cluster.bridgeCount <= 16) {
+                        window.map.fitBounds(bounds, {
+                            padding: [48, 48],
+                            maxZoom: Math.max(targetZoom, fitZoom),
+                            animate: true
+                        });
+                        return;
+                    }
+                }
+
+                window.map.setView(cluster.center, targetZoom, { animate: true });
                 return;
             }
             if (typeof window.openBridgeViewer === 'function') {
