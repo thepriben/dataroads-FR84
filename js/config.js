@@ -27,7 +27,9 @@
                 accidents: 'data/static/accidents-vaucluse.geojson',
                 'traffic-counting': 'data/external/traffic-counting.geojson',
                 'traffic-counting-demo': 'data/demo/traffic-counting-demo.geojson',
-                'road-events': 'data/external/road-events.geojson'
+                'road-events': 'data/external/road-events.geojson',
+                'sensitive-natural-zones': 'data/external/sensitive-natural-zones.geojson',
+                'inaturalist-sensitive-zones': 'data/external/inaturalist-sensitive-zones.geojson'
             }
         },
         live: {

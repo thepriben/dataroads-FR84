@@ -55,7 +55,13 @@
             return responseCache.get(cachePath);
         }
 
-        const largeGeoJsonSources = new Set(['departmental-roads', 'bicycle-routes', 'bridges']);
+        const largeGeoJsonSources = new Set([
+            'departmental-roads',
+            'bicycle-routes',
+            'bridges',
+            'sensitive-natural-zones',
+            'inaturalist-sensitive-zones'
+        ]);
         const data = await fetchJson(cachePath, { cache: 'no-cache' }, {
             timeoutMs: largeGeoJsonSources.has(cacheName) ? 60000 : 20000
         });

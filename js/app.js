@@ -398,16 +398,23 @@
                     }
                     break;
                 case 'realtime':
-                    if (targetVisible) ensureLayerToggle(bisonFuteVisible, window.toggleBisonFute);
-                    else ensureLayerOff(bisonFuteVisible, window.toggleBisonFute);
+                    if (targetVisible) {
+                        ensureLayerToggle(bisonFuteVisible, window.toggleBisonFute);
+                        ensureLayerToggle(weatherStationsVisible, window.toggleWeatherStations);
+                    } else {
+                        ensureLayerOff(bisonFuteVisible, window.toggleBisonFute);
+                        ensureLayerOff(weatherStationsVisible, window.toggleWeatherStations);
+                    }
                     break;
                 case 'incubator':
                     if (targetVisible) {
                         ensureLayerToggle(bridgeVisible, window.toggleBridges);
-                        ensureLayerToggle(weatherStationsVisible, window.toggleWeatherStations);
+                        ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
+                        ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                     } else {
                         ensureLayerOff(bridgeVisible, window.toggleBridges);
-                        ensureLayerOff(weatherStationsVisible, window.toggleWeatherStations);
+                        ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
+                        ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                     }
                     break;
                 default:
@@ -944,6 +951,13 @@
         let bridgeDataLoaded = false;
         let bridgeLoadPromise = null;
         let bridgeVisible = false;
+        let sensitiveZonesLayer = null;
+        let sensitiveZonesVisible = false;
+        let sensitiveZonesLoaded = false;
+        let inaturalistSensitiveLayerGroup = null;
+        let inaturalistSensitiveMarkers = [];
+        let inaturalistSensitivesVisible = false;
+        let inaturalistSensitivesLoaded = false;
         let bridgeGroups = [];
         let bridgePhotoMarkers = [];
         let bridgeGroupById = new Map();
@@ -1070,6 +1084,8 @@
                 if (bridgePhotoProviderVisibility.panoramax) active.push('pnx');
                 if (bridgePhotoProviderVisibility.mapillary) active.push('mly');
             }
+            if (sensitiveZonesVisible) active.push('ens');
+            if (inaturalistSensitivesVisible) active.push('inat');
             return active;
         }
 
@@ -1184,6 +1200,12 @@
                     if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
                     setBridgeProviderIfNeeded('mapillary', desired);
                     return !desired || bridgeDataLoaded;
+                case 'ens':
+                    setBooleanLayerIfNeeded(sensitiveZonesVisible, desired, window.toggleSensitiveZones);
+                    return !desired || sensitiveZonesLoaded;
+                case 'inat':
+                    setBooleanLayerIfNeeded(inaturalistSensitivesVisible, desired, window.toggleInaturalistSensitives);
+                    return !desired || inaturalistSensitivesLoaded;
                 default:
                     return true;
             }
@@ -1192,7 +1214,10 @@
         function applyAppUrlLayersFromSet(wanted) {
             applyAppUrlHierarchyFromSet(wanted);
 
-            const pendingKeys = ['construction', 'bicycle', 'cities', 'limits', 'accidents', 'traffic', 'waze', 'weather', 'bison', 'bridges', 'pnx', 'mly'];
+            const pendingKeys = [
+                'construction', 'bicycle', 'cities', 'limits', 'accidents', 'traffic', 'waze',
+                'weather', 'bison', 'bridges', 'pnx', 'mly', 'ens', 'inat'
+            ];
             let allReady = true;
             pendingKeys.forEach(key => {
                 if (!applyAppUrlLayerKey(key, wanted)) allReady = false;
@@ -1276,16 +1301,19 @@
                     if (trafficVisible) visible++;
                     return { visible, total };
                 }
-                case 'realtime':
-                    return {
-                        visible: bisonFuteVisible ? 1 : 0,
-                        total: 1
-                    };
-                case 'incubator': {
+                case 'realtime': {
                     let visible = 0;
                     const total = 2;
-                    if (bridgeVisible) visible++;
+                    if (bisonFuteVisible) visible++;
                     if (weatherStationsVisible) visible++;
+                    return { visible, total };
+                }
+                case 'incubator': {
+                    let visible = 0;
+                    const total = 3;
+                    if (bridgeVisible) visible++;
+                    if (sensitiveZonesVisible) visible++;
+                    if (inaturalistSensitivesVisible) visible++;
                     return { visible, total };
                 }
                 default:
@@ -1306,6 +1334,10 @@
                     return bicycleVisible;
                 case 'freshness-bridges':
                     return bridgeVisible;
+                case 'freshness-sensitive-zones':
+                    return sensitiveZonesVisible;
+                case 'freshness-inaturalist-sensitive':
+                    return inaturalistSensitivesVisible;
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
@@ -1638,51 +1670,65 @@
             } else if (window.map.hasLayer(bridgeGeometryLayerGroup)) {
                 window.map.removeLayer(bridgeGeometryLayerGroup);
             }
+            bringBridgeGroupMarkersToFront();
+        }
+
+        function handleBridgeClusterMarkerClick(cluster) {
+            if (cluster.isCluster && cluster.bridgeCount > 1) {
+                const bounds = cluster.groups.reduce((acc, group) => {
+                    acc.extend(group.bounds);
+                    return acc;
+                }, L.latLngBounds(cluster.groups[0].bounds.getSouthWest(), cluster.groups[0].bounds.getNorthEast()));
+                window.map.fitBounds(bounds, {
+                    padding: [72, 72],
+                    maxZoom: Math.min(20, window.map.getZoom() + 2),
+                    animate: true
+                });
+                return;
+            }
+            if (typeof window.openBridgeViewer === 'function') {
+                window.openBridgeViewer(cluster.groups[0].id, { fit: true });
+            }
         }
 
         function makeBridgeClusterMarker(cluster) {
             const zoom = window.map.getZoom();
             const diameter = bridgeClusterMarkerDiameter(cluster, zoom);
             const label = bridgeClusterLabel(cluster, zoom);
+            const tooltip = bridgeClusterTooltip(cluster);
             const marker = L.marker(cluster.center, {
                 icon: L.divIcon({
                     className: 'bridge-group-marker-wrapper',
                     html: `
-                        <div
+                        <button
+                            type="button"
                             class="bridge-group-marker${cluster.isCluster ? ' is-cluster' : ' is-solo'}${cluster.photoCount ? ' has-photos' : ''}"
                             style="width:${diameter}px;height:${diameter}px;"
+                            aria-label="${tooltip.replace(/"/g, '&quot;')}"
                         >
                             ${label ? `<span>${label}</span>` : ''}
-                        </div>
+                        </button>
                     `,
                     iconSize: [diameter, diameter],
                     iconAnchor: [diameter / 2, diameter / 2]
                 }),
-                zIndexOffset: cluster.isCluster ? 640 : 620
+                riseOnHover: true,
+                interactive: true,
+                zIndexOffset: cluster.isCluster ? 1500 : 1400
             });
 
-            marker.bindTooltip(bridgeClusterTooltip(cluster), {
+            marker.bindTooltip(tooltip, {
                 direction: 'top',
                 offset: [0, -(diameter / 2 + 4)]
             });
-            marker.on('click', () => {
-                if (cluster.isCluster && cluster.bridgeCount > 1) {
-                    const bounds = cluster.groups.reduce((acc, group) => {
-                        acc.extend(group.bounds);
-                        return acc;
-                    }, L.latLngBounds(cluster.groups[0].bounds.getSouthWest(), cluster.groups[0].bounds.getNorthEast()));
-                    window.map.fitBounds(bounds, {
-                        padding: [72, 72],
-                        maxZoom: Math.min(20, window.map.getZoom() + 2),
-                        animate: true
-                    });
-                    return;
-                }
-                if (typeof window.openBridgeViewer === 'function') {
-                    window.openBridgeViewer(cluster.groups[0].id, { fit: true });
-                }
-            });
+            marker.on('click', () => handleBridgeClusterMarkerClick(cluster));
             return marker;
+        }
+
+        function bringBridgeGroupMarkersToFront() {
+            if (bridgeGroupMarkerLayerGroup && window.map?.hasLayer(bridgeGroupMarkerLayerGroup)) {
+                bridgeGroupMarkerLayerGroup.bringToFront();
+            }
         }
 
         function updateBridgeGroupMarkerLayer() {
@@ -1692,6 +1738,7 @@
             clusterBridgeGroupsInView().forEach(cluster => {
                 makeBridgeClusterMarker(cluster).addTo(bridgeGroupMarkerLayerGroup);
             });
+            bringBridgeGroupMarkersToFront();
         }
 
         function fitBridgeOverview() {
@@ -1767,6 +1814,305 @@
             syncBridgeSourceToggleUi();
             updateBridgePhotoLayerVisibility();
             syncLegendChrome();
+        };
+
+        // ========== SENSITIVE NATURAL ZONES & iNATURALIST ==========
+
+        const INATURALIST_TAXON_COLORS = {
+            Aves: '#1B6CA8',
+            Insecta: '#D4A017',
+            Plantae: '#2D6A4F',
+            Reptilia: '#6A4C93',
+            Amphibia: '#588157',
+            Mammalia: '#8B4513',
+            Arachnida: '#7F5539',
+            Mollusca: '#9C6644',
+            Fungi: '#BC6C25',
+            Animalia: '#40916C',
+            unknown: '#40916C'
+        };
+
+        function getInaturalistMarkerColor(iconicTaxon, qualityGrade) {
+            const base = INATURALIST_TAXON_COLORS[iconicTaxon] || INATURALIST_TAXON_COLORS.unknown;
+            if (qualityGrade === 'research') return base;
+            if (qualityGrade === 'needs_id') return base;
+            return base;
+        }
+
+        function formatInaturalistDate(value) {
+            if (!value) return 'date inconnue';
+            const parts = String(value).split('-');
+            if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+            return value;
+        }
+
+        function buildSensitiveZonePopup(props = {}) {
+            const areaText = props.area_ha ? `${props.area_ha.toLocaleString('fr-FR')} ha` : '—';
+            return `
+                <div class="route-popup sensitive-zone-popup">
+                    <h3>${props.name || 'Espace naturel sensible'}</h3>
+                    <div class="detail"><strong>Superficie&nbsp;:</strong> ${areaText}</div>
+                    ${props.communes ? `<div class="detail"><strong>Communes&nbsp;:</strong> ${props.communes}</div>` : ''}
+                    ${props.habitat ? `<div class="detail"><strong>Milieu&nbsp;:</strong> ${props.habitat}</div>` : ''}
+                    ${props.manager ? `<div class="detail"><strong>Gestionnaire&nbsp;:</strong> ${props.manager}</div>` : ''}
+                    ${props.owner ? `<div class="detail"><strong>Propriétaires&nbsp;:</strong> ${props.owner}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function buildInaturalistPopup(props = {}) {
+            const photoHtml = props.photo_url
+                ? `<img src="${props.photo_url}" alt="" class="inaturalist-popup-photo" loading="lazy">`
+                : '';
+            const qualityLabel = props.quality_grade === 'research'
+                ? 'Recherche'
+                : (props.quality_grade === 'needs_id' ? 'À identifier' : 'Casual');
+            return `
+                <div class="route-popup inaturalist-popup">
+                    ${photoHtml}
+                    <h3>${props.taxon_name || 'Observation'}</h3>
+                    ${props.scientific_name && props.scientific_name !== props.taxon_name
+                        ? `<div class="detail"><strong>Nom scientifique&nbsp;:</strong> <em>${props.scientific_name}</em></div>`
+                        : ''}
+                    <div class="detail"><strong>Date&nbsp;:</strong> ${formatInaturalistDate(props.observed_on)}</div>
+                    <div class="detail"><strong>Qualité&nbsp;:</strong> ${qualityLabel}</div>
+                    ${props.ens_name ? `<div class="detail"><strong>ENS&nbsp;:</strong> ${props.ens_name}</div>` : ''}
+                    ${props.user_login ? `<div class="detail"><strong>Observateur&nbsp;:</strong> ${props.user_login}</div>` : ''}
+                    ${props.url ? `<div class="detail"><a href="${props.url}" target="_blank" rel="noopener noreferrer">Voir sur iNaturalist</a></div>` : ''}
+                </div>
+            `;
+        }
+
+        function applySensitiveZonesVisibleUi() {
+            const icon = document.getElementById('sensitiveZonesToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="sensitiveZonesToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-sensitive-zone]');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '700';
+            legendItems.forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+        }
+
+        function applySensitiveZonesHiddenUi() {
+            const icon = document.getElementById('sensitiveZonesToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="sensitiveZonesToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-sensitive-zone]');
+            setToggleIcon(icon, false);
+            if (title) title.style.fontWeight = '600';
+            legendItems.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+        }
+
+        function applyInaturalistSensitivesVisibleUi() {
+            const icon = document.getElementById('inaturalistSensitivesToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="inaturalistSensitivesToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-inaturalist]');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '700';
+            legendItems.forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+        }
+
+        function applyInaturalistSensitivesHiddenUi() {
+            const icon = document.getElementById('inaturalistSensitivesToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="inaturalistSensitivesToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-inaturalist]');
+            setToggleIcon(icon, false);
+            if (title) title.style.fontWeight = '600';
+            legendItems.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+        }
+
+        function syncSensitiveZonesOnMap() {
+            if (!sensitiveZonesLayer || !window.map) return;
+            const onMap = window.map.hasLayer(sensitiveZonesLayer);
+            if (sensitiveZonesVisible && !onMap) sensitiveZonesLayer.addTo(window.map);
+            if (!sensitiveZonesVisible && onMap) window.map.removeLayer(sensitiveZonesLayer);
+        }
+
+        function syncInaturalistSensitivesOnMap() {
+            if (!inaturalistSensitiveLayerGroup || !window.map) return;
+            const onMap = window.map.hasLayer(inaturalistSensitiveLayerGroup);
+            if (inaturalistSensitivesVisible && !onMap) inaturalistSensitiveLayerGroup.addTo(window.map);
+            if (!inaturalistSensitivesVisible && onMap) window.map.removeLayer(inaturalistSensitiveLayerGroup);
+        }
+
+        window.toggleSensitiveZones = function() {
+            sensitiveZonesVisible = !sensitiveZonesVisible;
+
+            if (!sensitiveZonesVisible) {
+                syncSensitiveZonesOnMap();
+                applySensitiveZonesHiddenUi();
+                syncLegendChrome();
+                return;
+            }
+
+            if (!sensitiveZonesLoaded) {
+                const icon = document.getElementById('sensitiveZonesToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                if (typeof window.loadSensitiveZones === 'function') {
+                    window.loadSensitiveZones({ show: true });
+                }
+                return;
+            }
+
+            syncSensitiveZonesOnMap();
+            applySensitiveZonesVisibleUi();
+            syncLegendChrome();
+        };
+
+        window.toggleInaturalistSensitives = function() {
+            inaturalistSensitivesVisible = !inaturalistSensitivesVisible;
+
+            if (!inaturalistSensitivesVisible) {
+                syncInaturalistSensitivesOnMap();
+                applyInaturalistSensitivesHiddenUi();
+                syncLegendChrome();
+                return;
+            }
+
+            if (!inaturalistSensitivesLoaded) {
+                const icon = document.getElementById('inaturalistSensitivesToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                if (typeof window.loadInaturalistSensitives === 'function') {
+                    window.loadInaturalistSensitives({ show: true });
+                }
+                return;
+            }
+
+            syncInaturalistSensitivesOnMap();
+            applyInaturalistSensitivesVisibleUi();
+            syncLegendChrome();
+        };
+
+        window.loadSensitiveZones = async function(options = {}) {
+            const show = options.show !== false;
+            try {
+                const data = await window.InforouteApi.fetchGeoJson('sensitive-natural-zones');
+                const features = data.features || [];
+                renderFreshnessBadge(document.getElementById('freshness-sensitive-zones'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'external',
+                    errorMsg: data._cache?.error
+                });
+
+                if (sensitiveZonesLayer) {
+                    window.map?.removeLayer(sensitiveZonesLayer);
+                    sensitiveZonesLayer = null;
+                }
+
+                sensitiveZonesLayer = L.geoJSON(data, {
+                    style: {
+                        color: '#1B4332',
+                        weight: 2,
+                        opacity: 0.85,
+                        fillColor: '#40916C',
+                        fillOpacity: 0.18
+                    },
+                    onEachFeature(feature, layer) {
+                        layer.bindPopup(buildSensitiveZonePopup(feature.properties || {}));
+                    }
+                });
+
+                sensitiveZonesLoaded = true;
+                const countEl = document.getElementById('count-sensitive-zones');
+                if (countEl) countEl.textContent = features.length.toLocaleString('fr-FR');
+
+                if (show) {
+                    sensitiveZonesVisible = true;
+                    syncSensitiveZonesOnMap();
+                    applySensitiveZonesVisibleUi();
+                } else {
+                    applySensitiveZonesHiddenUi();
+                }
+
+                syncLegendChrome();
+                tryApplyAppUrlState();
+                console.log(`✓ ${features.length} espaces naturels sensibles chargés`);
+            } catch (error) {
+                console.error('Erreur chargement ENS:', error);
+                renderFreshnessBadge(document.getElementById('freshness-sensitive-zones'), {
+                    scheduleKey: 'external',
+                    errorMsg: error.message
+                });
+                if (!show) applySensitiveZonesHiddenUi();
+                sensitiveZonesVisible = false;
+                syncLegendChrome();
+            }
+        };
+
+        window.loadInaturalistSensitives = async function(options = {}) {
+            const show = options.show !== false;
+            try {
+                const data = await window.InforouteApi.fetchGeoJson('inaturalist-sensitive-zones');
+                const features = data.features || [];
+                renderFreshnessBadge(document.getElementById('freshness-inaturalist-sensitive'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'external',
+                    errorMsg: data._cache?.error
+                });
+
+                if (inaturalistSensitiveLayerGroup) {
+                    window.map?.removeLayer(inaturalistSensitiveLayerGroup);
+                    inaturalistSensitiveLayerGroup = null;
+                }
+                inaturalistSensitiveMarkers = [];
+
+                inaturalistSensitiveLayerGroup = L.layerGroup();
+                features.forEach(feature => {
+                    const props = feature.properties || {};
+                    const coords = feature.geometry?.coordinates;
+                    if (!coords) return;
+
+                    const color = getInaturalistMarkerColor(props.iconic_taxon, props.quality_grade);
+                    const marker = L.circleMarker([coords[1], coords[0]], {
+                        radius: props.quality_grade === 'research' ? 6 : 5,
+                        fillColor: color,
+                        color: '#ffffff',
+                        weight: 1.5,
+                        opacity: 0.9,
+                        fillOpacity: props.quality_grade === 'casual' ? 0.55 : 0.8
+                    });
+                    marker.bindPopup(buildInaturalistPopup(props));
+                    inaturalistSensitiveMarkers.push(marker);
+                    inaturalistSensitiveLayerGroup.addLayer(marker);
+                });
+
+                inaturalistSensitivesLoaded = true;
+                const countEl = document.getElementById('count-inaturalist-sensitive');
+                if (countEl) countEl.textContent = features.length.toLocaleString('fr-FR');
+
+                if (show) {
+                    inaturalistSensitivesVisible = true;
+                    syncInaturalistSensitivesOnMap();
+                    applyInaturalistSensitivesVisibleUi();
+                } else {
+                    applyInaturalistSensitivesHiddenUi();
+                }
+
+                syncLegendChrome();
+                tryApplyAppUrlState();
+                console.log(`✓ ${features.length} observations iNaturalist (ENS) chargées`);
+            } catch (error) {
+                console.error('Erreur chargement iNaturalist ENS:', error);
+                renderFreshnessBadge(document.getElementById('freshness-inaturalist-sensitive'), {
+                    scheduleKey: 'external',
+                    errorMsg: error.message
+                });
+                if (!show) applyInaturalistSensitivesHiddenUi();
+                inaturalistSensitivesVisible = false;
+                syncLegendChrome();
+            }
         };
 
         // ========== ROADS UNDER CONSTRUCTION ==========
@@ -5707,6 +6053,14 @@
         setTimeout(() => {
             if (window.loadBridges) window.loadBridges({ show: false });
         }, 4500);
+
+        setTimeout(() => {
+            if (window.loadSensitiveZones) window.loadSensitiveZones({ show: false });
+        }, 5000);
+
+        setTimeout(() => {
+            if (window.loadInaturalistSensitives) window.loadInaturalistSensitives({ show: false });
+        }, 5500);
         
         // ========== ROADS UNDER CONSTRUCTION ==========
 
@@ -6086,13 +6440,13 @@
 
         WEATHER_STATIONS.forEach(station => {
             const marker = L.circleMarker([station.lat, station.lon], {
-                radius: 7,
+                radius: 8,
                 fillColor: '#5d6d7e',
                 color: '#ffffff',
                 weight: 2,
                 opacity: 1,
-                fillOpacity: 0.92
-            }).bindTooltip(`${station.name}`, { direction: 'top', offset: [0, -6] });
+                fillOpacity: 0.9
+            }).bindTooltip(`${station.name}`, { direction: 'top', offset: [0, -8] });
 
             marker.on('click', async () => {
                 if (!marker.getPopup()) {

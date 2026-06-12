@@ -22,7 +22,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260607-2">
+    <link rel="stylesheet" href="css/styles.css?v=20260612-2">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -56,6 +56,7 @@
 
         <div class="main-content">
             <div class="sidebar">
+                <div class="sidebar-scroll">
                 <section class="legend-family" data-family="factual" data-expanded="false">
                     <div class="legend-family-header">
                         <button class="legend-family-expand" type="button" aria-expanded="false">
@@ -276,8 +277,22 @@
                     </div>
                     <div class="legend-family-body">
                 <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleWeatherStations && window.toggleWeatherStations();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Stations météo</span>
+                        <span id="weatherStationsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-weather-stations" data-schedule-key="live"></span>
+                    <div class="legend-item legend-item-summary" data-weather-station="total" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: #5d6d7e; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>
+                        <div class="legend-label">Stations Open-Meteo</div>
+                        <div class="legend-count" id="count-weather-stations">-</div>
+                    </div>
+                    <div class="weather-stations-hint">Clic sur une station pour les données courantes (température, vent, humidité).</div>
+                </div>
+
+                <div class="legend-section">
                     <div class="legend-title" onclick="toggleBisonFute()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none; font-weight: 600;">
-                        <span>Événements Routiers</span>
+                        <span>Événements routiers</span>
                         <span id="bisonFuteToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
                     <span class="freshness-badge" id="freshness-bison-fute" data-schedule-key="external"></span>
@@ -363,17 +378,31 @@
                 </div>
 
                 <div class="legend-section">
-                    <div class="legend-title" onclick="window.toggleWeatherStations && window.toggleWeatherStations();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                        <span>Stations météo</span>
-                        <span id="weatherStationsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    <div class="legend-title" onclick="window.toggleSensitiveZones && window.toggleSensitiveZones();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Espaces naturels sensibles</span>
+                        <span id="sensitiveZonesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
-                    <span class="freshness-badge" id="freshness-weather-stations" data-schedule-key="live"></span>
-                    <div class="legend-item legend-item-summary" data-weather-station="total" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color" style="background: #5d6d7e; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>
-                        <div class="legend-label">Stations Open-Meteo</div>
-                        <div class="legend-count" id="count-weather-stations">-</div>
+                    <span class="freshness-badge" id="freshness-sensitive-zones" data-schedule-key="external"></span>
+                    <div class="legend-item" data-sensitive-zone="ens" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color sensitive-zone-swatch"></div>
+                        <div class="legend-label">ENS CD84 (polygones)</div>
+                        <div class="legend-count" id="count-sensitive-zones">-</div>
                     </div>
-                    <div class="weather-stations-hint">Clic sur une station pour les données courantes (température, vent, humidité).</div>
+                    <div class="sensitive-zones-hint">Clic sur une zone pour le détail (superficie, communes, gestionnaire).</div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleInaturalistSensitives && window.toggleInaturalistSensitives();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Observations iNaturalist</span>
+                        <span id="inaturalistSensitivesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-inaturalist-sensitive" data-schedule-key="external"></span>
+                    <div class="legend-item" data-inaturalist="observation" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color inaturalist-swatch"></div>
+                        <div class="legend-label">Dans les ENS</div>
+                        <div class="legend-count" id="count-inaturalist-sensitive">-</div>
+                    </div>
+                    <div class="inaturalist-sensitive-hint">Observations géolocalisées filtrées par intersection avec les ENS du département.</div>
                 </div>
                     </div>
                 </section>
@@ -511,6 +540,12 @@
 
                     </div>
                 </section>
+                </div>
+
+                <div class="sidebar-foot">
+                    <a class="sidebar-foot-repo" href="https://github.com/thepriben/dataroads-FR84" target="_blank" rel="noopener noreferrer">dataroads-FR84</a>
+                    <span class="sidebar-foot-version" id="siteVersion" aria-label="Version de l'application"></span>
+                </div>
             </div>
 
             <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Redimensionner la barre latérale" tabindex="0" title="Glissez pour redimensionner la barre latérale"></div>
@@ -573,12 +608,6 @@
             </div>
         </div>
 
-        <footer class="site-footer">
-            <div class="site-footer-repo-box">
-                <a href="https://github.com/thepriben/dataroads-FR84" target="_blank" rel="noopener noreferrer">dataroads-FR84</a>
-                <span class="site-footer-version" id="siteVersion" aria-label="Version de l'application"></span>
-            </div>
-        </footer>
     </div>
 
     <script src="js/config.js?v=20260606-1"></script>
@@ -592,6 +621,6 @@
     </script>
     <script src="js/api.js?v=20260606-1"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260607-2"></script>
+    <script src="js/app.js?v=20260612-1"></script>
 </body>
 </html>

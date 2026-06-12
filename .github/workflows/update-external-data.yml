@@ -13,8 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Python dependencies
+        run: pip install pyshp pyproj
       - name: Update external data
         run: python3 scripts/update_external_data.py
+      - name: Update natural zones and iNaturalist
+        run: python3 scripts/update_natural_data.py
       - name: Commit changes
         run: |
           if git diff --quiet -- data/external; then
@@ -25,4 +31,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/external
           git commit -m "Update external data"
-          git push
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin main; then
+              echo "Push succeeded on attempt ${attempt}."
+              exit 0
+            fi
+            echo "Push rejected on attempt ${attempt}, retrying..."
+            sleep $((attempt * 5))
+          done
+          echo "Push failed after 3 attempts."
+          exit 1

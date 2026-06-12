@@ -29,6 +29,7 @@
             min-height: 100vh;
             padding: 8px;
             color: var(--text-dark);
+            overflow-x: hidden;
         }
 
         .container {
@@ -49,7 +50,7 @@
 
         :root {
             --header-height: 56px;
-            --footer-height: 36px;
+            --sidebar-foot-height: 40px;
         }
 
         .header {
@@ -247,11 +248,12 @@
 
         .main-content {
             display: grid;
-            grid-template-columns: var(--sidebar-width, 320px) 6px 1fr;
+            grid-template-columns: var(--sidebar-width, 320px) 6px minmax(0, 1fr);
             gap: 0;
-            height: calc(100vh - var(--header-height) - var(--footer-height));
+            height: calc(100vh - var(--header-height) - 16px);
             min-height: 600px;
             position: relative;
+            overflow: hidden;
         }
 
         /* Draggable divider between sidebar and map */
@@ -300,10 +302,64 @@
         }
 
         .sidebar {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
             background: #f8f9fa;
-            padding: 16px 14px;
-            overflow-y: auto;
             border-right: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .sidebar-scroll {
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px 14px;
+        }
+
+        .sidebar-foot {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: var(--sidebar-foot-height);
+            padding: 8px 12px;
+            border-top: 1px solid var(--border);
+            background: #fafbfc;
+        }
+
+        .sidebar-foot-repo {
+            color: #7f8c8d;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.62rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.18s;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sidebar-foot-repo:hover {
+            color: #3498DB;
+        }
+
+        .sidebar-foot-version {
+            color: #bdc3c7;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.58rem;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .sidebar-foot-version::before {
+            content: '·';
+            margin-right: 8px;
+            opacity: 0.7;
         }
 
         .legend-section {
@@ -318,6 +374,8 @@
             color: var(--text-light);
             margin-bottom: 15px;
             font-family: 'JetBrains Mono', monospace;
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
 
         .quality-section-header {
@@ -365,6 +423,7 @@
         .legend-item {
             display: flex;
             align-items: center;
+            min-width: 0;
             padding: 12px;
             margin-bottom: 8px;
             background: white;
@@ -389,8 +448,10 @@
 
         .legend-label {
             flex: 1;
+            min-width: 0;
             font-size: 0.9rem;
             font-weight: 500;
+            overflow-wrap: anywhere;
         }
 
         .legend-count {
@@ -956,6 +1017,7 @@
         .bridge-group-marker-wrapper {
             background: transparent !important;
             border: none !important;
+            pointer-events: auto !important;
         }
 
         .bridge-group-marker {
@@ -971,6 +1033,13 @@
             font-weight: 800;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
             cursor: pointer;
+            padding: 0;
+            margin: 0;
+            appearance: none;
+            -webkit-appearance: none;
+            line-height: 1;
+            pointer-events: auto;
+            touch-action: manipulation;
             transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
@@ -1096,8 +1165,35 @@
             color: #2C3E50;
         }
 
+        .sensitive-zone-swatch {
+            background: rgba(64, 145, 108, 0.22);
+            border: 2px solid #1B4332;
+            height: 13px;
+            width: 24px;
+            border-radius: 3px;
+        }
+
+        .inaturalist-swatch {
+            background: #40916C;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .inaturalist-popup-photo {
+            display: block;
+            width: 100%;
+            max-height: 140px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
         .bridge-zoom-hint,
-        .weather-stations-hint {
+        .weather-stations-hint,
+        .sensitive-zones-hint,
+        .inaturalist-sensitive-hint {
             margin-top: 8px;
             padding: 7px 8px;
             border-radius: 6px;
@@ -1708,21 +1804,21 @@
         }
 
         /* Custom scrollbar */
-        .sidebar::-webkit-scrollbar {
+        .sidebar-scroll::-webkit-scrollbar {
             width: 8px;
         }
 
-        .sidebar::-webkit-scrollbar-track {
+        .sidebar-scroll::-webkit-scrollbar-track {
             background: #e0e0e0;
             border-radius: 4px;
         }
 
-        .sidebar::-webkit-scrollbar-thumb {
+        .sidebar-scroll::-webkit-scrollbar-thumb {
             background: #999;
             border-radius: 4px;
         }
 
-        .sidebar::-webkit-scrollbar-thumb:hover {
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
             background: #666;
         }
 
@@ -1995,12 +2091,15 @@
         .freshness-badge {
             margin: 2px 0 8px 0;
             line-height: 1;
+            max-width: 100%;
         }
 
         .freshness-pill {
             display: inline-flex;
             align-items: center;
             gap: 5px;
+            max-width: 100%;
+            flex-wrap: wrap;
             padding: 3px 9px;
             border-radius: 11px;
             border: 1px solid rgba(44, 62, 80, 0.32);
@@ -2049,15 +2148,16 @@
 
         .refresh-formula-row {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
             padding: 8px 10px;
             background: white;
             border: 1px solid #e6edef;
             border-left: 3px solid #95A5A6;
             border-radius: 6px;
             font-size: 0.78rem;
+            min-width: 0;
         }
 
         .refresh-formula-row[data-schedule-key="osm"]      { border-left-color: #3498DB; }
@@ -2068,15 +2168,18 @@
         .refresh-formula-row .refresh-formula-label {
             font-weight: 700;
             color: #2C3E50;
-            flex-shrink: 0;
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
 
         .refresh-formula-row .refresh-formula-meta {
             color: #5b6770;
-            text-align: right;
+            text-align: left;
             line-height: 1.45;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.7rem;
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
 
         /* Wikidata infobox in route popup (read-only, auto-loaded) */
@@ -2420,6 +2523,7 @@
             border-left: 4px solid var(--family-accent, #95A5A6);
             background: var(--family-tint, rgba(149, 165, 166, 0.05));
             overflow: hidden;
+            min-width: 0;
             transition: background 0.2s;
         }
 
