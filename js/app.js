@@ -7006,14 +7006,16 @@
         }
 
         WEATHER_STATIONS.forEach(station => {
-            const marker = L.circleMarker([station.lat, station.lon], {
-                radius: 8,
-                fillColor: '#5d6d7e',
-                color: '#ffffff',
-                weight: 2,
-                opacity: 1,
-                fillOpacity: 0.9
-            }).bindTooltip(`${station.name}`, { direction: 'top', offset: [0, -8] });
+            const marker = L.marker([station.lat, station.lon], {
+                icon: L.divIcon({
+                    className: 'weather-station-marker-wrapper',
+                    html: '<span class="weather-station-marker" aria-hidden="true"></span>',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                }),
+                riseOnHover: true,
+                zIndexOffset: 420
+            }).bindTooltip(`${station.name}`, { direction: 'top', offset: [0, -14] });
 
             marker.on('click', async () => {
                 if (!marker.getPopup()) {

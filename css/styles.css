@@ -402,13 +402,13 @@
         }
 
         .legend-title {
-            font-size: 0.82rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-light);
-            margin-bottom: 10px;
-            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.76rem;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing: 0.01em;
+            color: #5b6770;
+            margin-bottom: 8px;
+            font-family: 'DM Sans', sans-serif;
             min-width: 0;
             overflow-wrap: anywhere;
         }
@@ -459,19 +459,18 @@
             display: flex;
             align-items: center;
             min-width: 0;
-            padding: 9px 10px;
-            margin-bottom: 6px;
-            background: white;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
+            padding: 7px 8px;
+            margin-bottom: 4px;
+            background: #fafbfc;
+            border-radius: 5px;
+            border: 1px solid #e8ecef;
+            transition: background 0.15s ease, border-color 0.15s ease;
             cursor: pointer;
         }
 
         .legend-item:hover {
-            transform: translateX(5px);
-            box-shadow: 0 4px 12px var(--shadow);
-            border-color: var(--accent);
+            background: #f4f6f8;
+            border-color: #d5dce3;
         }
 
         .legend-color {
@@ -484,14 +483,15 @@
         .legend-label {
             flex: 1;
             min-width: 0;
-            font-size: 0.9rem;
+            font-size: 0.82rem;
             font-weight: 500;
+            color: #4a5568;
             overflow-wrap: anywhere;
         }
 
         .legend-count {
-            font-size: 0.75rem;
-            color: var(--text-light);
+            font-size: 0.68rem;
+            color: #95a5a6;
             font-family: 'JetBrains Mono', monospace;
         }
 
@@ -1306,6 +1306,30 @@
         }
 
         .bridge-zoom-hint,
+        .weather-station-marker-wrapper {
+            background: transparent;
+            border: none;
+        }
+
+        .weather-station-marker {
+            display: block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #1B4332;
+            box-shadow: 0 0 0 3px #fff, 0 0 0 4px #2D6A4F;
+        }
+
+        .weather-station-swatch {
+            width: 16px !important;
+            height: 16px !important;
+            border-radius: 50%;
+            margin-right: 12px;
+            flex-shrink: 0;
+            background: #1B4332;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 3px #2D6A4F;
+        }
+
         .weather-stations-hint,
         .sensitive-zones-hint,
         .inaturalist-sensitive-hint,
@@ -2097,51 +2121,53 @@
         }
 
         .layer-toggle-icon {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             cursor: pointer;
+            color: #7f8c8d;
         }
 
         .layer-toggle-icon .eye-glyph {
-            width: 18px;
-            height: 18px;
+            width: 15px;
+            height: 15px;
         }
 
         .legend-family-vis {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             flex-shrink: 0;
             margin: 0;
-            padding: 3px 8px 3px 4px;
-            border: 1px solid rgba(0, 0, 0, 0.07);
-            border-radius: 8px;
-            background: #fff;
+            padding: 2px 6px 2px 3px;
+            border: 1px solid #e8ecef;
+            border-radius: 5px;
+            background: #fafbfc;
             cursor: pointer;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            font-weight: 600;
-            color: #7f8c8d;
+            font-size: 0.6rem;
+            font-weight: 500;
+            color: #95a5a6;
             line-height: 1;
             -webkit-appearance: none;
             appearance: none;
-            transition: background 0.18s ease, border-color 0.18s ease;
+            transition: background 0.15s ease, border-color 0.15s ease;
         }
 
         .legend-family-vis:hover {
-            background: rgba(44, 62, 80, 0.06);
-            border-color: rgba(44, 62, 80, 0.14);
+            background: #f4f6f8;
+            border-color: #d5dce3;
         }
 
         .family-eye-icon {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             flex-shrink: 0;
+            color: #7f8c8d;
         }
 
         .family-eye-icon .eye-glyph {
-            width: 17px;
-            height: 17px;
+            width: 14px;
+            height: 14px;
         }
 
         .family-vis-count {
@@ -2167,24 +2193,20 @@
         }
 
         .toggle-icon.is-open {
-            color: #2C3E50;
+            color: #4a5568;
         }
 
         .toggle-icon.is-partial {
-            color: #566573;
+            color: #7f8c8d;
         }
 
         .toggle-icon.is-hidden {
-            color: #95A5A6;
+            color: #bdc3c7;
         }
 
         .legend-title:hover .layer-toggle-icon,
         .family-eye-icon:hover {
-            transform: scale(1.04);
-        }
-
-        .toggle-icon:active {
-            transform: scale(0.96);
+            color: #5b6770;
         }
 
         .legend-family-vis:focus-visible,
@@ -2634,21 +2656,20 @@
 
         /* === Familles de sections de la sidebar === */
         .legend-family {
-            margin: 0 0 14px 0;
-            border-radius: 8px;
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            border-left: 4px solid var(--family-accent, #95A5A6);
-            background: var(--family-tint, rgba(149, 165, 166, 0.05));
+            margin: 0 0 12px 0;
+            border-radius: 6px;
+            border: 1px solid #e8ecef;
+            border-left: 2px solid var(--family-accent, #c5cdd4);
+            background: #fff;
             overflow: hidden;
             min-width: 0;
-            transition: background 0.2s;
         }
 
-        .legend-family[data-family="factual"]  { --family-accent: var(--family-factual);  --family-tint: rgba(44, 62, 80, 0.05); }
-        .legend-family[data-family="stats"]    { --family-accent: var(--family-stats);    --family-tint: rgba(142, 68, 173, 0.05); }
-        .legend-family[data-family="realtime"] { --family-accent: var(--family-realtime); --family-tint: rgba(230, 126, 34, 0.05); }
-        .legend-family[data-family="incubator"] { --family-accent: var(--family-incubator); --family-tint: rgba(14, 116, 144, 0.06); }
-        .legend-family[data-family="tools"]    { --family-accent: var(--family-tools);    --family-tint: rgba(22, 160, 133, 0.05); }
+        .legend-family[data-family="factual"]  { --family-accent: #8b95a1; }
+        .legend-family[data-family="stats"]    { --family-accent: #9a8fa8; }
+        .legend-family[data-family="realtime"] { --family-accent: #b39a84; }
+        .legend-family[data-family="incubator"] { --family-accent: #7a9da8; }
+        .legend-family[data-family="tools"]    { --family-accent: #7fa89f; }
 
         .legend-family-header {
             display: flex;
@@ -2665,47 +2686,48 @@
             background: transparent;
             cursor: pointer;
             font-family: inherit;
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.6px;
-            font-weight: 700;
-            color: var(--family-accent);
+            text-transform: none;
+            font-size: 0.78rem;
+            letter-spacing: 0.01em;
+            font-weight: 600;
+            color: #4a5568;
             text-align: left;
-            transition: background 0.18s;
+            transition: background 0.15s;
         }
 
         .legend-family-expand {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 7px;
             flex: 1;
             min-width: 0;
-            padding: 8px 0 8px 12px;
+            padding: 9px 0 9px 10px;
         }
 
         .legend-family-chevron-btn {
-            padding: 8px 12px 8px 4px;
+            padding: 9px 10px 9px 4px;
             flex-shrink: 0;
         }
 
         .legend-family-expand:hover,
         .legend-family-chevron-btn:hover {
-            background: var(--family-tint);
+            background: #f8f9fa;
         }
 
         .legend-family-icon {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 22px;
-            height: 22px;
+            width: 18px;
+            height: 18px;
             flex-shrink: 0;
+            opacity: 0.72;
         }
 
         .legend-family-icon svg {
-            width: 18px;
-            height: 18px;
-            stroke: var(--family-accent);
+            width: 15px;
+            height: 15px;
+            stroke: #7f8c8d;
             display: block;
         }
 
@@ -2722,16 +2744,16 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             transition: transform 0.2s ease;
-            color: var(--family-accent);
+            color: #95a5a6;
             flex-shrink: 0;
         }
 
         .legend-family-chevron svg {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             stroke: currentColor;
         }
 
@@ -2744,16 +2766,27 @@
         }
 
         .legend-family-body {
-            padding: 2px 8px 8px 8px;
+            padding: 4px 8px 10px;
+            background: #f8f9fa;
+            border-top: 1px solid #e8ecef;
         }
 
-        /* Les sections enfantes d'une famille n'ont plus besoin de leur grosse marge */
         .legend-family-body .legend-section {
-            margin: 0 0 10px 0;
+            margin: 0 0 8px 0;
+            padding: 10px 8px 8px;
+            background: #fff;
+            border: 1px solid #e8ecef;
+            border-radius: 5px;
         }
 
         .legend-family-body .legend-section:last-child {
             margin-bottom: 0;
+        }
+
+        .legend-family-body .legend-section .legend-title {
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #f0f2f4;
         }
 
         /* La section dynamique Limitations cache son margin auto historique quand elle est dans une famille */
