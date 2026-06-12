@@ -64,7 +64,7 @@
                 label: 'Bi-hebdo — lun. & jeu. 03:17 UTC',
                 source: 'OpenStreetMap via Overpass',
                 cron: '17 3 * * 1,4',
-                intervalMs: 3.5 * 24 * 60 * 60 * 1000
+                intervalMs: 4 * 24 * 60 * 60 * 1000
             },
             wikidata: {
                 label: 'Bi-hebdo — lun. & jeu. 03:17 UTC',
@@ -75,6 +75,12 @@
             external: {
                 label: 'Toutes les 3 h — à xx:23 UTC',
                 source: 'data.gouv.fr & Bison Futé',
+                cron: '23 */3 * * *',
+                intervalMs: 3 * 60 * 60 * 1000
+            },
+            natural: {
+                label: 'Toutes les 3 h — à xx:23 UTC',
+                source: 'ENS DataSud + iNaturalist (workflow externe)',
                 cron: '23 */3 * * *',
                 intervalMs: 3 * 60 * 60 * 1000
             },
@@ -138,6 +144,7 @@
 
         function formatRelativeDuration(ms, opts = {}) {
             const future = !!opts.future;
+            if (future && ms <= 0) return 'imminent';
             const abs = Math.abs(ms);
             const prefix = future ? 'dans ' : 'il y a ';
             if (abs < 60000) return future ? 'imminent' : "à l'instant";
@@ -179,7 +186,9 @@
 
             if (scheduleKey === 'osm' || scheduleKey === 'wikidata') {
                 lines.push('Bi-hebdo · lun. & jeu. 03:17 UTC');
-            } else if (scheduleKey === 'external') lines.push('Toutes les 3 h · xx:23 UTC');
+            } else if (scheduleKey === 'external' || scheduleKey === 'natural') {
+                lines.push('Toutes les 3 h · xx:23 UTC');
+            }
 
             if (config.cron) {
                 const next = nextCronUtc(config.cron);
@@ -216,16 +225,21 @@
                 : (scheduleKey === 'static' ? 'snapshot' : '—');
 
             let nextText = '';
+            const scheduleAnchorMs = Math.max(Date.now(), generatedAtMs || 0);
             if (config.cron) {
-                const next = nextCronUtc(config.cron);
+                const next = nextCronUtc(config.cron, new Date(scheduleAnchorMs));
                 if (next) {
-                    nextText = ` • prochain ${formatRelativeDuration(next.getTime() - Date.now(), { future: true })}`;
+                    const delta = next.getTime() - Date.now();
+                    if (delta > 0) {
+                        nextText = ` • prochain ${formatRelativeDuration(delta, { future: true })}`;
+                    }
                 }
             } else if (config.intervalMs && generatedAtMs) {
-                const nextMs = generatedAtMs + config.intervalMs;
-                if (nextMs > Date.now()) {
-                    nextText = ` • prochain ${formatRelativeDuration(nextMs - Date.now(), { future: true })}`;
+                let nextMs = generatedAtMs + config.intervalMs;
+                while (nextMs <= Date.now()) {
+                    nextMs += config.intervalMs;
                 }
+                nextText = ` • prochain ${formatRelativeDuration(nextMs - Date.now(), { future: true })}`;
             }
 
             element.classList.add('freshness-badge');
@@ -2008,7 +2022,7 @@
                 const features = data.features || [];
                 renderFreshnessBadge(document.getElementById('freshness-sensitive-zones'), {
                     generatedAt: data._cache?.generated_at,
-                    scheduleKey: 'external',
+                    scheduleKey: 'natural',
                     errorMsg: data._cache?.error
                 });
 
@@ -2048,7 +2062,7 @@
             } catch (error) {
                 console.error('Erreur chargement ENS:', error);
                 renderFreshnessBadge(document.getElementById('freshness-sensitive-zones'), {
-                    scheduleKey: 'external',
+                    scheduleKey: 'natural',
                     errorMsg: error.message
                 });
                 if (!show) applySensitiveZonesHiddenUi();
@@ -2064,7 +2078,7 @@
                 const features = data.features || [];
                 renderFreshnessBadge(document.getElementById('freshness-inaturalist-sensitive'), {
                     generatedAt: data._cache?.generated_at,
-                    scheduleKey: 'external',
+                    scheduleKey: 'natural',
                     errorMsg: data._cache?.error
                 });
 
@@ -2112,7 +2126,7 @@
             } catch (error) {
                 console.error('Erreur chargement iNaturalist ENS:', error);
                 renderFreshnessBadge(document.getElementById('freshness-inaturalist-sensitive'), {
-                    scheduleKey: 'external',
+                    scheduleKey: 'natural',
                     errorMsg: error.message
                 });
                 if (!show) applyInaturalistSensitivesHiddenUi();

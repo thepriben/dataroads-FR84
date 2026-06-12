@@ -2170,6 +2170,7 @@
 
         .refresh-formula-row[data-schedule-key="osm"]      { border-left-color: #3498DB; }
         .refresh-formula-row[data-schedule-key="external"] { border-left-color: #F39C12; }
+        .refresh-formula-row[data-schedule-key="natural"]  { border-left-color: #2D6A4F; }
         .refresh-formula-row[data-schedule-key="live"]     { border-left-color: #27AE60; }
         .refresh-formula-row[data-schedule-key="static"]   { border-left-color: #7f8c8d; }
 

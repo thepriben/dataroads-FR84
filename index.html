@@ -382,7 +382,7 @@
                         <span>Espaces naturels sensibles</span>
                         <span id="sensitiveZonesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
-                    <span class="freshness-badge" id="freshness-sensitive-zones" data-schedule-key="external"></span>
+                    <span class="freshness-badge" id="freshness-sensitive-zones" data-schedule-key="natural"></span>
                     <div class="legend-item" data-sensitive-zone="ens" style="pointer-events: none; opacity: 0.5;">
                         <div class="legend-color sensitive-zone-swatch"></div>
                         <div class="legend-label">ENS CD84 (polygones)</div>
@@ -396,7 +396,7 @@
                         <span>Observations iNaturalist</span>
                         <span id="inaturalistSensitivesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
                     </div>
-                    <span class="freshness-badge" id="freshness-inaturalist-sensitive" data-schedule-key="external"></span>
+                    <span class="freshness-badge" id="freshness-inaturalist-sensitive" data-schedule-key="natural"></span>
                     <div class="legend-item" data-inaturalist="observation" style="pointer-events: none; opacity: 0.5;">
                         <div class="legend-color inaturalist-swatch"></div>
                         <div class="legend-label">Dans les ENS</div>
@@ -515,6 +515,16 @@
                             </div>
                         </div>
 
+                        <div class="refresh-formula-row" data-schedule-key="natural">
+                            <div>
+                                <div class="refresh-formula-label">Nature (ENS, iNaturalist)</div>
+                                <div style="font-size:0.7rem;color:#7f8c8d;">DataSud + API iNaturalist</div>
+                            </div>
+                            <div class="refresh-formula-meta" id="refreshMetaNatural">
+                                Toutes les 3 h · xx:23 UTC<br>—
+                            </div>
+                        </div>
+
                         <div class="refresh-formula-row" data-schedule-key="live">
                             <div>
                                 <div class="refresh-formula-label">Météo Open-Meteo</div>
@@ -624,6 +634,6 @@
     </script>
     <script src="js/api.js?v=20260606-1"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260612-3"></script>
+    <script src="js/app.js?v=20260612-4"></script>
 </body>
 </html>
