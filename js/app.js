@@ -1029,10 +1029,69 @@
         const APP_URL_FAMILY_IDS = ['factual', 'stats', 'realtime', 'incubator'];
 
         const DEFAULT_MAP_VIEW = Object.freeze({
-            lat: 44.08,
-            lng: 5.28,
-            zoom: 10.25
+            lat: 44.06,
+            lng: 5.20,
+            zoom: 11.25
         });
+
+        const DEFAULT_MAP_FRAMING = Object.freeze({
+            fitPadding: [28, 28],
+            zoomBump: 1,
+            maxZoom: 11.75
+        });
+
+        let vaucluseDefaultBounds = null;
+
+        function resolveDefaultMapCenterZoom() {
+            if (!window.map || !vaucluseDefaultBounds?.isValid()) {
+                return {
+                    latLng: L.latLng(DEFAULT_MAP_VIEW.lat, DEFAULT_MAP_VIEW.lng),
+                    zoom: DEFAULT_MAP_VIEW.zoom
+                };
+            }
+
+            const snapshot = {
+                center: window.map.getCenter(),
+                zoom: window.map.getZoom()
+            };
+
+            window.map.fitBounds(vaucluseDefaultBounds, {
+                padding: DEFAULT_MAP_FRAMING.fitPadding,
+                maxZoom: DEFAULT_MAP_FRAMING.maxZoom,
+                animate: false
+            });
+
+            const target = {
+                latLng: window.map.getCenter(),
+                zoom: Math.min(
+                    window.map.getZoom() + DEFAULT_MAP_FRAMING.zoomBump,
+                    DEFAULT_MAP_FRAMING.maxZoom
+                )
+            };
+
+            window.map.setView(snapshot.center, snapshot.zoom, { animate: false });
+            return target;
+        }
+
+        function applyDefaultMapView({ animate = false } = {}) {
+            if (!window.map) return;
+
+            suppressAppUrlSync = true;
+
+            const finish = () => {
+                suppressAppUrlSync = false;
+                syncAppUrlState();
+            };
+
+            const { latLng, zoom } = resolveDefaultMapCenterZoom();
+            window.map.setView(latLng, zoom, { animate });
+
+            if (animate) {
+                window.map.once('moveend', finish);
+            } else {
+                finish();
+            }
+        }
 
         function parseAppUrlState() {
             const params = new URLSearchParams(window.location.search);
@@ -2861,15 +2920,7 @@
         window.map.on('moveend zoomend', scheduleAppUrlSync);
 
         window.resetMapView = function() {
-            if (!window.map) return;
-            suppressAppUrlSync = true;
-            window.map.setView(
-                [DEFAULT_MAP_VIEW.lat, DEFAULT_MAP_VIEW.lng],
-                DEFAULT_MAP_VIEW.zoom,
-                { animate: true }
-            );
-            suppressAppUrlSync = false;
-            syncAppUrlState();
+            applyDefaultMapView({ animate: true });
         };
 
         // Plain CartoDB Positron basemap
@@ -2948,13 +2999,11 @@
                         fillOpacity: 0.05
                     }
                 }).addTo(window.map);
-                
+
+                vaucluseDefaultBounds = boundaryLayer.getBounds();
+
                 if (!appUrlHasView(parseAppUrlState())) {
-                    map.setView(
-                        [DEFAULT_MAP_VIEW.lat, DEFAULT_MAP_VIEW.lng],
-                        DEFAULT_MAP_VIEW.zoom,
-                        { animate: false }
-                    );
+                    applyDefaultMapView({ animate: false });
                 }
                 tryApplyAppUrlState();
                 scheduleAppUrlSync();
@@ -3358,11 +3407,6 @@
                     }
                 }
             } catch (error) {
-                const routePhaseError = error && /bringToFront|bridgeGroup/i.test(String(error.message || ''));
-                if (routePhaseError) {
-                    console.error('Erreur couche ponts après chargement des routes:', error);
-                    return;
-                }
                 console.error('Erreur lors du chargement des routes:', error);
 
                 const detail = error && error.message
