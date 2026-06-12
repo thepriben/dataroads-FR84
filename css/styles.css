@@ -49,14 +49,14 @@
         }
 
         :root {
-            --header-height: 56px;
-            --sidebar-foot-height: 40px;
+            --header-height: 50px;
+            --sidebar-foot-height: 34px;
         }
 
         .header {
             background: linear-gradient(135deg, #1f2933 0%, #2c3e50 100%);
             color: white;
-            padding: 8px 18px;
+            padding: 6px 16px;
             min-height: var(--header-height);
             position: relative;
             overflow: hidden;
@@ -85,8 +85,8 @@
 
         .header-logo-mark {
             display: block;
-            width: 34px;
-            height: 34px;
+            width: 32px;
+            height: 32px;
             object-fit: cover;
         }
 
@@ -198,9 +198,9 @@
         }
 
         .header h1 {
-            font-size: 1.15rem;
+            font-size: 1.08rem;
             font-weight: 700;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
             position: relative;
             z-index: 1;
             letter-spacing: 0.15px;
@@ -226,7 +226,7 @@
 
         @media (max-width: 640px) {
             :root {
-                --header-height: 72px;
+                --header-height: 66px;
             }
 
             .header {
@@ -326,7 +326,7 @@
             justify-content: center;
             gap: 8px;
             min-height: var(--sidebar-foot-height);
-            padding: 8px 12px;
+            padding: 6px 12px;
             border-top: 1px solid var(--border);
             background: #fafbfc;
         }
