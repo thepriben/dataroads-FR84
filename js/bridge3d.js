@@ -514,6 +514,7 @@
 
             // Texture immédiate pour Panoramax.
             if (photo.provider === 'panoramax' && photo.textureUrl) {
+                plane.userData.imageUrl = photo.textureUrl;
                 applyTexture(plane, photo.textureUrl, planeW, planeH);
             }
 
@@ -526,7 +527,7 @@
                     plane.userData.meta = meta;
                 }
                 const turl = meta && meta.thumbUrl ? meta.thumbUrl : photo.textureUrl;
-                if (turl) applyTexture(plane, turl, planeW, planeH);
+                if (turl) { plane.userData.imageUrl = turl; applyTexture(plane, turl, planeW, planeH); }
             });
         });
     }
@@ -585,6 +586,7 @@
         const dom = S.renderer.domElement;
         dom.addEventListener('pointermove', onPointerMove);
         dom.addEventListener('click', onClick);
+        dom.addEventListener('pointerleave', () => hidePreview());
 
         S.resizeObs = new ResizeObserver(() => resize());
         S.resizeObs.observe(wrap);
@@ -626,6 +628,7 @@
         S.photoMeshes = [];
         S.hovered = null;
         S.focus = null;
+        S.focusIndex = null;
     }
 
     // --- Tuiles web-mercator (fond de carte 2D) ---
@@ -789,6 +792,32 @@
             if (S.hovered) S.hovered.scale.multiplyScalar(1.06);
             S.renderer.domElement.style.cursor = obj ? 'pointer' : 'grab';
         }
+        // Aperçu en grand au survol (souris non enfoncée pour ne pas gêner l'orbite).
+        if (obj && !ev.buttons) showPreview(obj);
+        else hidePreview();
+    }
+
+    // Grand aperçu 2D de la photo, superposé à la scène.
+    function showPreview(plane) {
+        const box = el('bridge3dPreview');
+        if (!box || !plane) return;
+        const url = plane.userData.imageUrl;
+        if (!url) { hidePreview(); return; }
+        if (box.dataset.url !== url) {
+            const photo = plane.userData.photo || {};
+            const meta = plane.userData.meta;
+            const az = meta && typeof meta.azimuth === 'number' ? ` · vue vers ${cardinal(meta.azimuth)} (${Math.round(meta.azimuth)}°)` : '';
+            box.dataset.url = url;
+            box.innerHTML =
+                `<img src="${escapeHtml(url)}" alt="" loading="lazy">`
+                + `<div class="bridge3d-preview-cap">${escapeHtml(photo.providerLabel || photo.provider || 'Photo')}${escapeHtml(az)}</div>`;
+        }
+        box.style.display = 'block';
+    }
+
+    function hidePreview() {
+        const box = el('bridge3dPreview');
+        if (box) { box.style.display = 'none'; box.dataset.url = ''; }
     }
 
     function onClick(ev) {
@@ -817,6 +846,8 @@
     function deselectPhoto() {
         restorePhotos();
         highlightThumb(-1);
+        S.focusIndex = null;
+        hidePreview();
         const sel = el('bridge3dSelected');
         if (sel) { sel.style.display = 'none'; sel.innerHTML = ''; }
     }
@@ -838,6 +869,7 @@
             t: 0
         };
         dimOtherPhotos(index);
+        S.focusIndex = index;
         const photo = plane.userData.photo;
         const meta = plane.userData.meta;
         const sel = el('bridge3dSelected');
@@ -1042,6 +1074,7 @@
         const overlay = el('bridge3dOverlay');
         if (overlay) { overlay.classList.remove('active'); overlay.setAttribute('aria-hidden', 'true'); }
         stopLoop();
+        hidePreview();
         clearRoot();
     }
 

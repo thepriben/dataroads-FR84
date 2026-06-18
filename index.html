@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260618-2">
+    <link rel="stylesheet" href="css/styles.css?v=20260618-3">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -675,8 +675,9 @@
                     <div class="bridge3d-canvas-wrap" id="bridge3dCanvasWrap"></div>
                     <div class="bridge3d-meta" id="bridge3dMeta"></div>
                     <div class="bridge3d-card" id="bridge3dCard" style="display:none;"></div>
+                    <div class="bridge3d-preview" id="bridge3dPreview" style="display:none;"></div>
                     <div class="bridge3d-selected" id="bridge3dSelected" style="display:none;"></div>
-                    <div class="bridge3d-hint" id="bridge3dHint">Glissez pour tourner · molette pour zoomer · cliquez une photo</div>
+                    <div class="bridge3d-hint" id="bridge3dHint">Glissez pour tourner · molette pour zoomer · survolez une photo pour l'agrandir · cliquez pour la viser</div>
                 </div>
                 <div class="bridge3d-gallery" id="bridge3dGallery"></div>
             </div>
@@ -684,7 +685,7 @@
 
     </div>
 
-    <script src="js/config.js?v=20260618-13"></script>
+    <script src="js/config.js?v=20260618-14"></script>
     <script>
         (function () {
             var el = document.getElementById('siteVersion');
@@ -696,6 +697,6 @@
     <script src="js/api.js?v=20260606-1"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
     <script src="js/app.js?v=20260618-3"></script>
-    <script src="js/bridge3d.js?v=20260618-13"></script>
+    <script src="js/bridge3d.js?v=20260618-14"></script>
 </body>
 </html>
