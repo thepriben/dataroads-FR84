@@ -52,8 +52,11 @@
         return 'beam';
     }
 
-    // Nombre de travées / arches déduit (piles -> longueur -> défaut).
+    // Nombre de travées / arches déduit (Wikidata -> piles -> longueur -> défaut).
     function deriveSpanCount(payload, kind, L) {
+        if (payload.spanCountHint && payload.spanCountHint > 0) {
+            return clamp(Math.round(payload.spanCountHint), 1, 30);
+        }
         if (payload.pillarCount && payload.pillarCount > 0) {
             return clamp(payload.pillarCount + 1, 1, 24);
         }
@@ -81,11 +84,69 @@
         payload: null,
         textureCache: new Map(),
         mapillaryThumb: new Map(),
-        photoMeta: new Map()
+        photoMeta: new Map(),
+        wikidataCache: new Map()
     };
 
     function token() {
         return (window.APP_CONFIG && window.APP_CONFIG.mapillary && window.APP_CONFIG.mapillary.accessToken) || '';
+    }
+
+    // ---- Wikidata (enrichit le modèle quand OSM est lacunaire) ----
+    // Récupère type de structure (P31), matériau (P186), nombre de travées (P1314),
+    // longueur (P2043) et largeur (P2049), avec libellés FR/EN pour interprétation.
+    function wikidataBridgeInfo(qid) {
+        if (S.wikidataCache.has(qid)) return S.wikidataCache.get(qid);
+        const url = `https://www.wikidata.org/wiki/Special:EntityData/${encodeURIComponent(qid)}.json`;
+        const p = fetch(url, { credentials: 'omit' })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                const ent = data && data.entities && data.entities[qid];
+                if (!ent || !ent.claims) return null;
+                const claims = ent.claims;
+                const getQids = (pid) => (claims[pid] || [])
+                    .map(c => c.mainsnak && c.mainsnak.datavalue && c.mainsnak.datavalue.value && c.mainsnak.datavalue.value.id)
+                    .filter(Boolean);
+                const getQty = (pid) => {
+                    const c = (claims[pid] || [])[0];
+                    const v = c && c.mainsnak && c.mainsnak.datavalue && c.mainsnak.datavalue.value;
+                    if (!v || v.amount == null) return null;
+                    const n = parseFloat(v.amount);
+                    return Number.isFinite(n) ? n : null;
+                };
+                const typeQids = getQids('P31');
+                const matQids = getQids('P186');
+                const base = { spans: getQty('P1314'), length: getQty('P2043'), width: getQty('P2049'), typeStr: '', matStr: '' };
+                const need = typeQids.concat(matQids);
+                if (!need.length) return base;
+                const params = `action=wbgetentities&ids=${encodeURIComponent(need.join('|'))}&props=labels&languages=fr|en&format=json&origin=*`;
+                return fetch(`https://www.wikidata.org/w/api.php?${params}`, { credentials: 'omit' })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(lab => {
+                        const labelOf = (q) => {
+                            const e = lab && lab.entities && lab.entities[q];
+                            const ls = e && e.labels;
+                            return (ls && ((ls.fr && ls.fr.value) || (ls.en && ls.en.value))) || '';
+                        };
+                        base.typeStr = typeQids.map(labelOf).join(' ');
+                        base.matStr = matQids.map(labelOf).join(' ');
+                        return base;
+                    })
+                    .catch(() => base);
+            })
+            .catch(() => null);
+        S.wikidataCache.set(qid, p);
+        return p;
+    }
+
+    // Traduit un libellé de type Wikidata en mot-clé reconnu par structureKind.
+    function structureFromLabel(label) {
+        const t = String(label || '').toLowerCase();
+        if (t.includes('susp') || t.includes('cable') || t.includes('câble') || t.includes('hauban')) return 'suspension';
+        if (t.includes('treillis') || t.includes('truss')) return 'truss';
+        if (t.includes('arch') || t.includes('arc') || t.includes('voûte') || t.includes('voute') || t.includes('aqueduc')) return 'arch';
+        if (t.includes('poutre') || t.includes('beam') || t.includes('girder') || t.includes('dalle') || t.includes('slab')) return 'beam';
+        return '';
     }
 
     // ---- Textures ----
@@ -346,13 +407,15 @@
         plane.userData.extras = [];
     }
 
-    // Positionne et oriente un panneau photo. Le panneau représente le point de vue
-    // du photographe : il est placé au lieu de prise de vue et regarde vers le pont
-    // (centre de la scène), comme le faisait l'objectif.
-    // Ajoute un marqueur au sol (lieu de prise de vue) et un mât vertical.
+    // Positionne et oriente un panneau photo. La face « image » est tournée vers
+    // l'extérieur (visible quand on tourne autour du pont) ; le dos coloré fait
+    // face au pont. Ajoute un marqueur au sol (lieu de prise de vue) et un mât.
     function placePhoto(plane, x, y, z, azimuth, payload) {
         plane.position.set(x, y, z);
-        plane.lookAt(0, y, 0);
+        // Direction extérieure (du centre du pont vers le lieu de prise de vue).
+        let ox = x, oz = z;
+        if (ox * ox + oz * oz < 1e-4) { ox = 0; oz = 1; }
+        plane.lookAt(x + ox, y, z + oz);
         plane.userData.basePos = new THREE.Vector3(x, y, z);
 
         removePhotoExtras(plane);
@@ -395,9 +458,11 @@
         const slotCount = new Map();
 
         payload.photos.forEach((photo, index) => {
-            const providerCol = photo.provider === 'panoramax' ? 0x1f9e5a : 0x2575c2;
+            // Couleur du dos (face vers le pont) : vert Mapillary, gris clair Panoramax.
+            const providerCol = photo.provider === 'mapillary' ? 0x2e9d57 : 0xd9dee5;
 
-            const mat = new THREE.MeshBasicMaterial({ color: 0x223043, side: THREE.DoubleSide });
+            // La photo n'est visible que sur la face extérieure ; le dos montre le cadre coloré.
+            const mat = new THREE.MeshBasicMaterial({ color: 0x223043, side: THREE.FrontSide });
             const plane = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH), mat);
             const frame = new THREE.Mesh(
                 new THREE.PlaneGeometry(planeW + 0.5, planeH + 0.5),
@@ -815,6 +880,30 @@
         `;
     }
 
+    // Complète le payload via Wikidata puis reconstruit le modèle si quelque chose
+    // d'utile a été ajouté (type de structure, matériau, travées, dimensions).
+    function enrichFromWikidata(payload) {
+        if (!payload.wikidataId) return;
+        wikidataBridgeInfo(payload.wikidataId).then(info => {
+            if (!info || S.payload !== payload || !S.ready) return;
+            let changed = false;
+            if (!payload.structure && info.typeStr) {
+                const s = structureFromLabel(info.typeStr);
+                if (s) { payload.structure = s; changed = true; }
+            }
+            if (!payload.material && info.matStr) { payload.material = info.matStr; changed = true; }
+            if (info.spans && info.spans > 0 && payload.spanCountHint !== info.spans) { payload.spanCountHint = info.spans; changed = true; }
+            if ((!payload.axisLengthM || payload.axisLengthM <= 0) && info.length && info.length > 0) { payload.axisLengthM = info.length; changed = true; }
+            if (payload.widthM == null && info.width && info.width > 0) { payload.widthM = info.width; changed = true; }
+            if (!changed) return;
+            if (!payload.metaChips.some(c => c.label === 'Wikidata')) {
+                payload.metaChips.push({ label: 'Wikidata', value: payload.wikidataId });
+            }
+            buildHeader(payload);
+            buildScene(payload);
+        });
+    }
+
     // ================= API publique =================
     function open(payload) {
         if (!payload) return;
@@ -838,6 +927,7 @@
         startLoop();
         // Resize après affichage (les dimensions du wrap sont disponibles).
         requestAnimationFrame(resize);
+        enrichFromWikidata(payload);
 
         // Focus optionnel sur une photo (clic sur un marqueur photo de la carte).
         if (payload.focusPhotoKey) {
