@@ -12,7 +12,7 @@
     <div class="guide-wrap">
         <header class="guide-top">
             <a href="./">← Retour à la carte</a>
-            <span class="guide-top-meta">dataroads-FR84</span>
+            <span class="guide-top-meta"><a href="guide.html" aria-current="page">FR</a> · <a href="guide.en.html">EN</a> · dataroads-FR84</span>
         </header>
 
         <h1>Guide utilisateur</h1>
@@ -142,13 +142,14 @@
 <p>Couches expérimentales : ouvrages d'art, environnement, biodiversité, webcams recensées. Seule la <strong>couche ponts</strong> affiche une pastille d'actualisation (bi-hebdo, lun. &amp; jeu.).</p>
 <div class="guide-layer" id="layer-ponts">
 <h4>Couche ponts</h4>
-<p>Ouvrages d'art OSM du département : tablier, culées, piles. Affichage adapté au zoom :</p>
+<p>Ouvrages d'art OSM du département. Affichage adapté au zoom :</p>
 <ul>
 <li>Zoom lointain — grappes (nombre de ponts ou de photos).</li>
-<li>Zoom ≥ 12 — profil des éléments (tablier, culées, piles) ; les grappes disparaissent.</li>
-<li>Zoom ≥ 16 — photos Panoramax / Mapillary le long de l'ouvrage.</li>
+<li>Zoom ≥ 12 — emprise des ouvrages sur la carte ; les grappes disparaissent.</li>
+<li>Zoom ≥ 16 — photos Panoramax / Mapillary à proximité de l'ouvrage.</li>
 </ul>
-<p><strong>Comment :</strong> activer la couche puis zoomer : le profil apparaît sans clic dès le zoom 12. Au zoom lointain, cliquer une grappe pour zoomer progressivement ; cliquer un élément ou une photo pour ouvrir la <strong>visionneuse</strong> (plan schématique + photo principale). Les boutons Panoramax / Mapillary filtrent les sources photo.</p>
+<p><strong>Comment :</strong> activer la couche puis zoomer. Au zoom lointain, cliquer une grappe pour zoomer progressivement ; cliquer un pont ouvre la <strong>vue 3D plein écran</strong>.</p>
+<p><strong>Vue 3D :</strong> un modèle simple de l'ouvrage est généré à la volée d'après les tags OSM (type de structure — arche, poutre, treillis, suspendu —, matériau, longueur, largeur). On tourne autour à la souris (orbite, zoom). Un fond de carte 2D (fleuves et voiries) est posé sous le pont. Les photos Panoramax / Mapillary sont disposées <strong>à leur lieu réel de prise de vue</strong> et orientées selon leur direction de visée. Cliquer une vignette ou un panneau recadre la caméra et affiche la source ; <span class="guide-kbd">Échap</span> ou × pour fermer.</p>
 </div><div class="guide-layer" id="layer-ens">
 <h4>Espaces naturels sensibles (ENS)</h4>
 <p>Polygones CD84 (DataSud). Superficie, communes, gestionnaire.</p>
@@ -188,7 +189,8 @@
 <li><strong>Maison</strong> — vue initiale du département.</li>
 <li><strong>Comptages CD84</strong> — active la couche stations de comptage (sync avec la légende).</li>
 <li><strong>Convois except.</strong> — met en évidence le réseau régional et territorial, atténue le local (aide au gabarit exceptionnel).</li>
-<li><strong>Limitations</strong> — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, pictogrammes hauteur / poids sur ponts et passages remarquables.</li>
+<li><strong>Limitations</strong> — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, panneaux de vitesse et pictogrammes hauteur / poids. Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.</li>
+<li><strong>Mapillary</strong> — affiche la couverture photo Mapillary (zones disposant de prises de vue au sol).</li>
 </ul>
 <p class="guide-hint">Les boutons actifs sont soulignés visuellement (fond sombre).</p>
         </section>

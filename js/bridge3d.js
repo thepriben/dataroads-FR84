@@ -80,7 +80,8 @@
         focus: null,         // { camFrom, camTo, tgtFrom, tgtTo, t } animation
         payload: null,
         textureCache: new Map(),
-        mapillaryThumb: new Map()
+        mapillaryThumb: new Map(),
+        photoMeta: new Map()
     };
 
     function token() {
@@ -274,6 +275,113 @@
     }
 
     // ================= Photos (billboards) =================
+    const M_PER_DEG = 111320;
+
+    // Convertit une géoloc (lat,lng) en coordonnées scène nord-haut centrées sur le pont :
+    // X = est (m), Z = -nord (m). On borne pour éviter les points GPS aberrants.
+    function geoToLocal(lat, lng, payload, L) {
+        const latRad = (payload.centerLat || 0) * Math.PI / 180;
+        const east = (lng - payload.centerLng) * Math.cos(latRad) * M_PER_DEG;
+        const north = (lat - payload.centerLat) * M_PER_DEG;
+        const lim = Math.max(L * 1.2, 60);
+        return { x: clamp(east, -lim, lim), z: clamp(-north, -lim, lim) };
+    }
+
+    function cardinal(deg) {
+        const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+        return dirs[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
+    }
+
+    // Récupère (avec cache) la géoloc + l'azimut (+ vignette) d'une photo.
+    function fetchPhotoMeta(photo) {
+        if (S.photoMeta.has(photo.key)) return S.photoMeta.get(photo.key);
+        let p;
+        if (photo.provider === 'mapillary') {
+            const tk = token();
+            if (!tk) {
+                p = Promise.resolve(null);
+            } else {
+                const url = `https://graph.mapillary.com/${encodeURIComponent(photo.id)}?access_token=${encodeURIComponent(tk)}&fields=geometry,compass_angle,thumb_1024_url`;
+                p = fetch(url, { credentials: 'omit' })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(d => {
+                        if (!d || !d.geometry || !d.geometry.coordinates) return null;
+                        const c = d.geometry.coordinates;
+                        return {
+                            lng: c[0], lat: c[1],
+                            azimuth: typeof d.compass_angle === 'number' ? d.compass_angle : null,
+                            thumbUrl: d.thumb_1024_url || null
+                        };
+                    })
+                    .catch(() => null);
+            }
+        } else {
+            const url = `https://api.panoramax.xyz/api/search?ids=${encodeURIComponent(photo.id)}&limit=1`;
+            p = fetch(url, { credentials: 'omit' })
+                .then(r => r.ok ? r.json() : null)
+                .then(d => {
+                    const f = d && d.features && d.features[0];
+                    if (!f || !f.geometry || !f.geometry.coordinates) return null;
+                    const c = f.geometry.coordinates;
+                    const az = f.properties && f.properties['view:azimuth'];
+                    return {
+                        lng: c[0], lat: c[1],
+                        azimuth: typeof az === 'number' ? az : null,
+                        thumbUrl: photo.textureUrl || null
+                    };
+                })
+                .catch(() => null);
+        }
+        S.photoMeta.set(photo.key, p);
+        return p;
+    }
+
+    function removePhotoExtras(plane) {
+        if (!plane.userData.extras) return;
+        plane.userData.extras.forEach(o => {
+            S.root.remove(o);
+            if (o.geometry) o.geometry.dispose();
+            if (o.material) o.material.dispose();
+        });
+        plane.userData.extras = [];
+    }
+
+    // Positionne et oriente un panneau photo. Si azimuth connu, le plan « regarde »
+    // dans la direction de prise de vue ; sinon il fait face vers l'extérieur.
+    // Ajoute un marqueur au sol (lieu de prise de vue) et un mât vertical.
+    function placePhoto(plane, x, y, z, azimuth, payload) {
+        plane.position.set(x, y, z);
+        if (typeof azimuth === 'number') {
+            const azr = azimuth * Math.PI / 180;
+            // direction de visée en repère nord-haut : est = sin(az), nord = cos(az) -> z = -nord
+            plane.lookAt(x + Math.sin(azr), y, z - Math.cos(azr));
+        } else {
+            plane.lookAt(x, y, z + (z >= 0 ? 1 : -1));
+        }
+        plane.userData.basePos = new THREE.Vector3(x, y, z);
+
+        removePhotoExtras(plane);
+        const col = plane.userData.providerCol;
+        const extras = [];
+        if (y > 0.2) {
+            const conn = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.06, 0.06, y, 6),
+                new THREE.MeshBasicMaterial({ color: col })
+            );
+            conn.position.set(x, y / 2, z);
+            S.root.add(conn);
+            extras.push(conn);
+        }
+        const dot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.55, 10, 10),
+            new THREE.MeshBasicMaterial({ color: col })
+        );
+        dot.position.set(x, 0.1, z);
+        S.root.add(dot);
+        extras.push(dot);
+        plane.userData.extras = extras;
+    }
+
     function buildPhotos(payload) {
         S.photoMeshes = [];
         if (!Array.isArray(payload.photos) || !payload.photos.length) return;
@@ -281,58 +389,58 @@
         const planeW = clamp(L / 5, 5, 14);
         const planeH = planeW * 0.72;
         const outZ = W / 2 + clamp(W * 0.9, 5, 12);
+        const photoY = deckY + planeH * 0.55;
+        const hasGeo = payload.centerLat != null && payload.centerLng != null;
+        // Vecteurs d'axe (monde) pour aligner le repli OSM sur le cap réel du pont.
+        const theta = (payload.axisBearingDeg || 0) * Math.PI / 180;
+        const along = { x: Math.sin(theta), z: -Math.cos(theta) };
+        const perp = { x: Math.cos(theta), z: Math.sin(theta) };
 
-        // Empilage : compte les photos par (côté, position arrondie) pour décaler en hauteur.
+        // Pour le repli OSM : empilage par (côté, position arrondie).
         const slotCount = new Map();
 
         payload.photos.forEach((photo, index) => {
-            const t = typeof photo.t === 'number' ? photo.t : 0.5;
-            const side = photo.side < 0 ? -1 : 1;
-            const x = (t - 0.5) * L;
-            const slotKey = `${side}|${Math.round(t * 8)}`;
-            const ring = slotCount.get(slotKey) || 0;
-            slotCount.set(slotKey, ring + 1);
-
-            const z = side * outZ;
-            const y = deckY + planeH * 0.6 + ring * (planeH + 0.8);
-
             const providerCol = photo.provider === 'panoramax' ? 0x1f9e5a : 0x2575c2;
-            // Cadre coloré (légèrement plus grand, derrière)
+
+            const mat = new THREE.MeshBasicMaterial({ color: 0x223043, side: THREE.DoubleSide });
+            const plane = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH), mat);
             const frame = new THREE.Mesh(
                 new THREE.PlaneGeometry(planeW + 0.5, planeH + 0.5),
                 new THREE.MeshBasicMaterial({ color: providerCol, side: THREE.DoubleSide })
             );
-            frame.position.set(x, y, z + (side > 0 ? -0.05 : 0.05));
-            if (side < 0) frame.rotation.y = Math.PI;
-            S.root.add(frame);
-
-            // Plan image (placeholder coloré puis texture)
-            const mat = new THREE.MeshBasicMaterial({ color: 0x223043, side: THREE.DoubleSide });
-            const plane = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH), mat);
-            plane.position.set(x, y, z);
-            if (side < 0) plane.rotation.y = Math.PI;
-            plane.userData = { photo, index, basePos: plane.position.clone(), side };
+            frame.position.z = -0.06;
+            plane.add(frame);
+            plane.userData = { photo, index, providerCol, basePos: new THREE.Vector3() };
             S.root.add(plane);
             S.photoMeshes.push(plane);
 
-            // Connecteur tablier -> panneau
-            const connTop = y - planeH / 2;
-            const connBottom = deckY;
-            if (connTop > connBottom) {
-                const conn = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.08, 0.08, connTop - connBottom, 6),
-                    new THREE.MeshBasicMaterial({ color: providerCol })
-                );
-                conn.position.set(x, (connTop + connBottom) / 2, side * (W / 2 + 0.4));
-                S.root.add(conn);
-            }
+            // Position de repli (OSM) en attendant la géoloc réelle.
+            const ft = typeof photo.fallbackT === 'number' ? photo.fallbackT : 0.5;
+            const fside = photo.fallbackSide < 0 ? -1 : 1;
+            const slotKey = `${fside}|${Math.round(ft * 8)}`;
+            const ring = slotCount.get(slotKey) || 0;
+            slotCount.set(slotKey, ring + 1);
+            const d = (ft - 0.5) * L, off = fside * outZ;
+            const fx = along.x * d + perp.x * off;
+            const fz = along.z * d + perp.z * off;
+            placePhoto(plane, fx, photoY + ring * (planeH + 0.8), fz, null, payload);
 
-            // Texture
+            // Texture immédiate pour Panoramax.
             if (photo.provider === 'panoramax' && photo.textureUrl) {
                 applyTexture(plane, photo.textureUrl, planeW, planeH);
-            } else if (photo.provider === 'mapillary') {
-                mapillaryThumbUrl(photo.id).then(url => { if (url) applyTexture(plane, url, planeW, planeH); });
             }
+
+            // Métadonnée réelle : repositionne + oriente selon le lieu/azimut de prise de vue.
+            fetchPhotoMeta(photo).then(meta => {
+                if (!plane.parent) return; // scène fermée entre-temps
+                if (meta && hasGeo && meta.lat != null) {
+                    const loc = geoToLocal(meta.lat, meta.lng, payload, L);
+                    placePhoto(plane, loc.x, photoY, loc.z, meta.azimuth, payload);
+                    plane.userData.meta = meta;
+                }
+                const turl = meta && meta.thumbUrl ? meta.thumbUrl : photo.textureUrl;
+                if (turl) applyTexture(plane, turl, planeW, planeH);
+            });
         });
     }
 
@@ -426,32 +534,108 @@
             disposeObject(S.root);
             S.root = null;
         }
+        if (S.mapTex) { S.mapTex.dispose(); S.mapTex = null; }
+        S.mapPlane = null;
         S.photoMeshes = [];
         S.hovered = null;
         S.focus = null;
+    }
+
+    // --- Tuiles web-mercator (fond de carte 2D) ---
+    function lon2tile(lon, z) { return (lon + 180) / 360 * Math.pow(2, z); }
+    function lat2tile(lat, z) { const r = lat * Math.PI / 180; return (1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2 * Math.pow(2, z); }
+    function tile2lon(x, z) { return x / Math.pow(2, z) * 360 - 180; }
+    function tile2lat(y, z) { const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); }
+
+    // Fond de carte 2D (CartoDB Positron) sous le pont : on voit fleuves et voiries.
+    // Repli sur un plan d'eau uni si les tuiles échouent. Repère nord-haut.
+    function buildGroundMap(payload) {
+        const { L } = S.model;
+        const fallback = new THREE.Mesh(
+            new THREE.PlaneGeometry(L * 3.5, L * 3.5),
+            new THREE.MeshBasicMaterial({ color: 0x16314a })
+        );
+        fallback.rotation.x = -Math.PI / 2;
+        fallback.position.y = -0.06;
+        S.root.add(fallback);
+
+        if (payload.centerLat == null || payload.centerLng == null || typeof document === 'undefined') return;
+
+        const lat = payload.centerLat, lng = payload.centerLng;
+        const latRad = lat * Math.PI / 180;
+        const half = Math.max(L * 1.6, 140);
+        const targetMpp = (half * 2) / 1024;
+        let z = Math.round(Math.log2(156543.03392 * Math.cos(latRad) / targetMpp));
+        z = clamp(z, 13, 19);
+        const worldMpp = 156543.03392 * Math.cos(latRad) / Math.pow(2, z);
+        const metersPerTile = worldMpp * 256;
+        const halfTiles = half / metersPerTile;
+        const cTX = lon2tile(lng, z), cTY = lat2tile(lat, z);
+        const minTX = Math.floor(cTX - halfTiles), maxTX = Math.floor(cTX + halfTiles);
+        const minTY = Math.floor(cTY - halfTiles), maxTY = Math.floor(cTY + halfTiles);
+        const cols = maxTX - minTX + 1, rows = maxTY - minTY + 1;
+        if (cols > 6 || rows > 6 || cols < 1 || rows < 1) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = cols * 256; canvas.height = rows * 256;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#dfe3e8';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const tex = new THREE.CanvasTexture(canvas);
+
+        const leftLng = tile2lon(minTX, z), rightLng = tile2lon(maxTX + 1, z);
+        const topLat = tile2lat(minTY, z), botLat = tile2lat(maxTY + 1, z);
+        const eastL = (leftLng - lng) * Math.cos(latRad) * M_PER_DEG;
+        const eastR = (rightLng - lng) * Math.cos(latRad) * M_PER_DEG;
+        const northT = (topLat - lat) * M_PER_DEG;
+        const northB = (botLat - lat) * M_PER_DEG;
+        const widthM = eastR - eastL, heightM = northT - northB;
+        const cx = (eastL + eastR) / 2, cn = (northT + northB) / 2;
+
+        const mapPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(widthM, heightM),
+            new THREE.MeshBasicMaterial({ map: tex })
+        );
+        mapPlane.rotation.x = -Math.PI / 2;
+        mapPlane.position.set(cx, -0.04, -cn);
+        S.mapPlane = mapPlane;
+        S.mapTex = tex;
+
+        let loaded = 0; const total = cols * rows; let failed = false;
+        const subs = ['a', 'b', 'c'];
+        for (let ty = minTY; ty <= maxTY; ty++) {
+            for (let tx = minTX; tx <= maxTX; tx++) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                const px = (tx - minTX) * 256, py = (ty - minTY) * 256;
+                img.onload = () => {
+                    try { ctx.drawImage(img, px, py, 256, 256); } catch (e) { failed = true; }
+                    loaded++; tex.needsUpdate = true;
+                    if (loaded === total && !failed && S.root) {
+                        S.root.remove(fallback);
+                        S.root.add(mapPlane);
+                    }
+                };
+                img.onerror = () => { failed = true; loaded++; };
+                img.src = `https://${subs[(tx + ty) % 3]}.basemaps.cartocdn.com/light_all/${z}/${tx}/${ty}.png`;
+            }
+        }
     }
 
     function buildScene(payload) {
         clearRoot();
         S.root = new THREE.Group();
         const model = buildModel(payload);
+        // Oriente le modèle selon le cap réel de l'axe (repère nord-haut du sol).
+        const theta = ((payload.axisBearingDeg || 0)) * Math.PI / 180;
+        model.rotation.y = Math.PI / 2 - theta;
         S.root.add(model);
         buildPhotos(payload);
-
-        // Plan "eau" + grille discrète pour l'orientation.
-        const { L, W } = S.model;
-        const water = new THREE.Mesh(
-            new THREE.PlaneGeometry(L * 3.5, Math.max(W * 6, L * 1.6)),
-            new THREE.MeshStandardMaterial({ color: 0x14304a, roughness: 0.4, metalness: 0.1 })
-        );
-        water.rotation.x = -Math.PI / 2;
-        water.position.y = -0.05;
-        S.root.add(water);
-        const grid = new THREE.GridHelper(L * 3, 24, 0x2a3f5c, 0x1c2c42);
-        grid.position.y = 0;
-        S.root.add(grid);
+        buildGroundMap(payload);
 
         S.scene.add(S.root);
+
+        const { L } = S.model;
 
         // Caméra initiale.
         const deckY = S.model.deckY;
@@ -469,7 +653,15 @@
             S.animId = requestAnimationFrame(tick);
             if (S.focus) stepFocus();
             if (S.controls) S.controls.update();
-            if (S.renderer && S.scene && S.camera) S.renderer.render(S.scene, S.camera);
+            if (S.renderer && S.scene && S.camera) {
+                try {
+                    S.renderer.render(S.scene, S.camera);
+                } catch (e) {
+                    // Garde-fou : si une texture de tuile contamine le canvas (CORS),
+                    // on retire le fond de carte et on poursuit le rendu.
+                    if (S.mapPlane && S.root) { S.root.remove(S.mapPlane); S.mapPlane = null; }
+                }
+            }
         };
         tick();
     }
@@ -513,9 +705,10 @@
         const plane = S.photoMeshes.find(p => p.userData.index === index);
         if (!plane) return;
         const center = plane.userData.basePos.clone();
-        const side = plane.userData.side;
+        // Caméra placée devant la face du panneau (sa normale monde).
+        const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(plane.quaternion).normalize();
         const dist = Math.max(S.model.L * 0.22, 14);
-        const camTo = center.clone().add(new THREE.Vector3(S.model.L * 0.04, 2, side * dist));
+        const camTo = center.clone().add(normal.multiplyScalar(dist)).add(new THREE.Vector3(0, 2, 0));
         S.focus = {
             camFrom: S.camera.position.clone(),
             camTo,
@@ -524,12 +717,14 @@
             t: 0
         };
         const photo = plane.userData.photo;
+        const meta = plane.userData.meta;
         const sel = el('bridge3dSelected');
         if (sel) {
+            const az = meta && typeof meta.azimuth === 'number' ? meta.azimuth : null;
+            const dirTxt = az != null ? ` · vue vers ${cardinal(az)} (${Math.round(az)}°)` : '';
             sel.style.display = 'block';
             sel.innerHTML =
-                `<div class="bridge3d-selected-title">${escapeHtml(photo.roleLabel || 'Photo')} · ${escapeHtml(photo.providerLabel || photo.provider)}</div>`
-                + `<div>${escapeHtml(photo.label || '')}</div>`
+                `<div class="bridge3d-selected-title">${escapeHtml(photo.providerLabel || photo.provider)}${escapeHtml(dirTxt)}</div>`
                 + (photo.sourceUrl ? `<div style="margin-top:6px;"><a href="${escapeHtml(photo.sourceUrl)}" target="_blank" rel="noopener noreferrer">Ouvrir la source →</a></div>` : '');
         }
         highlightThumb(index);
@@ -554,16 +749,14 @@
             btn.type = 'button';
             btn.className = 'bridge3d-thumb';
             btn.dataset.index = String(index);
-            const badge = photo.provider === 'panoramax' ? 'P' : 'M';
             if (photo.provider === 'panoramax' && photo.thumbUrl) {
-                btn.innerHTML = `<img src="${escapeHtml(photo.thumbUrl)}" alt="" loading="lazy"><span class="bridge3d-thumb-badge">${badge}</span>`;
+                btn.innerHTML = `<img src="${escapeHtml(photo.thumbUrl)}" alt="" loading="lazy">`;
             } else {
-                btn.innerHTML = `<span class="bridge3d-thumb-placeholder">${escapeHtml(photo.provider)}</span><span class="bridge3d-thumb-badge">${badge}</span>`;
-                if (photo.provider === 'mapillary') {
-                    mapillaryThumbUrl(photo.id).then(url => {
-                        if (url) btn.innerHTML = `<img src="${escapeHtml(url)}" alt="" loading="lazy"><span class="bridge3d-thumb-badge">${badge}</span>`;
-                    });
-                }
+                btn.innerHTML = `<span class="bridge3d-thumb-placeholder">${escapeHtml(photo.provider)}</span>`;
+                fetchPhotoMeta(photo).then(meta => {
+                    const url = meta && meta.thumbUrl;
+                    if (url) btn.innerHTML = `<img src="${escapeHtml(url)}" alt="" loading="lazy">`;
+                });
             }
             btn.addEventListener('click', () => {
                 if (S.ready) focusPhoto(index);

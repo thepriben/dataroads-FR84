@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User guide — dataroads-FR84</title>
+    <meta name="description" content="User guide for the interactive map of the Vaucluse departmental road network (CD84).">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/guide.css?v=1">
+</head>
+<body>
+    <div class="guide-wrap">
+        <header class="guide-top">
+            <a href="./">← Back to the map</a>
+            <span class="guide-top-meta"><a href="guide.html">FR</a> · <a href="guide.en.html" aria-current="page">EN</a> · dataroads-FR84</span>
+        </header>
+
+        <h1>User guide</h1>
+        <p class="guide-lead">Web map of the Vaucluse (84) departmental road network. This guide covers everyday usage: showing a layer, reading the map, using the tools. CD84 prototype — local data and open sources.</p>
+
+        <nav class="guide-toc" aria-label="Contents">
+            <h2>Contents</h2>
+            <ol>
+                <li><a href="#interface">General layout</a></li>
+                <li><a href="#navigation">Map navigation</a></li>
+                <li><a href="#controles">Visibility controls</a></li>
+                <li><a href="#factual">Factual mapping</a></li>
+                <li><a href="#stats">Statistical data</a></li>
+                <li><a href="#realtime">Real time</a></li>
+                <li><a href="#incubator">Incubator</a></li>
+                <li><a href="#toolbar">Map toolbar</a></li>
+                <li><a href="#header">Header</a></li>
+                <li><a href="#tools">Tools &amp; meta</a></li>
+                <li><a href="#url">URL and sharing</a></li>
+                <li><a href="#fraicheur">Data freshness</a></li>
+            </ol>
+        </nav>
+
+        <section class="guide-section" id="interface">
+            <h2>General layout</h2>
+<p>The screen is split into three areas: the header (title, weather, key figures), the left sidebar (legend and tools), and the map. The legend scrolls within its column; the map fills the remaining space.</p>
+<figure class="guide-figure">
+<svg viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Interface diagram">
+    <rect width="640" height="360" fill="#f8f9fa"/>
+    <rect x="8" y="8" width="624" height="40" rx="4" fill="#2c3e50"/>
+    <text x="20" y="33" fill="#fff" font-family="DM Sans,sans-serif" font-size="11" font-weight="700">Header &#183; weather &#183; key figures</text>
+    <rect x="8" y="56" width="180" height="296" rx="4" fill="#fff" stroke="#dfe6e9"/>
+    <text x="20" y="78" fill="#636e72" font-family="DM Sans,sans-serif" font-size="9" font-weight="700">SIDEBAR</text>
+    <rect x="16" y="86" width="164" height="22" rx="3" fill="#f4f6f8"/>
+    <rect x="16" y="114" width="164" height="22" rx="3" fill="#f4f6f8"/>
+    <rect x="16" y="142" width="164" height="22" rx="3" fill="#f4f6f8"/>
+    <text x="20" y="200" fill="#95a5a6" font-family="DM Sans,sans-serif" font-size="8">&#8230; families &amp; layers &#8230;</text>
+    <rect x="16" y="318" width="164" height="24" rx="3" fill="#fafbfc" stroke="#dfe6e9"/>
+    <text x="20" y="334" fill="#7f8c8d" font-family="JetBrains Mono,monospace" font-size="7">repo &#183; version &#183; Guide</text>
+    <rect x="196" y="56" width="436" height="296" rx="4" fill="#e8ecef" stroke="#dfe6e9"/>
+    <text x="210" y="200" fill="#95a5a6" font-family="DM Sans,sans-serif" font-size="12">MAP</text>
+    <rect x="500" y="68" width="120" height="28" rx="6" fill="#fff" stroke="#dfe6e9"/>
+    <text x="510" y="86" fill="#4a5568" font-family="DM Sans,sans-serif" font-size="8">Map tools</text>
+</svg>
+<figcaption>Overview: legend on the left, map on the right, tools at the top right of the map.</figcaption>
+</figure>
+        </section>
+        <section class="guide-section" id="navigation">
+            <h2>Map navigation</h2>
+<ul>
+<li><strong>Pan</strong> — click and drag, or trackpad.</li>
+<li><strong>Zoom</strong> — wheel, pinch gesture, or double-click to zoom in (double-click with <span class="guide-kbd">Shift</span> to zoom out).</li>
+<li><strong>Initial view</strong> — home button in the toolbar (top right of the map): re-centres on Vaucluse at the default zoom.</li>
+<li><strong>Resize the legend</strong> — drag the vertical bar between the legend and the map; double-click to return to the default width.</li>
+</ul>
+<p class="guide-hint">On load, only the department boundary is visible: turn on the layers you need.</p>
+        </section>
+        <section class="guide-section" id="controles">
+            <h2>Visibility controls</h2>
+<p>Two complementary levels:</p>
+<ul>
+<li><strong>Family eye</strong> (to the right of the family name, e.g. <em>2/3</em>) — shows or hides all the layers in that family at once.</li>
+<li><strong>Layer eye</strong> (to the right of a section title) — shows or hides a single layer.</li>
+</ul>
+<p>Click the <strong>family name</strong> or the chevron to expand / collapse its content in the sidebar (without changing map visibility).</p>
+<p class="guide-hint">The grey chips under each layer indicate data freshness (see § Freshness).</p>
+        </section>
+        <section class="guide-section" id="familles">
+            <h2>Families and layers</h2>
+<article class="guide-family" data-family="factual" id="factual">
+<h3>Factual mapping</h3>
+<p>Network, territory and basic infrastructure, mostly from OpenStreetMap.</p>
+<div class="guide-layer" id="layer-territoire">
+<h4>Territory — Vaucluse boundary (84)</h4>
+<p>Always shown. Dashed outline of the department; a reference for framing.</p>
+</div><div class="guide-layer" id="layer-hierarchie">
+<h4>Network hierarchy</h4>
+<p>Three levels of departmental roads, each with its own colour:</p>
+<ul>
+<li><strong>Red</strong> — regional-interest network (e.g. D900).</li>
+<li><strong>Orange</strong> — territorial development network.</li>
+<li><strong>Blue</strong> — local-interest network.</li>
+</ul>
+<p><strong>How:</strong> click the <em>Network hierarchy</em> title or each line to enable a level. Road-number shields appear at sufficient zoom. Click a segment for a card (name, surface, OSM / Wikidata links).</p>
+</div><div class="guide-layer" id="layer-veloroutes">
+<h4>Cycle routes</h4>
+<p>OSM cycle itineraries (<code>route=bicycle</code>). Totals in kilometres: Via Rhôna (EV17), Méditerranée (EV8), Via Venaissia (V861), local routes.</p>
+<p><strong>How:</strong> enable via the section eye. Major cycle routes are emphasised by colour.</p>
+</div><div class="guide-layer" id="layer-construction">
+<h4>Roads under construction</h4>
+<p>Segments tagged construction or proposed in OSM.</p>
+<p><strong>How:</strong> enable the layer; the segments appear on the map. Counters in the legend.</p>
+</div><div class="guide-layer" id="layer-villes">
+<h4>Main towns</h4>
+<p>Sub-prefectures and large municipalities (centres + labels).</p>
+<p><strong>How:</strong> enable the layer for place-name markers.</p>
+</div>
+</article>
+<article class="guide-family" data-family="stats" id="stats">
+<h3>Statistical data</h3>
+<p>Historical or aggregated data — loaded on demand to avoid overloading the map.</p>
+<div class="guide-layer" id="layer-accidents">
+<h4>Road safety</h4>
+<p>Crashes for the 2024 vintage (BAAC), classified: fatal, hospitalised injuries, slight injuries.</p>
+<p><strong>How:</strong> enable the layer; click a marker for details (date, road, municipality).</p>
+</div><div class="guide-layer" id="layer-comptages">
+<h4>Traffic-count stations</h4>
+<p>CD84 stations (data.gouv.fr), classified by traffic: high (&gt; 20k veh/day), medium, low.</p>
+<p><strong>How:</strong> enable in the legend <em>or</em> via the <strong>CD84 counts</strong> button on the map (both stay in sync). Click a station: AADT, HGV share, year.</p>
+</div>
+</article>
+<article class="guide-family" data-family="realtime" id="realtime">
+<h3>Real time</h3>
+<p>Recent signals: weather and announced traffic.</p>
+<div class="guide-layer" id="layer-meteo-stations">
+<h4>Weather stations</h4>
+<p>A few stations across the department (Open-Meteo). Current data: temperature, wind, humidity.</p>
+<p><strong>How:</strong> enable the layer; click a marker for the card. One station is also picked at random in the header.</p>
+</div><div class="guide-layer" id="layer-bison">
+<h4>Road events (Bison Futé)</h4>
+<p>Roadworks, congestion, ongoing crashes (DATEX II / Info Routière feed), filtered to the area.</p>
+<p><strong>How:</strong> enable the layer; icons on the map, popup on click.</p>
+</div>
+</article>
+<article class="guide-family" data-family="incubator" id="incubator">
+<h3>Incubator</h3>
+<p>Experimental layers: civil-engineering structures, environment, biodiversity, listed webcams. Only the <strong>bridges layer</strong> shows a refresh chip (twice weekly, Mon. &amp; Thu.).</p>
+<div class="guide-layer" id="layer-ponts">
+<h4>Bridges layer</h4>
+<p>OSM civil-engineering structures across the department. Display adapts to zoom:</p>
+<ul>
+<li>Far zoom — clusters (number of bridges or photos).</li>
+<li>Zoom ≥ 12 — the structures' footprint on the map; clusters disappear.</li>
+<li>Zoom ≥ 16 — Panoramax / Mapillary photos near the structure.</li>
+</ul>
+<p><strong>How:</strong> enable the layer then zoom in. At far zoom, click a cluster to zoom in progressively; clicking a bridge opens the <strong>full-screen 3D view</strong>.</p>
+<p><strong>3D view:</strong> a simple model of the structure is generated on the fly from OSM tags (structure type — arch, beam, truss, suspension —, material, length, width). Orbit and zoom with the mouse. A 2D basemap (rivers and roads) is laid out beneath the bridge. Panoramax / Mapillary photos are placed at <strong>their real capture location</strong> and oriented along their viewing direction. Click a thumbnail or a panel to refocus the camera and show the source; <span class="guide-kbd">Esc</span> or × to close.</p>
+</div><div class="guide-layer" id="layer-ens">
+<h4>Sensitive natural areas (ENS)</h4>
+<p>CD84 polygons (DataSud). Area, municipalities, manager.</p>
+<p><strong>How:</strong> enable the layer; click a polygon for the card.</p>
+</div><div class="guide-layer" id="layer-inat">
+<h4>iNaturalist observations</h4>
+<p>Observations filtered by intersection with the 84's sensitive natural areas.</p>
+<p><strong>How:</strong> enable the layer; click the coloured circle (enlarged click zone) for species, date, iNaturalist link. Works alongside the ENS layer shown at the same time.</p>
+</div><div class="guide-layer" id="layer-webcams">
+<h4>Webcams</h4>
+<p>4 CD84 traffic webcams (Bonpas) and Mont Serein (Vision-Environnement).</p>
+<p><strong>How:</strong> enable the layer; click a marker to start the live video feed in the popup.</p>
+</div>
+</article>
+<article class="guide-family" data-family="tools" id="tools">
+<h3>Tools &amp; meta</h3>
+<p>Search, data quality, network statistics, update calendar. No extra map layer (except the quality panel).</p>
+<div class="guide-layer" id="layer-recherche">
+<h4>Search a road</h4>
+<p>Search field (e.g. <code>D900</code>, <code>D4</code>) and a filtered list. Click a road: map centring, highlight, card in <em>Road information</em>.</p>
+</div><div class="guide-layer" id="layer-qualite">
+<h4>OSM / Wikidata quality</h4>
+<p>Summary in the sidebar: Wikidata coverage, OSM relations. <strong>Detailed panel</strong> button: an on-map panel (metrics, roads without Wikidata, without relation).</p>
+</div><div class="guide-layer" id="layer-reseau">
+<h4>Network information</h4>
+<p>Counters: number of roads, OSM segments, cumulative length, AADT min/max traffic, bridges, tunnels.</p>
+</div><div class="guide-layer" id="layer-refresh">
+<h4>Refresh formula</h4>
+<p>Calendar by source (OSM, Wikidata, external, incubator, weather, static) and status of the last refresh.</p>
+</div>
+</article>
+        </section>
+        <section class="guide-section" id="toolbar">
+            <h2>Map toolbar</h2>
+<p>At the top right of the map:</p>
+<ul>
+<li><strong>Home</strong> — initial department view.</li>
+<li><strong>CD84 counts</strong> — enables the traffic-count stations layer (synced with the legend).</li>
+<li><strong>Abnormal loads</strong> — highlights the regional and territorial network, dims the local one (helps with oversize-vehicle planning).</li>
+<li><strong>Speed limits</strong> — colours segments by OSM max speed; at zoom ≥ 11, speed signs and height / weight pictograms. A sign ringed in green has a nearby Mapillary photo: click it to view.</li>
+<li><strong>Mapillary</strong> — shows Mapillary photo coverage (areas with ground-level imagery).</li>
+</ul>
+<p class="guide-hint">Active buttons are visually emphasised (dark background).</p>
+        </section>
+        <section class="guide-section" id="header">
+            <h2>Header</h2>
+<ul>
+<li><strong>Logo</strong> — back to the app home.</li>
+<li><strong>Key figures</strong> — opens a full-screen panel: network indicators (roads, traffic, cycle routes, OSM quality, etc.). Close with × or by clicking outside.</li>
+<li><strong>Weather</strong> — a preview of one station in the department (temperature, conditions). For all stations, use the <em>Weather stations</em> layer.</li>
+</ul>
+        </section>
+        <section class="guide-section" id="url">
+            <h2>URL and sharing</h2>
+<p>The browser address updates as you pan or zoom the map and when you change the visible layers. Useful parameters:</p>
+<ul>
+<li><code>z</code>, <code>lat</code>, <code>lng</code> — zoom and centre.</li>
+<li><code>ly</code> — active layers (short codes: <code>hr</code>, <code>ht</code>, <code>hl</code>, <code>ens</code>, <code>inat</code>, <code>wcam</code>, <code>bridges</code>, etc.).</li>
+<li><code>fam</code> — fully opened families (optional if <code>ly</code> is precise).</li>
+</ul>
+<p>Copy the URL to recover the same view after reloading.</p>
+        </section>
+        <section class="guide-section" id="fraicheur">
+            <h2>Data freshness</h2>
+<p>Under most layers, a chip shows when the data was generated and when the next refresh is due. No indicator for sensitive natural areas, iNaturalist or webcams.</p>
+<ul>
+<li><strong>OSM</strong> (roads, cycle routes, municipalities, construction) — twice-weekly update (GitHub workflow).</li>
+<li><strong>External</strong> (counts, Bison Futé) — every 3 h.</li>
+<li><strong>Incubator</strong> (OSM bridges) — twice weekly (Mon. &amp; Thu.).</li>
+<li><strong>Weather</strong> — live in browser, ~10 min.</li>
+<li><strong>Static</strong> (84 boundary, 2024 crashes) — versioned snapshot, manual update.</li>
+</ul>
+<p class="guide-hint">The full detail is in <em>Tools &amp; meta → Refresh formula</em>.</p>
+        </section>
+
+        <footer class="guide-foot">
+            dataroads-FR84 — CD84 prototype · <a href="https://github.com/thepriben/dataroads-FR84" style="color:#3498db;">GitHub repository</a>
+        </footer>
+    </div>
+</body>
+</html>
