@@ -116,7 +116,24 @@
                 };
                 const typeQids = getQids('P31');
                 const matQids = getQids('P186');
-                const base = { spans: getQty('P1314'), length: getQty('P2043'), width: getQty('P2049'), typeStr: '', matStr: '' };
+                // Libellé (nom) de l'entité, FR puis EN.
+                const labels = ent.labels || {};
+                const label = (labels.fr && labels.fr.value) || (labels.en && labels.en.value) || '';
+                // Image (P18) -> nom de fichier Commons.
+                const imgClaim = (claims.P18 || [])[0];
+                const image = (imgClaim && imgClaim.mainsnak && imgClaim.mainsnak.datavalue && imgClaim.mainsnak.datavalue.value) || '';
+                // Mise en service / création (P571) -> année.
+                let inceptionYear = null;
+                const tClaim = (claims.P571 || [])[0];
+                const tVal = tClaim && tClaim.mainsnak && tClaim.mainsnak.datavalue && tClaim.mainsnak.datavalue.value;
+                if (tVal && tVal.time) {
+                    const m = String(tVal.time).match(/^([+-])(\d{1,4})/);
+                    if (m) inceptionYear = (m[1] === '-' ? -1 : 1) * parseInt(m[2], 10);
+                }
+                const base = {
+                    spans: getQty('P1314'), length: getQty('P2043'), width: getQty('P2049'),
+                    height: getQty('P2048'), label, image, inceptionYear, typeStr: '', matStr: ''
+                };
                 const need = typeQids.concat(matQids);
                 if (!need.length) return base;
                 const params = `action=wbgetentities&ids=${encodeURIComponent(need.join('|'))}&props=labels&languages=fr|en&format=json&origin=*`;
@@ -888,12 +905,50 @@
         `;
     }
 
+    // Petit cartouche identité (nom, image, mise en service, matériau, dimensions)
+    // + liens cliquables Wikidata / OSM. Affiché dès l'ouverture (infos OSM), puis
+    // enrichi par Wikidata. S'efface s'il n'y a rien à montrer.
+    function renderInfoCard(payload, wd) {
+        const card = el('bridge3dCard');
+        if (!card) return;
+        const row = (label, value) => `<div class="bridge3d-card-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
+        const name = (wd && wd.label) || payload.title || 'Ouvrage';
+        const imgUrl = wd && wd.image ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(wd.image)}?width=360` : '';
+        const material = payload.material || (wd && wd.matStr) || '';
+        const lengthM = (payload.axisLengthM && payload.axisLengthM > 0) ? payload.axisLengthM : (wd && wd.length) || null;
+        const height = wd && wd.height ? wd.height : null;
+        const inception = wd && wd.inceptionYear ? wd.inceptionYear : null;
+
+        const rows = [];
+        if (inception) rows.push(row('Mise en service', inception));
+        if (material) rows.push(row('Matériau', material));
+        if (lengthM) rows.push(row('Longueur', `${Math.round(lengthM)} m`));
+        if (height) rows.push(row('Hauteur', `${Math.round(height)} m`));
+
+        const links = [];
+        if (payload.wikidataId) links.push(`<a href="https://www.wikidata.org/wiki/${escapeHtml(payload.wikidataId)}" target="_blank" rel="noopener noreferrer">Wikidata ↗</a>`);
+        if (payload.osmUrl) links.push(`<a href="${escapeHtml(payload.osmUrl)}" target="_blank" rel="noopener noreferrer">OSM ↗</a>`);
+
+        if (!rows.length && !links.length && !imgUrl) { card.style.display = 'none'; card.innerHTML = ''; return; }
+
+        card.innerHTML =
+            (imgUrl ? `<img class="bridge3d-card-img" src="${imgUrl}" alt="" loading="lazy" onerror="this.style.display='none'">` : '')
+            + '<div class="bridge3d-card-body">'
+            + `<div class="bridge3d-card-title">${escapeHtml(name)}</div>`
+            + (rows.length ? `<div class="bridge3d-card-rows">${rows.join('')}</div>` : '')
+            + (links.length ? `<div class="bridge3d-card-links">${links.join('')}</div>` : '')
+            + '</div>';
+        card.style.display = 'block';
+    }
+
     // Complète le payload via Wikidata puis reconstruit le modèle si quelque chose
     // d'utile a été ajouté (type de structure, matériau, travées, dimensions).
     function enrichFromWikidata(payload) {
         if (!payload.wikidataId) return;
         wikidataBridgeInfo(payload.wikidataId).then(info => {
-            if (!info || S.payload !== payload || !S.ready) return;
+            if (!info || S.payload !== payload) return;
+            renderInfoCard(payload, info);
+            if (!S.ready) return;
             let changed = false;
             if (!payload.structure && info.typeStr) {
                 const s = structureFromLabel(info.typeStr);
@@ -921,9 +976,11 @@
 
         buildHeader(payload);
         buildGallery(payload);
+        renderInfoCard(payload, null); // cartouche de base (infos OSM), enrichi ensuite
 
         if (!ensureEngine()) {
             renderFallback(payload);
+            enrichFromWikidata(payload);
             return;
         }
         const wrap = el('bridge3dCanvasWrap');
