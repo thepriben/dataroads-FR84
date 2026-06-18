@@ -20,7 +20,8 @@
             // Laisser vide désactive la recherche : le popup affiche alors "pas de photo".
             // Créer un jeton : https://www.mapillary.com/dashboard/developers (client token "MLY|...").
             accessToken: '',
-            searchRadiusMeters: 70
+            // Image Radius Search ("nearby") : rayon en mètres, plafonné à 50 par l'API.
+            searchRadiusMeters: 50
         },
         data: {
             externalRefreshHours: 3,
