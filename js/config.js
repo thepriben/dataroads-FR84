@@ -19,7 +19,7 @@
             // Jeton d'accès Mapillary (Graph API) pour rechercher une photo près d'un panneau.
             // Laisser vide désactive la recherche : le popup affiche alors "pas de photo".
             // Créer un jeton : https://www.mapillary.com/dashboard/developers (client token "MLY|...").
-            accessToken: '',
+            accessToken: 'MLY|26158465847163536|0186af2cabb143cd46cccc023e7f0d81',
             // Image Radius Search ("nearby") : rayon en mètres, plafonné à 50 par l'API.
             searchRadiusMeters: 50
         },
