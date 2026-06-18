@@ -180,6 +180,13 @@ body {
     margin-bottom: 6px;
 }
 
+.guide-layer h5 {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #34495e;
+    margin: 14px 0 6px;
+}
+
 .guide-layer p,
 .guide-layer ul {
     font-size: 0.86rem;
