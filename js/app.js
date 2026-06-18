@@ -8352,13 +8352,31 @@
             return imgs.length ? imgs[0] : null;
         }
 
-        function speedSignPopupShell(kmh) {
+        // Construit le HTML complet du popup d'un panneau selon l'état.
+        // On régénère le contenu entier (et non un sous-noeud) car Leaflet réinjecte
+        // la chaîne d'origine à chaque popup.update(), ce qui écraserait une photo
+        // posée via innerHTML.
+        function speedSignPopupHtml(kmh, img, state) {
+            let body;
+            if (state === 'loading') {
+                body = `<div class="speed-sign-photo-msg">📷 Recherche d'une photo Mapillary…</div>`;
+            } else if (!img || !img.thumb_1024_url) {
+                body = `<div class="speed-sign-photo-msg">Pas encore de photo disponible sur Mapillary à proximité.</div>`;
+            } else {
+                const when = img.captured_at
+                    ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
+                    : '';
+                body = `
+                    <a href="${mapillaryPageUrl(img.id)}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
+                        <img class="speed-sign-photo-img" src="${img.thumb_1024_url}" alt="Photo Mapillary à proximité du panneau" loading="lazy">
+                    </a>
+                    <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
+                `;
+            }
             return `
                 <div class="route-popup speed-sign-popup">
                     <h3>Limitation ${kmh} km/h</h3>
-                    <div class="speed-sign-photo" data-state="loading">
-                        <div class="speed-sign-photo-msg">📷 Recherche d'une photo Mapillary…</div>
-                    </div>
+                    <div class="speed-sign-photo">${body}</div>
                 </div>
             `;
         }
@@ -8394,36 +8412,6 @@
             });
         }
 
-        // Remplit le popup d'un panneau avec une photo Mapillary déjà résolue.
-        function fillSpeedSignPhoto(marker, img) {
-            const popup = marker.getPopup();
-            const el = popup && popup.getElement && popup.getElement();
-            if (!el) return;
-            const slot = el.querySelector('.speed-sign-photo');
-            if (!slot || slot.dataset.loaded === '1') return;
-            slot.dataset.loaded = '1';
-
-            const refresh = () => { if (marker.getPopup()) marker.getPopup().update(); };
-
-            if (!img || !img.thumb_1024_url) {
-                slot.dataset.state = 'empty';
-                slot.innerHTML = `<div class="speed-sign-photo-msg">Pas encore de photo disponible sur Mapillary à proximité.</div>`;
-                refresh();
-                return;
-            }
-            const when = img.captured_at
-                ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
-                : '';
-            slot.dataset.state = 'ok';
-            slot.innerHTML = `
-                <a href="${mapillaryPageUrl(img.id)}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
-                    <img class="speed-sign-photo-img" src="${img.thumb_1024_url}" alt="Photo Mapillary à proximité du panneau" loading="lazy">
-                </a>
-                <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
-            `;
-            refresh();
-        }
-
         function speedDivIcon(kmh, hasMapillary) {
             return L.divIcon({
                 html: `<div class="speed-picto" style="border-color:${colorForSpeed(kmh)};">${kmh}</div>`,
@@ -8443,16 +8431,15 @@
                 riseOnHover: true,
                 zIndexOffset: 400
             });
-            marker.bindPopup(speedSignPopupShell(kmh), { minWidth: 220, maxWidth: 260 });
-
-            let mlyImage = null;
-            marker.on('popupopen', () => fillSpeedSignPhoto(marker, mlyImage));
+            marker.bindPopup(speedSignPopupHtml(kmh, null, 'loading'), { minWidth: 220, maxWidth: 260 });
 
             // Gate de proximité : on n'active le panneau que si Mapillary couvre la zone.
+            // Le contenu final (photo) est posé via setPopupContent pour survivre aux
+            // popup.update() internes de Leaflet.
             checkMapillaryNearby(latlng.lat, latlng.lng).then(img => {
                 if (img && img.thumb_1024_url) {
-                    mlyImage = img;
                     marker.setIcon(speedDivIcon(kmh, true)); // liseret vert + clic activé (CSS)
+                    marker.setPopupContent(speedSignPopupHtml(kmh, img, 'ok'));
                 }
             });
             return marker;
