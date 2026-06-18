@@ -13,8 +13,15 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.3.7',
+        version: '0.3.12',
         repository,
+        mapillary: {
+            // Jeton d'accès Mapillary (Graph API) pour rechercher une photo près d'un panneau.
+            // Laisser vide désactive la recherche : le popup affiche alors "pas de photo".
+            // Créer un jeton : https://www.mapillary.com/dashboard/developers (client token "MLY|...").
+            accessToken: '',
+            searchRadiusMeters: 70
+        },
         data: {
             externalRefreshHours: 3,
             geojson: {
