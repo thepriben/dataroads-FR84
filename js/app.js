@@ -8333,33 +8333,22 @@
         const MAPILLARY_TOKEN = MAPILLARY_CFG.accessToken || '';
         const MAPILLARY_RADIUS_M = MAPILLARY_CFG.searchRadiusMeters || 70;
 
-        // Recherche l'image Mapillary la plus proche d'un point (bbox via Graph API).
+        // Recherche la meilleure image Mapillary près d'un point via l'Image Radius Search
+        // (API "nearby", avril 2026) : tri intégré proximité + récence + 360°.
         // Renvoie l'objet image (ou null si rien / pas de jeton).
         async function fetchMapillaryNearby(lat, lng) {
             if (!MAPILLARY_TOKEN) return null;
-            // Conversion approximative mètres -> degrés (lat ~111 km/°, lng pondéré par cos(lat)).
-            const dLat = MAPILLARY_RADIUS_M / 111000;
-            const dLng = MAPILLARY_RADIUS_M / (111000 * Math.cos(lat * Math.PI / 180) || 1);
-            const bbox = `${lng - dLng},${lat - dLat},${lng + dLng},${lat + dLat}`;
+            // L'API plafonne le rayon à 50 m.
+            const radius = Math.min(MAPILLARY_RADIUS_M, 50);
             const fields = 'id,thumb_1024_url,captured_at,compass_angle,geometry';
-            const url = `https://graph.mapillary.com/images?access_token=${encodeURIComponent(MAPILLARY_TOKEN)}&fields=${fields}&bbox=${bbox}&limit=12`;
+            const url = `https://graph.mapillary.com/images?access_token=${encodeURIComponent(MAPILLARY_TOKEN)}`
+                + `&fields=${fields}&lat=${lat}&lng=${lng}&radius=${radius}&limit=1`;
             const resp = await fetch(url, { credentials: 'omit' });
             if (!resp.ok) throw new Error(`Mapillary HTTP ${resp.status}`);
             const data = await resp.json();
             const imgs = (data && data.data) || [];
-            if (!imgs.length) return null;
-            // Garde l'image dont le point de prise de vue est le plus proche du panneau.
-            let best = null;
-            let bestDist = Infinity;
-            imgs.forEach(im => {
-                const c = im.geometry && im.geometry.coordinates;
-                if (!c) return;
-                const dx = c[0] - lng;
-                const dy = c[1] - lat;
-                const dist = dx * dx + dy * dy;
-                if (dist < bestDist) { bestDist = dist; best = im; }
-            });
-            return best;
+            // La meilleure image est renvoyée en première position par l'API.
+            return imgs.length ? imgs[0] : null;
         }
 
         function speedSignPopupShell(kmh) {
