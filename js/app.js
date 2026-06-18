@@ -7174,6 +7174,13 @@
                 };
             });
 
+            const wikidataId = (tags.wikidata && /^Q\d+$/.test(tags.wikidata.trim())) ? tags.wikidata.trim() : null;
+
+            // Indice du nombre d'arches déduit du nom (ex. "pont des 13 arches").
+            let spanCountHint = null;
+            const archMatch = String(group.title || '').match(/(\d{1,3})\s*arch/i);
+            if (archMatch) spanCountHint = parseInt(archMatch[1], 10);
+
             return {
                 id: group.id,
                 title: group.title,
@@ -7187,6 +7194,8 @@
                 material: tags.material || '',
                 widthM: Number.isFinite(widthM) ? widthM : null,
                 pillarCount,
+                spanCountHint,
+                wikidataId,
                 metaChips,
                 osmUrl: bridgeViewerOsmLink(group),
                 photos,
