@@ -7139,6 +7139,61 @@
             panel.classList.add('active');
         }
 
+        // Construit un payload normalisé (découplé des internes) pour la vue 3D.
+        function buildBridge3DPayload(group, focusPhotoKey) {
+            const tags = group.anchorInfo?.tags || {};
+            const pillarCount = group.features.filter(info => info.role === 'pillar').length;
+            const widthM = parseFloat(tags.width);
+            const lengthM = parseFloat(tags.length);
+            const axisLengthM = (group.bridgeAxis && group.bridgeAxis.length) || (Number.isFinite(lengthM) ? lengthM : 0);
+
+            const metaChips = [];
+            if (tags['bridge:structure']) metaChips.push({ label: 'Structure', value: tags['bridge:structure'] });
+            if (tags.material) metaChips.push({ label: 'Matériau', value: tags.material });
+            if (tags.length) metaChips.push({ label: 'Longueur', value: `${tags.length} m` });
+            if (tags.ref) metaChips.push({ label: 'Réf.', value: tags.ref });
+            if (tags.operator || tags.owner) metaChips.push({ label: 'Gestion', value: tags.operator || tags.owner });
+
+            const subtitleBits = [];
+            if (tags['bridge:structure']) subtitleBits.push(tags['bridge:structure']);
+            if (tags.material) subtitleBits.push(tags.material);
+            if (group.photos.length) subtitleBits.push(`${group.photos.length} photo${group.photos.length > 1 ? 's' : ''}`);
+
+            const photos = group.photos.map(photo => {
+                const layout = (group.photoLayout && group.photoLayout.get(photo.key)) || {};
+                return {
+                    key: photo.key,
+                    provider: photo.provider,
+                    id: photo.id,
+                    t: typeof layout.t === 'number' ? layout.t : 0.5,
+                    side: typeof layout.side === 'number' ? layout.side : 1,
+                    role: photo.role,
+                    roleLabel: photo.partLabel,
+                    providerLabel: providerLabel(photo.provider),
+                    label: bridgePhotoMetaLabel(photo),
+                    sourceUrl: bridgePhotoExternalUrl(photo),
+                    textureUrl: photo.provider === 'panoramax' ? panoramaxImageUrl(photo.id, 'sd') : null,
+                    thumbUrl: photo.provider === 'panoramax' ? panoramaxImageUrl(photo.id, 'thumb') : null
+                };
+            });
+
+            return {
+                id: group.id,
+                title: group.title,
+                subtitle: subtitleBits.join(' · '),
+                axisLengthM,
+                structure: tags['bridge:structure'] || '',
+                bridgeTag: tags.bridge || '',
+                material: tags.material || '',
+                widthM: Number.isFinite(widthM) ? widthM : null,
+                pillarCount,
+                metaChips,
+                osmUrl: bridgeViewerOsmLink(group),
+                photos,
+                focusPhotoKey: focusPhotoKey || null
+            };
+        }
+
         function openBridgeViewer(groupId, options = {}) {
             const group = bridgeGroupById.get(groupId);
             if (!group) return;
@@ -7149,23 +7204,21 @@
             }
 
             highlightBridgeGroup(group.id);
-            if (options.fit !== false && window.map) {
-                if (window.map.getZoom() < BRIDGE_SCHEMATIC_MIN_ZOOM) {
-                    window.map.fitBounds(group.bounds, {
-                        padding: [90, 90],
-                        maxZoom: BRIDGE_SCHEMATIC_MIN_ZOOM,
-                        animate: true
-                    });
-                } else {
-                    fitBridgeGroup(group);
-                }
+
+            if (window.BridgeViewer3D && typeof window.BridgeViewer3D.open === 'function') {
+                window.BridgeViewer3D.open(buildBridge3DPayload(group, options.photoKey));
+            } else {
+                // Repli ultime si le module 3D n'a pas chargé : ancien panneau 2D.
+                renderBridgeViewer(group, options.photoKey);
             }
-            renderBridgeViewer(group, options.photoKey);
         }
 
         window.openBridgeViewer = openBridgeViewer;
 
         window.closeBridgeViewer = function(options = {}) {
+            if (window.BridgeViewer3D && typeof window.BridgeViewer3D.close === 'function') {
+                window.BridgeViewer3D.close();
+            }
             const panel = document.getElementById('bridgeViewerPanel');
             if (panel) panel.classList.remove('active');
             if (!options.keepHighlight) resetBridgeFeatureHighlight();

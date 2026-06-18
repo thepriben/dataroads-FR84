@@ -2410,6 +2410,272 @@
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
+        /* ===== Visionneuse 3D des ponts (plein écran) ===== */
+        .bridge3d-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2600;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(11, 17, 28, 0.62);
+            backdrop-filter: blur(4px);
+        }
+
+        .bridge3d-overlay.active {
+            display: flex;
+        }
+
+        .bridge3d-panel {
+            position: relative;
+            width: min(1400px, calc(100vw - 28px));
+            height: min(94vh, 940px);
+            background: #0e1726;
+            border-radius: 14px;
+            box-shadow: 0 24px 60px rgba(2, 6, 14, 0.55);
+            border: 1px solid #1c2940;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: dashboardIn 0.24s ease;
+        }
+
+        .bridge3d-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 18px;
+            background: linear-gradient(180deg, #11203a, #0e1726);
+            border-bottom: 1px solid #1c2940;
+            color: #eaf0f8;
+        }
+
+        .bridge3d-heading { flex: 1; min-width: 0; }
+
+        .bridge3d-kicker {
+            margin: 0;
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #7e93b4;
+        }
+
+        .bridge3d-header h2 {
+            margin: 2px 0 0;
+            font-size: 1.18rem;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .bridge3d-subtitle {
+            margin: 2px 0 0;
+            font-size: 0.82rem;
+            color: #9fb1cf;
+        }
+
+        .bridge3d-osm {
+            align-self: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #7cc4ff;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .bridge3d-osm:hover { text-decoration: underline; }
+
+        .bridge3d-close {
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            border: 1px solid #2a3b59;
+            background: #16243d;
+            color: #cdd9ec;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .bridge3d-close:hover { background: #21314e; color: #fff; }
+
+        .bridge3d-stage {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            background: radial-gradient(circle at 50% 30%, #1b2c49 0%, #0c1422 70%);
+        }
+
+        .bridge3d-canvas-wrap {
+            position: absolute;
+            inset: 0;
+        }
+
+        .bridge3d-canvas-wrap canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .bridge3d-meta {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            max-width: 60%;
+            pointer-events: none;
+        }
+
+        .bridge3d-meta-chip {
+            background: rgba(13, 22, 38, 0.82);
+            border: 1px solid #2a3b59;
+            color: #dce6f5;
+            font-size: 0.72rem;
+            padding: 4px 9px;
+            border-radius: 999px;
+            backdrop-filter: blur(2px);
+        }
+
+        .bridge3d-meta-chip strong {
+            color: #8fb6e8;
+            margin-right: 4px;
+            font-weight: 600;
+        }
+
+        .bridge3d-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 12px;
+            font-size: 0.72rem;
+            color: #88a0c4;
+            background: rgba(13, 22, 38, 0.6);
+            padding: 4px 9px;
+            border-radius: 6px;
+            pointer-events: none;
+        }
+
+        .bridge3d-selected {
+            position: absolute;
+            bottom: 10px;
+            right: 12px;
+            max-width: 320px;
+            background: rgba(13, 22, 38, 0.9);
+            border: 1px solid #2a3b59;
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #e6edf8;
+            font-size: 0.78rem;
+        }
+
+        .bridge3d-selected .bridge3d-selected-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .bridge3d-selected a {
+            color: #7cc4ff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .bridge3d-selected a:hover { text-decoration: underline; }
+
+        .bridge3d-fallback {
+            position: absolute;
+            inset: 0;
+            overflow: auto;
+            padding: 18px;
+            color: #dbe5f3;
+        }
+
+        .bridge3d-fallback-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .bridge3d-fallback-grid img,
+        .bridge3d-fallback-grid iframe {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #24375a;
+            background: #0c1422;
+        }
+
+        .bridge3d-gallery {
+            display: flex;
+            gap: 8px;
+            padding: 10px 12px;
+            overflow-x: auto;
+            background: #0b1320;
+            border-top: 1px solid #1c2940;
+            min-height: 72px;
+        }
+
+        .bridge3d-gallery:empty { display: none; }
+
+        .bridge3d-thumb {
+            position: relative;
+            flex: 0 0 auto;
+            width: 84px;
+            height: 56px;
+            border-radius: 7px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            background: #16243d;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .bridge3d-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .bridge3d-thumb-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            font-size: 0.68rem;
+            color: #9fb1cf;
+        }
+
+        .bridge3d-thumb.is-active {
+            border-color: #7cc4ff;
+        }
+
+        .bridge3d-thumb-badge {
+            position: absolute;
+            left: 3px;
+            bottom: 3px;
+            font-size: 0.58rem;
+            font-weight: 700;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.55);
+            padding: 1px 4px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 720px) {
+            .bridge3d-panel { width: 100vw; height: 100vh; border-radius: 0; }
+            .bridge3d-meta { max-width: 90%; }
+            .bridge3d-selected { left: 12px; right: 12px; max-width: none; }
+        }
+
         .dashboard-loading {
             display: flex;
             flex-direction: column;
