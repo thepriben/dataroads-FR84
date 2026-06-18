@@ -563,7 +563,7 @@
         S.scene = new THREE.Scene();
         S.scene.background = new THREE.Color(0x0c1422);
 
-        S.camera = new THREE.PerspectiveCamera(50, 1, 0.1, 5000);
+        S.camera = new THREE.PerspectiveCamera(50, 1, 0.5, 5000);
 
         S.controls = new THREE.OrbitControls(S.camera, S.renderer.domElement);
         S.controls.enableDamping = true;
@@ -638,12 +638,13 @@
         const root = S.root;
         const { L } = S.model;
         // Plan d'eau large sous la carte (visible au-delà de l'emprise des tuiles).
+        // Nettement plus bas que le plan-carte pour éviter le z-fighting (scintillement).
         const fallback = new THREE.Mesh(
             new THREE.PlaneGeometry(L * 3.5, L * 3.5),
             new THREE.MeshBasicMaterial({ color: 0x16314a })
         );
         fallback.rotation.x = -Math.PI / 2;
-        fallback.position.y = -0.08;
+        fallback.position.y = -2;
         root.add(fallback);
 
         if (payload.centerLat == null || payload.centerLng == null || typeof document === 'undefined') return;
@@ -679,12 +680,16 @@
         const widthM = eastR - eastL, heightM = northT - northB;
         const cx = (eastL + eastR) / 2, cn = (northT + northB) / 2;
 
-        const mapPlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(widthM, heightM),
-            new THREE.MeshBasicMaterial({ map: tex })
-        );
+        const mapMat = new THREE.MeshBasicMaterial({ map: tex });
+        // polygonOffset : pousse légèrement la carte en profondeur pour qu'elle
+        // gagne sans hésiter contre l'eau / le sol (anti-scintillement).
+        mapMat.polygonOffset = true;
+        mapMat.polygonOffsetFactor = -1;
+        mapMat.polygonOffsetUnits = -1;
+        const mapPlane = new THREE.Mesh(new THREE.PlaneGeometry(widthM, heightM), mapMat);
         mapPlane.rotation.x = -Math.PI / 2;
-        mapPlane.position.set(cx, -0.04, -cn);
+        mapPlane.position.set(cx, -0.05, -cn);
+        mapPlane.renderOrder = -1;
         S.mapPlane = mapPlane;
         S.mapTex = tex;
         // Ajout immédiat : on n'attend pas toutes les tuiles. Les manquantes
