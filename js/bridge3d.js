@@ -614,17 +614,20 @@
     function tile2lon(x, z) { return x / Math.pow(2, z) * 360 - 180; }
     function tile2lat(y, z) { const n = Math.PI - 2 * Math.PI * y / Math.pow(2, z); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); }
 
-    // Fond de carte 2D (CartoDB Positron) sous le pont : on voit fleuves et voiries.
-    // Repli sur un plan d'eau uni si les tuiles échouent. Repère nord-haut.
+    // Fond de carte 2D (CartoDB Voyager) sous le pont : on voit fleuves et voiries.
+    // Le plan-carte est ajouté tout de suite et se remplit au fil des tuiles ; les
+    // tuiles manquantes restent en bleu (eau). Repère nord-haut.
     function buildGroundMap(payload) {
+        const root = S.root;
         const { L } = S.model;
+        // Plan d'eau large sous la carte (visible au-delà de l'emprise des tuiles).
         const fallback = new THREE.Mesh(
             new THREE.PlaneGeometry(L * 3.5, L * 3.5),
             new THREE.MeshBasicMaterial({ color: 0x16314a })
         );
         fallback.rotation.x = -Math.PI / 2;
-        fallback.position.y = -0.06;
-        S.root.add(fallback);
+        fallback.position.y = -0.08;
+        root.add(fallback);
 
         if (payload.centerLat == null || payload.centerLng == null || typeof document === 'undefined') return;
 
@@ -641,7 +644,7 @@
         const minTX = Math.floor(cTX - halfTiles), maxTX = Math.floor(cTX + halfTiles);
         const minTY = Math.floor(cTY - halfTiles), maxTY = Math.floor(cTY + halfTiles);
         const cols = maxTX - minTX + 1, rows = maxTY - minTY + 1;
-        if (cols > 6 || rows > 6 || cols < 1 || rows < 1) return;
+        if (cols > 8 || rows > 8 || cols < 1 || rows < 1) return;
 
         const canvas = document.createElement('canvas');
         canvas.width = cols * 256; canvas.height = rows * 256;
@@ -667,8 +670,10 @@
         mapPlane.position.set(cx, -0.04, -cn);
         S.mapPlane = mapPlane;
         S.mapTex = tex;
+        // Ajout immédiat : on n'attend pas toutes les tuiles. Les manquantes
+        // restent simplement bleues (eau), la carte s'affiche dans tous les cas.
+        root.add(mapPlane);
 
-        let loaded = 0; const total = cols * rows; let failed = false;
         const subs = ['a', 'b', 'c'];
         for (let ty = minTY; ty <= maxTY; ty++) {
             for (let tx = minTX; tx <= maxTX; tx++) {
@@ -676,15 +681,11 @@
                 img.crossOrigin = 'anonymous';
                 const px = (tx - minTX) * 256, py = (ty - minTY) * 256;
                 img.onload = () => {
-                    try { ctx.drawImage(img, px, py, 256, 256); } catch (e) { failed = true; }
-                    loaded++; tex.needsUpdate = true;
-                    if (loaded === total && !failed && S.root) {
-                        S.root.remove(fallback);
-                        S.root.add(mapPlane);
-                    }
+                    if (root !== S.root) return; // scène reconstruite entre-temps
+                    try { ctx.drawImage(img, px, py, 256, 256); tex.needsUpdate = true; } catch (e) { /* tuile contaminée : on garde le bleu */ }
                 };
-                img.onerror = () => { failed = true; loaded++; };
-                img.src = `https://${subs[(tx + ty) % 3]}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${tx}/${ty}.png`;
+                img.onerror = () => { /* 404 : la tuile reste bleue */ };
+                img.src = `https://${subs[((tx % 3) + (ty % 3)) % 3]}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${tx}/${ty}.png`;
             }
         }
     }
