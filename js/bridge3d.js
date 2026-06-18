@@ -504,8 +504,9 @@
                 new THREE.MeshBasicMaterial({ color: new THREE.Color(photo.roleColor || '#7F8C8D'), side: THREE.DoubleSide })
             );
             roleDot.position.set(planeW / 2 - dotR * 1.5, planeH / 2 - dotR * 1.5, 0.03);
+            roleDot.userData.baseR = dotR;
             plane.add(roleDot);
-            plane.userData = { photo, index, providerCol, halfH: planeH / 2, basePos: new THREE.Vector3() };
+            plane.userData = { photo, index, providerCol, halfH: planeH / 2, basePos: new THREE.Vector3(), roleDot, planeH };
             S.root.add(plane);
             S.photoMeshes.push(plane);
 
@@ -550,7 +551,16 @@
             if (tex.image && tex.image.width && tex.image.height) {
                 const ar = tex.image.width / tex.image.height;
                 const targetH = planeW / ar;
-                plane.scale.set(1, targetH / planeH, 1);
+                const sy = targetH / planeH;
+                plane.scale.set(1, sy, 1);
+                // Compense l'échelle Y du panneau pour que la pastille reste ronde
+                // et reste calée dans le coin haut de l'image.
+                const rd = plane.userData && plane.userData.roleDot;
+                if (rd && sy > 0) {
+                    const r = rd.userData.baseR || 0;
+                    rd.scale.y = 1 / sy;
+                    rd.position.y = planeH / 2 - (r * 1.5) / sy;
+                }
             }
         });
     }
