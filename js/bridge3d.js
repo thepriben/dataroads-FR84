@@ -633,7 +633,7 @@
 
     // Fond de carte 2D (CartoDB Voyager) sous le pont : on voit fleuves et voiries.
     // Le plan-carte est ajouté tout de suite et se remplit au fil des tuiles ; les
-    // tuiles manquantes restent en bleu (eau). Repère nord-haut.
+    // tuiles manquantes restent en beige (fond neutre). Repère nord-haut.
     function buildGroundMap(payload) {
         const root = S.root;
         const { L } = S.model;
@@ -666,7 +666,7 @@
         const canvas = document.createElement('canvas');
         canvas.width = cols * 256; canvas.height = rows * 256;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#aadaff';
+        ctx.fillStyle = '#e8e1d3';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         const tex = new THREE.CanvasTexture(canvas);
 
@@ -688,7 +688,7 @@
         S.mapPlane = mapPlane;
         S.mapTex = tex;
         // Ajout immédiat : on n'attend pas toutes les tuiles. Les manquantes
-        // restent simplement bleues (eau), la carte s'affiche dans tous les cas.
+        // restent simplement beiges, la carte s'affiche dans tous les cas.
         root.add(mapPlane);
 
         const subs = ['a', 'b', 'c'];
@@ -699,9 +699,9 @@
                 const px = (tx - minTX) * 256, py = (ty - minTY) * 256;
                 img.onload = () => {
                     if (root !== S.root) return; // scène reconstruite entre-temps
-                    try { ctx.drawImage(img, px, py, 256, 256); tex.needsUpdate = true; } catch (e) { /* tuile contaminée : on garde le bleu */ }
+                    try { ctx.drawImage(img, px, py, 256, 256); tex.needsUpdate = true; } catch (e) { /* tuile contaminée : on garde le beige */ }
                 };
-                img.onerror = () => { /* 404 : la tuile reste bleue */ };
+                img.onerror = () => { /* 404 : la tuile reste beige */ };
                 img.src = `https://${subs[((tx % 3) + (ty % 3)) % 3]}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${tx}/${ty}.png`;
             }
         }
