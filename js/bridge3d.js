@@ -232,7 +232,9 @@
     function buildModel(payload) {
         const root = new THREE.Group();
         const kind = structureKind(payload);
-        const L = clamp(payload.axisLengthM || 40, 16, 360);
+        // L suit la longueur réelle de l'axe (plafond large) pour que le modèle
+        // s'aligne sur l'emprise du pont sur la carte 2D, sans décalage longitudinal.
+        const L = clamp(payload.axisLengthM || 40, 12, 1500);
         const W = clamp(payload.widthM || (kind === 'truss' ? 9 : 8), 4, 22);
         const baseColor = materialColor(payload.material);
         const stone = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.9, metalness: 0.04 });
@@ -637,11 +639,11 @@
     function buildGroundMap(payload) {
         const root = S.root;
         const { L } = S.model;
-        // Plan d'eau large sous la carte (visible au-delà de l'emprise des tuiles).
-        // Nettement plus bas que le plan-carte pour éviter le z-fighting (scintillement).
+        // Plan de sol neutre (beige) large, sous la carte (visible au-delà de l'emprise
+        // des tuiles). Nettement plus bas que le plan-carte pour éviter le z-fighting.
         const fallback = new THREE.Mesh(
             new THREE.PlaneGeometry(L * 3.5, L * 3.5),
-            new THREE.MeshBasicMaterial({ color: 0x16314a })
+            new THREE.MeshBasicMaterial({ color: 0xe8e1d3 })
         );
         fallback.rotation.x = -Math.PI / 2;
         fallback.position.y = -2;
@@ -733,6 +735,9 @@
         S.camera.position.set(L * 0.55, Math.max(deckY + L * 0.32, L * 0.42), L * 0.85);
         S.controls.minDistance = L * 0.18;
         S.controls.maxDistance = L * 4;
+        // far adapté à la longueur (modèle + carte) pour éviter le clipping.
+        S.camera.far = Math.max(5000, L * 9);
+        S.camera.updateProjectionMatrix();
         S.controls.update();
         resize();
     }
