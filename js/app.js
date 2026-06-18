@@ -8328,18 +8328,110 @@
             return latlngs[Math.floor(latlngs.length / 2)];
         }
 
-        // Round pictogram in French speed-limit sign style.
+        // ---- Mapillary : recherche d'une photo proche d'un panneau de vitesse ----
+        const MAPILLARY_CFG = (window.APP_CONFIG && window.APP_CONFIG.mapillary) || {};
+        const MAPILLARY_TOKEN = MAPILLARY_CFG.accessToken || '';
+        const MAPILLARY_RADIUS_M = MAPILLARY_CFG.searchRadiusMeters || 70;
+
+        // Recherche l'image Mapillary la plus proche d'un point (bbox via Graph API).
+        // Renvoie l'objet image (ou null si rien / pas de jeton).
+        async function fetchMapillaryNearby(lat, lng) {
+            if (!MAPILLARY_TOKEN) return null;
+            // Conversion approximative mètres -> degrés (lat ~111 km/°, lng pondéré par cos(lat)).
+            const dLat = MAPILLARY_RADIUS_M / 111000;
+            const dLng = MAPILLARY_RADIUS_M / (111000 * Math.cos(lat * Math.PI / 180) || 1);
+            const bbox = `${lng - dLng},${lat - dLat},${lng + dLng},${lat + dLat}`;
+            const fields = 'id,thumb_1024_url,captured_at,compass_angle,geometry';
+            const url = `https://graph.mapillary.com/images?access_token=${encodeURIComponent(MAPILLARY_TOKEN)}&fields=${fields}&bbox=${bbox}&limit=12`;
+            const resp = await fetch(url, { credentials: 'omit' });
+            if (!resp.ok) throw new Error(`Mapillary HTTP ${resp.status}`);
+            const data = await resp.json();
+            const imgs = (data && data.data) || [];
+            if (!imgs.length) return null;
+            // Garde l'image dont le point de prise de vue est le plus proche du panneau.
+            let best = null;
+            let bestDist = Infinity;
+            imgs.forEach(im => {
+                const c = im.geometry && im.geometry.coordinates;
+                if (!c) return;
+                const dx = c[0] - lng;
+                const dy = c[1] - lat;
+                const dist = dx * dx + dy * dy;
+                if (dist < bestDist) { bestDist = dist; best = im; }
+            });
+            return best;
+        }
+
+        function speedSignPopupShell(kmh) {
+            return `
+                <div class="route-popup speed-sign-popup">
+                    <h3>Limitation ${kmh} km/h</h3>
+                    <div class="speed-sign-photo" data-state="loading">
+                        <div class="speed-sign-photo-msg">📷 Recherche d'une photo Mapillary…</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Remplit le popup d'un panneau avec une photo Mapillary proche (ou un message si rien).
+        async function loadSpeedSignPhoto(marker, latlng, kmh) {
+            const popup = marker.getPopup();
+            const el = popup && popup.getElement && popup.getElement();
+            if (!el) return;
+            const slot = el.querySelector('.speed-sign-photo');
+            if (!slot || slot.dataset.loaded === '1') return;
+            slot.dataset.loaded = '1';
+
+            const setMsg = (state, msg) => {
+                slot.dataset.state = state;
+                slot.innerHTML = `<div class="speed-sign-photo-msg">${msg}</div>`;
+                if (marker.getPopup()) marker.getPopup().update();
+            };
+
+            if (!MAPILLARY_TOKEN) {
+                setMsg('empty', "Pas encore de photo disponible sur Mapillary.");
+                return;
+            }
+            try {
+                const img = await fetchMapillaryNearby(latlng.lat, latlng.lng);
+                if (!img || !img.thumb_1024_url) {
+                    setMsg('empty', "Pas encore de photo disponible sur Mapillary à proximité.");
+                    return;
+                }
+                const when = img.captured_at
+                    ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
+                    : '';
+                slot.dataset.state = 'ok';
+                slot.innerHTML = `
+                    <a href="${mapillaryPageUrl(img.id)}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
+                        <img class="speed-sign-photo-img" src="${img.thumb_1024_url}" alt="Photo Mapillary à proximité du panneau" loading="lazy">
+                    </a>
+                    <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
+                `;
+                if (marker.getPopup()) marker.getPopup().update();
+            } catch (e) {
+                console.warn('Mapillary lookup failed:', e);
+                setMsg('error', "Photo Mapillary indisponible pour le moment.");
+            }
+        }
+
+        // Round pictogram in French speed-limit sign style (clickable → photo Mapillary).
         function makeSpeedPictoMarker(latlng, kmh) {
-            return L.marker(latlng, {
+            const marker = L.marker(latlng, {
                 icon: L.divIcon({
                     html: `<div class="speed-picto" style="border-color:${colorForSpeed(kmh)};">${kmh}</div>`,
                     className: 'speed-picto-wrapper',
-                    iconSize: [22, 22],
-                    iconAnchor: [11, 11]
+                    iconSize: [34, 34],
+                    iconAnchor: [17, 17]
                 }),
-                interactive: false,
-                keyboard: false
+                interactive: true,
+                keyboard: false,
+                riseOnHover: true,
+                zIndexOffset: 400
             });
+            marker.bindPopup(speedSignPopupShell(kmh), { minWidth: 220, maxWidth: 260 });
+            marker.on('popupopen', () => loadSpeedSignPhoto(marker, latlng, kmh));
+            return marker;
         }
 
         // Pictogramme rectangulaire pour les restrictions (hauteur, poids, longueur, largeur).
@@ -8474,7 +8566,7 @@
                 <div class="limitations-legend-scale">${scaleHtml}</div>
                 <div style="font-size:0.7rem; color:#7f8c8d; margin-top:6px;">Inconnue&nbsp;: <span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:${SPEED_UNKNOWN_COLOR};vertical-align:middle;"></span></div>
                 <div style="font-size:0.7rem; color:#7f8c8d; margin-top:8px; padding-top:6px; border-top:1px solid #ecf0f1;">
-                    Pictogrammes <strong style="color:#2C3E50;">vitesse</strong> au zoom ≥ 13.<br>
+                    Pictogrammes <strong style="color:#2C3E50;">vitesse</strong> au zoom ≥ 13 — cliquez pour une photo Mapillary.<br>
                     Restrictions <strong style="color:#C0392B;">🏔️ hauteur</strong> · <strong style="color:#8E44AD;">🚛 poids</strong> sur ponts et tronçons remarquables au zoom ≥ 11.
                 </div>
             `;
