@@ -1872,26 +1872,11 @@
             if (!hint || !window.map) return;
 
             if (!bridgeVisible) {
-                hint.textContent = `Activez la couche, puis zoomez au niveau ${BRIDGE_PHOTO_MIN_ZOOM}+ pour afficher les photos.`;
+                hint.textContent = 'Activez la couche, puis cliquez un pont.';
                 return;
             }
 
-            const zoom = window.map.getZoom();
-            if (zoom < BRIDGE_GEOMETRY_MIN_ZOOM) {
-                hint.textContent = `Grappes actives · zoomez au niveau ${BRIDGE_GEOMETRY_MIN_ZOOM}+ pour le profil (tablier, culées, piles).`;
-                return;
-            }
-            if (zoom < BRIDGE_PHOTO_MIN_ZOOM) {
-                hint.textContent = `Profil visible · cliquez un élément pour l'analyse · photos au zoom ${BRIDGE_PHOTO_MIN_ZOOM}+.`;
-                return;
-            }
-            const providers = Object.entries(bridgePhotoProviderVisibility)
-                .filter(([, active]) => active)
-                .map(([provider]) => bridgeProviderLabel(provider))
-                .join(' + ');
-            hint.textContent = visiblePhotoCount > 0
-                ? `${visiblePhotoCount} photo${visiblePhotoCount > 1 ? 's' : ''} visible${visiblePhotoCount > 1 ? 's' : ''} · ${providers || 'aucune source active'}`
-                : `Aucune photo visible dans l'emprise actuelle · ${providers || 'aucune source active'}`;
+            hint.textContent = 'Cliquez un pont pour ouvrir la vue 3D.';
         }
 
         function updateBridgePhotoLayerVisibility() {
