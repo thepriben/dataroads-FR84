@@ -2626,6 +2626,39 @@
 
         .bridge3d-card-links a:hover { text-decoration: underline; }
 
+        .bridge3d-preview {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(48vw, 520px);
+            max-height: 78%;
+            background: rgba(8, 14, 24, 0.92);
+            border: 1px solid #2a3b59;
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            z-index: 3;
+        }
+
+        .bridge3d-preview img {
+            width: 100%;
+            max-height: calc(78vh - 80px);
+            object-fit: contain;
+            border-radius: 8px;
+            display: block;
+        }
+
+        .bridge3d-preview-cap {
+            color: #cdd9ec;
+            font-size: 0.74rem;
+            text-align: center;
+        }
+
         .bridge3d-hint {
             position: absolute;
             bottom: 10px;
