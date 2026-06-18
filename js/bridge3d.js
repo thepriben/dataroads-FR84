@@ -586,7 +586,6 @@
         const dom = S.renderer.domElement;
         dom.addEventListener('pointermove', onPointerMove);
         dom.addEventListener('click', onClick);
-        dom.addEventListener('pointerleave', () => hidePreview());
 
         S.resizeObs = new ResizeObserver(() => resize());
         S.resizeObs.observe(wrap);
@@ -792,9 +791,6 @@
             if (S.hovered) S.hovered.scale.multiplyScalar(1.06);
             S.renderer.domElement.style.cursor = obj ? 'pointer' : 'grab';
         }
-        // Aperçu en grand au survol (souris non enfoncée pour ne pas gêner l'orbite).
-        if (obj && !ev.buttons) showPreview(obj);
-        else hidePreview();
     }
 
     // Grand aperçu 2D de la photo, superposé à la scène.
@@ -870,6 +866,7 @@
         };
         dimOtherPhotos(index);
         S.focusIndex = index;
+        showPreview(plane);
         const photo = plane.userData.photo;
         const meta = plane.userData.meta;
         const sel = el('bridge3dSelected');
