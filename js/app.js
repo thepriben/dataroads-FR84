@@ -7130,7 +7130,19 @@
             const pillarCount = group.features.filter(info => info.role === 'pillar').length;
             const widthM = parseFloat(tags.width);
             const lengthM = parseFloat(tags.length);
-            const axisLengthM = (group.bridgeAxis && group.bridgeAxis.length) || (Number.isFinite(lengthM) ? lengthM : 0);
+            const axis = group.bridgeAxis;
+            const axisLengthM = (axis && axis.length) || (Number.isFinite(lengthM) ? lengthM : 0);
+
+            // Repère géographique du pont : centre + cap de l'axe (start -> end).
+            let centerLat = null, centerLng = null, axisBearingDeg = 0;
+            if (axis && axis.center && axis.start && axis.end) {
+                centerLat = axis.center.lat;
+                centerLng = axis.center.lng;
+                const latRad = centerLat * Math.PI / 180;
+                const east = (axis.end.lng - axis.start.lng) * Math.cos(latRad) * 111320;
+                const north = (axis.end.lat - axis.start.lat) * 111320;
+                axisBearingDeg = Math.atan2(east, north) * 180 / Math.PI;
+            }
 
             const metaChips = [];
             if (tags['bridge:structure']) metaChips.push({ label: 'Structure', value: tags['bridge:structure'] });
@@ -7144,21 +7156,21 @@
             if (tags.material) subtitleBits.push(tags.material);
             if (group.photos.length) subtitleBits.push(`${group.photos.length} photo${group.photos.length > 1 ? 's' : ''}`);
 
+            // Position de repli (si la géoloc réelle de la photo est indisponible),
+            // dérivée de la disposition OSM : conserve seulement t (le long de l'axe)
+            // et side (+/- perpendiculaire), sans notion explicite pile/culée.
             const photos = group.photos.map(photo => {
                 const layout = (group.photoLayout && group.photoLayout.get(photo.key)) || {};
                 return {
                     key: photo.key,
                     provider: photo.provider,
                     id: photo.id,
-                    t: typeof layout.t === 'number' ? layout.t : 0.5,
-                    side: typeof layout.side === 'number' ? layout.side : 1,
-                    role: photo.role,
-                    roleLabel: photo.partLabel,
                     providerLabel: providerLabel(photo.provider),
-                    label: bridgePhotoMetaLabel(photo),
                     sourceUrl: bridgePhotoExternalUrl(photo),
                     textureUrl: photo.provider === 'panoramax' ? panoramaxImageUrl(photo.id, 'sd') : null,
-                    thumbUrl: photo.provider === 'panoramax' ? panoramaxImageUrl(photo.id, 'thumb') : null
+                    thumbUrl: photo.provider === 'panoramax' ? panoramaxImageUrl(photo.id, 'thumb') : null,
+                    fallbackT: typeof layout.t === 'number' ? layout.t : 0.5,
+                    fallbackSide: typeof layout.side === 'number' ? layout.side : 1
                 };
             });
 
@@ -7167,6 +7179,9 @@
                 title: group.title,
                 subtitle: subtitleBits.join(' · '),
                 axisLengthM,
+                centerLat,
+                centerLng,
+                axisBearingDeg,
                 structure: tags['bridge:structure'] || '',
                 bridgeTag: tags.bridge || '',
                 material: tags.material || '',
