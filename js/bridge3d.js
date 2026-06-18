@@ -470,10 +470,11 @@
         S.photoMeshes = [];
         if (!Array.isArray(payload.photos) || !payload.photos.length) return;
         const { deckY, L, W } = S.model;
-        const planeW = clamp(L / 5, 5, 14);
+        // Photos plus petites, posées à hauteur de prise de vue (niveau caméra ~2-3 m).
+        const planeW = clamp(L / 10, 2.5, 6);
         const planeH = planeW * 0.72;
         const outZ = W / 2 + clamp(W * 0.9, 5, 12);
-        const photoY = deckY + planeH * 0.55;
+        const photoY = Math.max(2.4, planeH * 0.55);
         const hasGeo = payload.centerLat != null && payload.centerLng != null;
         // Vecteurs d'axe (monde) pour aligner le repli OSM sur le cap réel du pont.
         const theta = (payload.axisBearingDeg || 0) * Math.PI / 180;
@@ -793,6 +794,31 @@
     function onClick(ev) {
         const obj = pickPhoto(ev);
         if (obj && obj.userData) focusPhoto(obj.userData.index);
+        else deselectPhoto();
+    }
+
+    // Atténue (et rend non occultantes) les photos autres que celle ciblée, pour
+    // qu'une photo voisine ne masque pas celle qu'on veut regarder.
+    function setPhotoDim(plane, dim) {
+        const mats = [plane.material];
+        plane.children.forEach(c => { if (c.material) mats.push(c.material); });
+        (plane.userData.extras || []).forEach(e => { if (e.material) mats.push(e.material); });
+        mats.forEach(m => { m.transparent = dim; m.opacity = dim ? 0.1 : 1; m.depthWrite = !dim; });
+    }
+
+    function dimOtherPhotos(exceptIndex) {
+        S.photoMeshes.forEach(p => setPhotoDim(p, p.userData.index !== exceptIndex));
+    }
+
+    function restorePhotos() {
+        S.photoMeshes.forEach(p => setPhotoDim(p, false));
+    }
+
+    function deselectPhoto() {
+        restorePhotos();
+        highlightThumb(-1);
+        const sel = el('bridge3dSelected');
+        if (sel) { sel.style.display = 'none'; sel.innerHTML = ''; }
     }
 
     // Recadre la caméra sur un panneau photo et met à jour le bandeau "sélection".
@@ -811,6 +837,7 @@
             tgtTo: center,
             t: 0
         };
+        dimOtherPhotos(index);
         const photo = plane.userData.photo;
         const meta = plane.userData.meta;
         const sel = el('bridge3dSelected');
