@@ -6,7 +6,7 @@
     <title>Guide utilisateur — dataroads-FR84</title>
     <meta name="description" content="Guide d&#x27;utilisation de la carte interactive du réseau routier départemental du Vaucluse (CD84).">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/guide.css?v=1">
+    <link rel="stylesheet" href="css/guide.css?v=2">
 </head>
 <body>
     <div class="guide-wrap">
@@ -149,8 +149,17 @@
 <li>Zoom ≥ 16 — photos Panoramax / Mapillary à proximité de l'ouvrage.</li>
 </ul>
 <p><strong>Comment :</strong> activer la couche puis zoomer. Au zoom lointain, cliquer une grappe pour zoomer progressivement ; cliquer un pont ouvre la <strong>vue 3D plein écran</strong>.</p>
-<p><strong>Vue 3D :</strong> un modèle simple de l'ouvrage est généré à la volée d'après les tags OSM (type de structure — arche, poutre, treillis, suspendu —, matériau, longueur, largeur, nombre de travées). Quand OSM est lacunaire, le modèle est complété par <strong>Wikidata</strong> (type, matériau, travées, dimensions) ; le nombre d'arches peut aussi être déduit du nom (ex. « pont des 13 arches »). On tourne autour à la souris (orbite, zoom). Un fond de carte 2D (fleuves en bleu, voiries) est posé sous le pont.</p>
-<p>Les photos Panoramax / Mapillary sont disposées <strong>à leur lieu réel de prise de vue</strong>, image tournée vers l'extérieur ; le dos, face au pont, est coloré selon la source — <strong>vert</strong> Mapillary, <strong>gris clair</strong> Panoramax. Cliquer une vignette ou un panneau recadre la caméra et affiche la source ; <span class="guide-kbd">Échap</span> ou × pour fermer.</p>
+<h5>Vue 3D du pont</h5>
+<p>Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit et entouré de ses photos. On tourne autour à la souris (orbite), molette pour zoomer.</p>
+<p><strong>Modèle &amp; sources des données.</strong> Le modèle est généré à la volée selon le type de structure (arche, poutre, treillis, suspendu), le matériau, la longueur, la largeur et le nombre de travées. Les informations sont cherchées dans cet ordre :</p>
+<ol>
+<li><strong>OpenStreetMap</strong> d'abord (tags <code>bridge:structure</code>, <code>material</code>, <code>length</code>, <code>width</code>…).</li>
+<li><strong>Wikidata</strong> ensuite, si le pont y est lié, pour compléter les manques : type de structure (P31), matériau (P186), nombre de travées (P1314), longueur (P2043), largeur (P2049). Une puce <em>Wikidata</em> apparaît alors dans les métadonnées.</li>
+<li><strong>Nom de l'ouvrage</strong> en dernier recours pour le nombre d'arches (ex. « pont des 13 arches » → 13 travées).</li>
+</ol>
+<p><strong>Carte 2D sous le pont.</strong> Un fond cartographique (CartoDB Voyager) est posé à plat sous le modèle, centré sur l'ouvrage et orienté nord : on y voit les <strong>fleuves en bleu</strong> et les voiries. Repli sur un plan d'eau uni si les tuiles sont indisponibles.</p>
+<p><strong>Photos Panoramax / Mapillary.</strong> Chaque photo est posée à son <strong>lieu réel de prise de vue</strong> (géolocalisation du fournisseur), avec un marqueur et un mât au sol. L'image est tournée vers l'extérieur (point de vue du photographe) ; le dos, face au pont, est coloré selon la source — <strong>vert</strong> pour Mapillary, <strong>gris clair</strong> pour Panoramax.</p>
+<p><strong>Navigation.</strong> Cliquer une vignette de la galerie ou un panneau dans la scène recadre la caméra dessus et affiche un lien vers la source. <span class="guide-kbd">Échap</span> ou × pour fermer. Si le WebGL n'est pas disponible, une galerie 2D de repli est affichée.</p>
 </div><div class="guide-layer" id="layer-ens">
 <h4>Espaces naturels sensibles (ENS)</h4>
 <p>Polygones CD84 (DataSud). Superficie, communes, gestionnaire.</p>
