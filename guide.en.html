@@ -158,7 +158,7 @@
 <p><strong>Model &amp; data sources.</strong> The model is generated on the fly from the structure type (arch, beam, truss, suspension), material, length, width and number of spans. Information is looked up in this order:</p>
 <ol>
 <li><strong>OpenStreetMap</strong> first (<code>bridge:structure</code>, <code>material</code>, <code>length</code>, <code>width</code>… tags).</li>
-<li><strong>Wikidata</strong> next, if the bridge is linked to it, to fill the gaps: structure type (P31), material (P186), number of spans (P1314), length (P2043), width (P2049). A <em>Wikidata</em> chip then appears in the metadata.</li>
+<li><strong>Wikidata</strong> next, if the bridge is linked to it, to fill the gaps: structure type (P31), material (P186), number of spans (P1314), length (P2043), height (P2048), width (P2049). A small <strong>info card</strong> (name, image, inception, material, dimensions) then appears, with clickable links to <em>Wikidata</em> and OpenStreetMap.</li>
 <li><strong>Structure name</strong> as a last resort for the arch count (e.g. "pont des 13 arches" → 13 spans).</li>
 </ol>
 <p><strong>2D map under the bridge.</strong> A basemap (CartoDB Voyager) is laid flat beneath the model, centred on the structure and north-up: it shows <strong>rivers in blue</strong> and roads. Falls back to a plain water plane if the tiles are unavailable.</p>

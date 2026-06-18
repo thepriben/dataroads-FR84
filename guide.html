@@ -158,7 +158,7 @@
 <p><strong>Modèle &amp; sources des données.</strong> Le modèle est généré à la volée selon le type de structure (arche, poutre, treillis, suspendu), le matériau, la longueur, la largeur et le nombre de travées. Les informations sont cherchées dans cet ordre :</p>
 <ol>
 <li><strong>OpenStreetMap</strong> d'abord (tags <code>bridge:structure</code>, <code>material</code>, <code>length</code>, <code>width</code>…).</li>
-<li><strong>Wikidata</strong> ensuite, si le pont y est lié, pour compléter les manques : type de structure (P31), matériau (P186), nombre de travées (P1314), longueur (P2043), largeur (P2049). Une puce <em>Wikidata</em> apparaît alors dans les métadonnées.</li>
+<li><strong>Wikidata</strong> ensuite, si le pont y est lié, pour compléter les manques : type de structure (P31), matériau (P186), nombre de travées (P1314), longueur (P2043), hauteur (P2048), largeur (P2049). Un petit <strong>cartouche</strong> (nom, image, mise en service, matériau, dimensions) s'affiche alors, avec des liens cliquables vers <em>Wikidata</em> et OpenStreetMap.</li>
 <li><strong>Nom de l'ouvrage</strong> en dernier recours pour le nombre d'arches (ex. « pont des 13 arches » → 13 travées).</li>
 </ol>
 <p><strong>Carte 2D sous le pont.</strong> Un fond cartographique (CartoDB Voyager) est posé à plat sous le modèle, centré sur l'ouvrage et orienté nord : on y voit les <strong>fleuves en bleu</strong> et les voiries. Repli sur un plan d'eau uni si les tuiles sont indisponibles.</p>

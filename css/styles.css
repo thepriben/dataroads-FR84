@@ -2566,6 +2566,66 @@
             font-weight: 600;
         }
 
+        .bridge3d-card {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 232px;
+            max-width: 42%;
+            background: rgba(13, 22, 38, 0.9);
+            border: 1px solid #2a3b59;
+            border-radius: 12px;
+            overflow: hidden;
+            color: #e6edf8;
+            box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
+            backdrop-filter: blur(3px);
+        }
+
+        .bridge3d-card-img {
+            width: 100%;
+            height: 124px;
+            object-fit: cover;
+            display: block;
+            background: #16243d;
+        }
+
+        .bridge3d-card-body { padding: 10px 12px; }
+
+        .bridge3d-card-title {
+            font-weight: 700;
+            font-size: 0.86rem;
+            line-height: 1.25;
+            margin-bottom: 7px;
+        }
+
+        .bridge3d-card-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin-bottom: 9px;
+        }
+
+        .bridge3d-card-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 0.74rem;
+        }
+
+        .bridge3d-card-row span { color: #8fb6e8; }
+        .bridge3d-card-row strong { color: #dce6f5; font-weight: 600; text-align: right; }
+
+        .bridge3d-card-links { display: flex; gap: 14px; }
+
+        .bridge3d-card-links a {
+            color: #7cc4ff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.74rem;
+        }
+
+        .bridge3d-card-links a:hover { text-decoration: underline; }
+
         .bridge3d-hint {
             position: absolute;
             bottom: 10px;
@@ -2689,7 +2749,8 @@
 
         @media (max-width: 720px) {
             .bridge3d-panel { width: 100vw; height: 100vh; border-radius: 0; }
-            .bridge3d-meta { max-width: 90%; }
+            .bridge3d-meta { max-width: 52%; }
+            .bridge3d-card { width: auto; max-width: 44%; }
             .bridge3d-selected { left: 12px; right: 12px; max-width: none; }
         }
 
