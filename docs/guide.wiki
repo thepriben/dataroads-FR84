@@ -127,13 +127,36 @@ Couches expérimentales : ouvrages d'art, environnement, biodiversité, webcams 
 
 ==== [layer:layer-ponts] Couche ponts ====
 
-Ouvrages d'art OSM du département : tablier, culées, piles. Affichage adapté au zoom :
+Ouvrages d'art OSM du département. Affichage adapté au zoom :
 
 * Zoom lointain — grappes (nombre de ponts ou de photos).
-* Zoom ≥ 12 — profil des éléments (tablier, culées, piles) ; les grappes disparaissent.
-* Zoom ≥ 16 — photos Panoramax / Mapillary le long de l'ouvrage.
+* Zoom ≥ 12 — emprise des ouvrages sur la carte ; les grappes disparaissent.
+* Zoom ≥ 16 — photos Panoramax / Mapillary à proximité de l'ouvrage.
 
-'''Comment :''' activer la couche puis zoomer : le profil apparaît sans clic dès le zoom 12. Au zoom lointain, cliquer une grappe pour zoomer progressivement ; cliquer un élément ou une photo pour ouvrir la '''visionneuse''' (plan schématique + photo principale). Les boutons Panoramax / Mapillary filtrent les sources photo.
+'''Comment :''' activer la couche puis zoomer. Au zoom lointain, cliquer une grappe pour zoomer progressivement ; cliquer un pont ouvre la '''vue 3D plein écran'''.
+
+<h5>Vue 3D du pont</h5>
+
+Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit et entouré de ses photos. On tourne autour à la souris (orbite), molette pour zoomer.
+
+<figure class="guide-figure">
+<video src="assets/dataroads-bridges.mp4" controls preload="metadata" loop muted playsinline style="width:100%;border-radius:8px;display:block;"></video>
+<figcaption>Démonstration de la fonctionnalité Ponts (vue 3D) — 18 juin 2026.</figcaption>
+</figure>
+
+<p><strong>Modèle &amp; sources des données.</strong> Le modèle est généré à la volée selon le type de structure (arche, poutre, treillis, suspendu), le matériau, la longueur, la largeur et le nombre de travées. Les informations sont cherchées dans cet ordre :</p>
+
+<ol>
+<li><strong>OpenStreetMap</strong> d'abord (tags <code>bridge:structure</code>, <code>material</code>, <code>length</code>, <code>width</code>…).</li>
+<li><strong>Wikidata</strong> ensuite, si le pont y est lié, pour compléter les manques : type de structure (P31), matériau (P186), nombre de travées (P1314), longueur (P2043), hauteur (P2048), largeur (P2049). Un petit <strong>cartouche</strong> (nom, image, mise en service, matériau, dimensions) s'affiche alors, avec des liens cliquables vers <em>Wikidata</em> et OpenStreetMap.</li>
+<li><strong>Nom de l'ouvrage</strong> en dernier recours pour le nombre d'arches (ex. « pont des 13 arches » → 13 travées).</li>
+</ol>
+
+<p><strong>Carte 2D sous le pont.</strong> Un fond cartographique (CartoDB Voyager) est posé à plat sous le modèle, centré sur l'ouvrage et orienté nord : on y voit les <strong>fleuves en bleu</strong> et les voiries. Repli sur un plan d'eau uni si les tuiles sont indisponibles.</p>
+
+<p><strong>Photos Panoramax / Mapillary.</strong> Chaque photo est posée à son <strong>lieu réel de prise de vue</strong> (géolocalisation du fournisseur), avec un marqueur et un mât au sol. L'image est tournée vers l'extérieur (point de vue du photographe) ; le dos, face au pont, est coloré selon la source — <strong>vert</strong> pour Mapillary, <strong>gris clair</strong> pour Panoramax. Une <strong>pastille de couleur</strong> identifie le rôle de l'élément documenté (pile, culée, tablier…), avec le même code couleur que la carte.</p>
+
+<p><strong>Navigation.</strong> <strong>Cliquer</strong> une vignette de la galerie ou un panneau recadre la caméra dessus, l'affiche en grand au centre (les autres photos s'atténuent pour ne pas la masquer) et affiche un lien vers la source. Cliquer dans le vide désélectionne. <span class="guide-kbd">Échap</span> ou × pour fermer. Si le WebGL n'est pas disponible, une galerie 2D de repli est affichée.</p>
 
 ==== [layer:layer-ens] Espaces naturels sensibles (ENS) ====
 
@@ -180,7 +203,8 @@ En haut à droite de la carte :
 * '''Maison''' — vue initiale du département.
 * '''Comptages CD84''' — active la couche stations de comptage (sync avec la légende).
 * '''Convois except.''' — met en évidence le réseau régional et territorial, atténue le local (aide au gabarit exceptionnel).
-* '''Limitations''' — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, pictogrammes hauteur / poids sur ponts et passages remarquables.
+* '''Limitations''' — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, panneaux de vitesse et pictogrammes hauteur / poids. Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
+* '''Mapillary''' — affiche la couverture photo Mapillary (zones disposant de prises de vue au sol).
 
 {{hint|Les boutons actifs sont soulignés visuellement (fond sombre).}}
 

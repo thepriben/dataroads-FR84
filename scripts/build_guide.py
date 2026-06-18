@@ -265,7 +265,7 @@ def render_page(meta: dict[str, str], sections: list[tuple[str, str, str]], lead
     <div class="guide-wrap">
         <header class="guide-top">
             <a href="./">← Retour à la carte</a>
-            <span class="guide-top-meta">dataroads-FR84</span>
+            <span class="guide-top-meta"><a href="guide.html" aria-current="page">FR</a> · <a href="guide.en.html">EN</a> · dataroads-FR84</span>
         </header>
 
         <h1>Guide utilisateur</h1>
