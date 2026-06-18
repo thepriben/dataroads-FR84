@@ -684,6 +684,23 @@
             color: #3498DB;
         }
 
+        .sidebar-foot-guide-en {
+            color: #b0b8bd;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.52rem;
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+            margin-left: 6px;
+            opacity: 0.75;
+            transition: color 0.18s, opacity 0.18s;
+        }
+
+        .sidebar-foot-guide-en:hover {
+            color: #3498DB;
+            opacity: 1;
+        }
+
         .legend-section {
             margin-bottom: 22px;
         }
