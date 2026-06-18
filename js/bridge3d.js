@@ -346,18 +346,13 @@
         plane.userData.extras = [];
     }
 
-    // Positionne et oriente un panneau photo. Si azimuth connu, le plan « regarde »
-    // dans la direction de prise de vue ; sinon il fait face vers l'extérieur.
+    // Positionne et oriente un panneau photo. Le panneau représente le point de vue
+    // du photographe : il est placé au lieu de prise de vue et regarde vers le pont
+    // (centre de la scène), comme le faisait l'objectif.
     // Ajoute un marqueur au sol (lieu de prise de vue) et un mât vertical.
     function placePhoto(plane, x, y, z, azimuth, payload) {
         plane.position.set(x, y, z);
-        if (typeof azimuth === 'number') {
-            const azr = azimuth * Math.PI / 180;
-            // direction de visée en repère nord-haut : est = sin(az), nord = cos(az) -> z = -nord
-            plane.lookAt(x + Math.sin(azr), y, z - Math.cos(azr));
-        } else {
-            plane.lookAt(x, y, z + (z >= 0 ? 1 : -1));
-        }
+        plane.lookAt(0, y, 0);
         plane.userData.basePos = new THREE.Vector3(x, y, z);
 
         removePhotoExtras(plane);
@@ -579,7 +574,7 @@
         const canvas = document.createElement('canvas');
         canvas.width = cols * 256; canvas.height = rows * 256;
         const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#dfe3e8';
+        ctx.fillStyle = '#aadaff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         const tex = new THREE.CanvasTexture(canvas);
 
@@ -617,7 +612,7 @@
                     }
                 };
                 img.onerror = () => { failed = true; loaded++; };
-                img.src = `https://${subs[(tx + ty) % 3]}.basemaps.cartocdn.com/light_all/${z}/${tx}/${ty}.png`;
+                img.src = `https://${subs[(tx + ty) % 3]}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${tx}/${ty}.png`;
             }
         }
     }
