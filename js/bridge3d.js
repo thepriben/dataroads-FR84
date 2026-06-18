@@ -421,12 +421,19 @@
         removePhotoExtras(plane);
         const col = plane.userData.providerCol;
         const extras = [];
-        if (y > 0.2) {
+        // Le mât s'arrête sous le bas de la photo et reste légèrement en retrait
+        // (vers le pont) pour ne jamais traverser l'image.
+        const halfH = plane.userData.halfH || 2;
+        const bottom = y - halfH;
+        let nx = x, nz = z;
+        const len = Math.hypot(nx, nz) || 1; nx /= len; nz /= len;
+        const bx = x - nx * 0.35, bz = z - nz * 0.35;
+        if (bottom > 0.3) {
             const conn = new THREE.Mesh(
-                new THREE.CylinderGeometry(0.06, 0.06, y, 6),
+                new THREE.CylinderGeometry(0.06, 0.06, bottom, 6),
                 new THREE.MeshBasicMaterial({ color: col })
             );
-            conn.position.set(x, y / 2, z);
+            conn.position.set(bx, bottom / 2, bz);
             S.root.add(conn);
             extras.push(conn);
         }
@@ -470,7 +477,7 @@
             );
             frame.position.z = -0.06;
             plane.add(frame);
-            plane.userData = { photo, index, providerCol, basePos: new THREE.Vector3() };
+            plane.userData = { photo, index, providerCol, halfH: planeH / 2, basePos: new THREE.Vector3() };
             S.root.add(plane);
             S.photoMeshes.push(plane);
 
