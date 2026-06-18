@@ -7161,11 +7161,14 @@
             // et side (+/- perpendiculaire), sans notion explicite pile/culée.
             const photos = group.photos.map(photo => {
                 const layout = (group.photoLayout && group.photoLayout.get(photo.key)) || {};
+                const roleStyle = bridgeRoleStyle(photo.role);
                 return {
                     key: photo.key,
                     provider: photo.provider,
                     id: photo.id,
                     providerLabel: providerLabel(photo.provider),
+                    roleLabel: photo.partLabel || roleStyle.label,
+                    roleColor: roleStyle.color,
                     sourceUrl: bridgePhotoExternalUrl(photo),
                     textureUrl: photo.provider === 'panoramax' ? panoramaxImageUrl(photo.id, 'sd') : null,
                     thumbUrl: photo.provider === 'panoramax' ? panoramaxImageUrl(photo.id, 'thumb') : null,

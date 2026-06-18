@@ -2768,6 +2768,27 @@
             border-color: #7cc4ff;
         }
 
+        .bridge3d-thumb-dot {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 1.5px solid rgba(255, 255, 255, 0.85);
+            box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .bridge3d-role-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+            border: 1.5px solid rgba(255, 255, 255, 0.85);
+        }
+
         .bridge3d-thumb-badge {
             position: absolute;
             left: 3px;

@@ -497,6 +497,14 @@
             );
             frame.position.z = -0.06;
             plane.add(frame);
+            // Pastille couleur de rôle (pile, culée, tablier…) au coin de la photo.
+            const dotR = planeW * 0.08;
+            const roleDot = new THREE.Mesh(
+                new THREE.CircleGeometry(dotR, 16),
+                new THREE.MeshBasicMaterial({ color: new THREE.Color(photo.roleColor || '#7F8C8D'), side: THREE.DoubleSide })
+            );
+            roleDot.position.set(planeW / 2 - dotR * 1.5, planeH / 2 - dotR * 1.5, 0.03);
+            plane.add(roleDot);
             plane.userData = { photo, index, providerCol, halfH: planeH / 2, basePos: new THREE.Vector3() };
             S.root.add(plane);
             S.photoMeshes.push(plane);
@@ -803,10 +811,12 @@
             const photo = plane.userData.photo || {};
             const meta = plane.userData.meta;
             const az = meta && typeof meta.azimuth === 'number' ? ` · vue vers ${cardinal(meta.azimuth)} (${Math.round(meta.azimuth)}°)` : '';
+            const roleDot = photo.roleColor ? `<span class="bridge3d-role-dot" style="background:${escapeHtml(photo.roleColor)}"></span>` : '';
+            const roleTxt = photo.roleLabel ? `${roleDot}${escapeHtml(photo.roleLabel)} · ` : '';
             box.dataset.url = url;
             box.innerHTML =
                 `<img src="${escapeHtml(url)}" alt="" loading="lazy">`
-                + `<div class="bridge3d-preview-cap">${escapeHtml(photo.providerLabel || photo.provider || 'Photo')}${escapeHtml(az)}</div>`;
+                + `<div class="bridge3d-preview-cap">${roleTxt}${escapeHtml(photo.providerLabel || photo.provider || 'Photo')}${escapeHtml(az)}</div>`;
         }
         box.style.display = 'block';
     }
@@ -873,9 +883,12 @@
         if (sel) {
             const az = meta && typeof meta.azimuth === 'number' ? meta.azimuth : null;
             const dirTxt = az != null ? ` · vue vers ${cardinal(az)} (${Math.round(az)}°)` : '';
+            const roleDot = photo.roleColor ? `<span class="bridge3d-role-dot" style="background:${escapeHtml(photo.roleColor)}"></span>` : '';
+            const roleTxt = photo.roleLabel ? `<div style="margin-bottom:4px;">${roleDot}${escapeHtml(photo.roleLabel)}</div>` : '';
             sel.style.display = 'block';
             sel.innerHTML =
-                `<div class="bridge3d-selected-title">${escapeHtml(photo.providerLabel || photo.provider)}${escapeHtml(dirTxt)}</div>`
+                roleTxt
+                + `<div class="bridge3d-selected-title">${escapeHtml(photo.providerLabel || photo.provider)}${escapeHtml(dirTxt)}</div>`
                 + (photo.sourceUrl ? `<div style="margin-top:6px;"><a href="${escapeHtml(photo.sourceUrl)}" target="_blank" rel="noopener noreferrer">Ouvrir la source →</a></div>` : '');
         }
         highlightThumb(index);
@@ -900,13 +913,15 @@
             btn.type = 'button';
             btn.className = 'bridge3d-thumb';
             btn.dataset.index = String(index);
+            // Pastille couleur de rôle (pile, culée, tablier…) pour identifier la photo.
+            const dot = `<span class="bridge3d-thumb-dot" style="background:${escapeHtml(photo.roleColor || '#7F8C8D')}" title="${escapeHtml(photo.roleLabel || '')}"></span>`;
             if (photo.provider === 'panoramax' && photo.thumbUrl) {
-                btn.innerHTML = `<img src="${escapeHtml(photo.thumbUrl)}" alt="" loading="lazy">`;
+                btn.innerHTML = `<img src="${escapeHtml(photo.thumbUrl)}" alt="" loading="lazy">${dot}`;
             } else {
-                btn.innerHTML = `<span class="bridge3d-thumb-placeholder">${escapeHtml(photo.provider)}</span>`;
+                btn.innerHTML = `<span class="bridge3d-thumb-placeholder">${escapeHtml(photo.provider)}</span>${dot}`;
                 fetchPhotoMeta(photo).then(meta => {
                     const url = meta && meta.thumbUrl;
-                    if (url) btn.innerHTML = `<img src="${escapeHtml(url)}" alt="" loading="lazy">`;
+                    if (url) btn.innerHTML = `<img src="${escapeHtml(url)}" alt="" loading="lazy">${dot}`;
                 });
             }
             btn.addEventListener('click', () => {
