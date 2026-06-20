@@ -13,7 +13,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.6.16',
+        version: '0.7.0',
         repository,
         mapillary: {
             // Jeton d'accès Mapillary (Graph API) pour rechercher une photo près d'un panneau.
@@ -30,6 +30,7 @@
                 'construction-roads': 'data/osm/construction-roads.geojson',
                 'bicycle-routes': 'data/osm/bicycle-routes.geojson',
                 bridges: 'data/osm/bridges.geojson',
+                'road-signs': 'data/osm/road-signs.geojson',
                 'vaucluse-boundary': 'data/static/vaucluse-boundary.geojson',
                 communes: 'data/osm/communes-vaucluse.geojson',
                 accidents: 'data/static/accidents-vaucluse.geojson',

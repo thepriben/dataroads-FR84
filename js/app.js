@@ -340,6 +340,7 @@
                 ['weatherStationsToggleIcon', weatherStationsVisible],
                 ['bisonFuteToggleIcon', bisonFuteVisible],
                 ['bridgesToggleIcon', bridgeVisible],
+                ['roadSignsToggleIcon', roadSignsVisible],
                 ['sensitiveZonesToggleIcon', sensitiveZonesVisible],
                 ['inaturalistSensitivesToggleIcon', inaturalistSensitivesVisible],
                 ['webcamsToggleIcon', webcamsVisible]
@@ -461,11 +462,13 @@
                 case 'incubator':
                     if (targetVisible) {
                         ensureLayerToggle(bridgeVisible, window.toggleBridges);
+                        ensureLayerToggle(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerToggle(webcamsVisible, window.toggleWebcams);
                     } else {
                         ensureLayerOff(bridgeVisible, window.toggleBridges);
+                        ensureLayerOff(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerOff(webcamsVisible, window.toggleWebcams);
@@ -1453,6 +1456,7 @@
                 if (bridgePhotoProviderVisibility.panoramax) active.push('pnx');
                 if (bridgePhotoProviderVisibility.mapillary) active.push('mly');
             }
+            if (roadSignsVisible) active.push('signs');
             if (sensitiveZonesVisible) active.push('ens');
             if (inaturalistSensitivesVisible) active.push('inat');
             if (webcamsVisible) active.push('wcam');
@@ -1570,6 +1574,9 @@
                 case 'bridges':
                     setBooleanLayerIfNeeded(bridgeVisible, desired, window.toggleBridges);
                     return !desired || bridgeDataLoaded;
+                case 'signs':
+                    setBooleanLayerIfNeeded(roadSignsVisible, desired, window.toggleRoadSigns);
+                    return !desired || roadSignsDataLoaded;
                 case 'pnx':
                     if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
                     setBridgeProviderIfNeeded('panoramax', desired);
@@ -1597,7 +1604,7 @@
 
             const pendingKeys = [
                 'construction', 'bicycle', 'cities', 'limits', 'accidents', 'traffic', 'waze',
-                'weather', 'bison', 'bridges', 'pnx', 'mly', 'ens', 'inat', 'wcam'
+                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'ens', 'inat', 'wcam'
             ];
             let allReady = true;
             pendingKeys.forEach(key => {
@@ -1715,8 +1722,9 @@
                 }
                 case 'incubator': {
                     let visible = 0;
-                    const total = 4;
+                    const total = 5;
                     if (bridgeVisible) visible++;
+                    if (roadSignsVisible) visible++;
                     if (sensitiveZonesVisible) visible++;
                     if (inaturalistSensitivesVisible) visible++;
                     if (webcamsVisible) visible++;
@@ -1740,6 +1748,8 @@
                     return bicycleVisible;
                 case 'freshness-bridges':
                     return bridgeVisible;
+                case 'freshness-road-signs':
+                    return roadSignsVisible;
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
@@ -2377,6 +2387,198 @@
             syncBridgeSourceToggleUi();
             updateBridgePhotoLayerVisibility();
             syncLegendChrome();
+        };
+
+        // ========== ROAD SIGNS (stop / cédez le passage) ==========
+        // Nœuds OSM (highway=stop / give_way), très nombreux (~8600 en 84) : rendu
+        // par fenêtre de vue + zoom élevé, anneau vert Mapillary sur les marqueurs
+        // couverts (comme les panneaux de vitesse).
+        const roadSignsLayer = L.layerGroup();
+        let roadSignsVisible = false;
+        let roadSignsDataLoaded = false;
+        let roadSignsFeatures = [];
+        let roadSignsZoomHandler = null;
+        let roadSignsLoadPromise = null;
+        const ROAD_SIGNS_MIN_ZOOM = 14;
+        const ROAD_SIGNS_MAX_MARKERS = 600;
+        const ROAD_SIGN_LABELS = { stop: 'Stop', give_way: 'Cédez le passage' };
+
+        function roadSignDivIcon(kind, hasMapillary) {
+            const shapeCls = kind === 'stop' ? 'rs-stop' : 'rs-yield';
+            const inner = kind === 'stop' ? '<span class="road-sign-stop-txt">STOP</span>' : '';
+            // Anneau vert = forme verte derrière (un box-shadow serait rogné par clip-path).
+            const ring = hasMapillary ? `<span class="road-sign-ring ${shapeCls}"></span>` : '';
+            return L.divIcon({
+                html: `${ring}<span class="road-sign-shape ${shapeCls}">${inner}</span>`,
+                className: 'road-sign-wrapper' + (hasMapillary ? ' has-mapillary' : ''),
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+        }
+
+        function roadSignPopupHtml(kind, img, state) {
+            const label = ROAD_SIGN_LABELS[kind] || 'Panneau';
+            let body;
+            if (state === 'loading') {
+                body = `<div class="speed-sign-photo-msg">📷 Recherche d'une photo Mapillary…</div>`;
+            } else if (!img || !img.thumb_1024_url) {
+                body = `<div class="speed-sign-photo-msg">Pas encore de photo disponible sur Mapillary à proximité.</div>`;
+            } else {
+                const when = img.captured_at
+                    ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
+                    : '';
+                body = `
+                    <a href="${mapillaryPageUrl(img.id)}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
+                        <img class="speed-sign-photo-img" src="${img.thumb_1024_url}" alt="Photo Mapillary à proximité du panneau" loading="lazy">
+                    </a>
+                    <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
+                `;
+            }
+            return `
+                <div class="route-popup speed-sign-popup">
+                    <h3>${label}</h3>
+                    <div class="speed-sign-photo">${body}</div>
+                </div>
+            `;
+        }
+
+        function makeRoadSignMarker(lat, lng, kind) {
+            const marker = L.marker([lat, lng], {
+                icon: roadSignDivIcon(kind, false),
+                interactive: true,
+                keyboard: false,
+                riseOnHover: true,
+                zIndexOffset: 350
+            });
+            marker.bindPopup(roadSignPopupHtml(kind, null, 'loading'), { minWidth: 220, maxWidth: 260 });
+            checkMapillaryNearby(lat, lng).then(img => {
+                if (img && img.thumb_1024_url) {
+                    marker.setIcon(roadSignDivIcon(kind, true));
+                    marker.setPopupContent(roadSignPopupHtml(kind, img, 'ok'));
+                }
+            });
+            return marker;
+        }
+
+        function renderRoadSigns() {
+            roadSignsLayer.clearLayers();
+            if (!roadSignsVisible || !roadSignsDataLoaded) return;
+            if (window.map.getZoom() < ROAD_SIGNS_MIN_ZOOM) return;
+            const bounds = window.map.getBounds();
+            let count = 0;
+            for (const feature of roadSignsFeatures) {
+                const coords = feature.geometry && feature.geometry.coordinates;
+                if (!coords) continue;
+                const lng = coords[0], lat = coords[1];
+                if (!bounds.contains([lat, lng])) continue;
+                makeRoadSignMarker(lat, lng, feature.properties && feature.properties.highway).addTo(roadSignsLayer);
+                if (++count >= ROAD_SIGNS_MAX_MARKERS) break;
+            }
+        }
+
+        function setRoadSignsLegendCounts(features) {
+            let stop = 0, yieldCount = 0;
+            (features || []).forEach(feature => {
+                const kind = feature.properties && feature.properties.highway;
+                if (kind === 'stop') stop++;
+                else if (kind === 'give_way') yieldCount++;
+            });
+            const stopEl = document.getElementById('count-road-signs-stop');
+            const yieldEl = document.getElementById('count-road-signs-yield');
+            if (stopEl) stopEl.textContent = stop.toLocaleString('fr-FR');
+            if (yieldEl) yieldEl.textContent = yieldCount.toLocaleString('fr-FR');
+        }
+
+        function applyRoadSignsVisibleUi() {
+            const icon = document.getElementById('roadSignsToggleIcon');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            document.querySelectorAll('[data-road-sign]').forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+        }
+
+        function applyRoadSignsHiddenUi() {
+            const icon = document.getElementById('roadSignsToggleIcon');
+            setToggleIcon(icon, false);
+            if (icon) icon.style.opacity = '';
+            document.querySelectorAll('[data-road-sign]').forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+        }
+
+        function syncRoadSignsOnMap() {
+            if (roadSignsVisible) {
+                if (!window.map.hasLayer(roadSignsLayer)) roadSignsLayer.addTo(window.map);
+                if (!roadSignsZoomHandler) {
+                    roadSignsZoomHandler = () => renderRoadSigns();
+                    window.map.on('zoomend moveend', roadSignsZoomHandler);
+                }
+                renderRoadSigns();
+                applyRoadSignsVisibleUi();
+            } else {
+                roadSignsLayer.clearLayers();
+                if (window.map.hasLayer(roadSignsLayer)) window.map.removeLayer(roadSignsLayer);
+                if (roadSignsZoomHandler) {
+                    window.map.off('zoomend moveend', roadSignsZoomHandler);
+                    roadSignsZoomHandler = null;
+                }
+                applyRoadSignsHiddenUi();
+            }
+            syncLegendChrome();
+        }
+
+        window.loadRoadSigns = function({ show } = {}) {
+            if (roadSignsDataLoaded) {
+                if (show) roadSignsVisible = true;
+                syncRoadSignsOnMap();
+                return Promise.resolve(roadSignsFeatures);
+            }
+            if (roadSignsLoadPromise) return roadSignsLoadPromise;
+            roadSignsLoadPromise = (async () => {
+                try {
+                    const data = await window.InforouteApi.fetchGeoJson('road-signs');
+                    renderFreshnessBadge(document.getElementById('freshness-road-signs'), {
+                        generatedAt: data._cache?.generated_at,
+                        scheduleKey: 'incubator'
+                    });
+                    roadSignsFeatures = data.features || [];
+                    roadSignsDataLoaded = true;
+                    setRoadSignsLegendCounts(roadSignsFeatures);
+                    if (show) roadSignsVisible = true;
+                    syncRoadSignsOnMap();
+                    tryApplyAppUrlState();
+                    console.log(`✓ ${roadSignsFeatures.length} panneau(x) stop/cédez chargés`);
+                    return roadSignsFeatures;
+                } catch (error) {
+                    console.error('Erreur chargement panneaux:', error);
+                    setRoadSignsLegendCounts([]);
+                    renderFreshnessBadge(document.getElementById('freshness-road-signs'), {
+                        scheduleKey: 'incubator',
+                        errorMsg: error.message
+                    });
+                    applyRoadSignsHiddenUi();
+                    syncLegendChrome();
+                    return [];
+                } finally {
+                    roadSignsLoadPromise = null;
+                }
+            })();
+            return roadSignsLoadPromise;
+        };
+
+        window.toggleRoadSigns = function() {
+            roadSignsVisible = !roadSignsVisible;
+            if (!roadSignsVisible) { syncRoadSignsOnMap(); return; }
+            if (!roadSignsDataLoaded) {
+                const icon = document.getElementById('roadSignsToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                window.loadRoadSigns({ show: true });
+                return;
+            }
+            syncRoadSignsOnMap();
         };
 
         // ========== SENSITIVE NATURAL ZONES & iNATURALIST ==========
