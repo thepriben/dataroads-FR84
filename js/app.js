@@ -2429,7 +2429,7 @@
                     ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
                     : '';
                 body = `
-                    <a href="${mapillaryPageUrl(img.id)}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
+                    <a href="${(window.mapillaryPageUrl && window.mapillaryPageUrl(img.id)) || '#'}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
                         <img class="speed-sign-photo-img" src="${img.thumb_1024_url}" alt="Photo Mapillary à proximité du panneau" loading="lazy">
                     </a>
                     <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
@@ -2452,12 +2452,13 @@
                 zIndexOffset: 350
             });
             marker.bindPopup(roadSignPopupHtml(kind, null, 'loading'), { minWidth: 220, maxWidth: 260 });
-            checkMapillaryNearby(lat, lng).then(img => {
+            const checkNearby = window.checkMapillaryNearby || (() => Promise.resolve(null));
+            checkNearby(lat, lng).then(img => {
                 if (img && img.thumb_1024_url) {
                     marker.setIcon(roadSignDivIcon(kind, true));
                     marker.setPopupContent(roadSignPopupHtml(kind, img, 'ok'));
                 }
-            });
+            }).catch(() => {});
             return marker;
         }
 
@@ -8684,7 +8685,7 @@
                     ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
                     : '';
                 body = `
-                    <a href="${mapillaryPageUrl(img.id)}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
+                    <a href="${(window.mapillaryPageUrl && window.mapillaryPageUrl(img.id)) || '#'}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
                         <img class="speed-sign-photo-img" src="${img.thumb_1024_url}" alt="Photo Mapillary à proximité du panneau" loading="lazy">
                     </a>
                     <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
@@ -8728,6 +8729,10 @@
                 pumpMlyQueue();
             });
         }
+
+        // Exposé pour les couches définies hors de ce bloc DOMContentLoaded (ex. panneaux).
+        window.checkMapillaryNearby = checkMapillaryNearby;
+        window.mapillaryPageUrl = mapillaryPageUrl;
 
         function speedDivIcon(kmh, hasMapillary) {
             return L.divIcon({
