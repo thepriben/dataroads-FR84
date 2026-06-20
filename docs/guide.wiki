@@ -144,7 +144,7 @@ Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit e
 <figcaption>Démonstration de la fonctionnalité Ponts (vue 3D) — 18 juin 2026.</figcaption>
 </figure>
 
-<p><strong>Modèle &amp; sources des données.</strong> Le modèle est généré à la volée selon le type de structure (arche, poutre, treillis, suspendu), le matériau, la longueur, la largeur et le nombre de travées. Les informations sont cherchées dans cet ordre :</p>
+<p><strong>Modèle &amp; sources des données.</strong> Le modèle est généré à la volée selon le type de structure (arche, aqueduc, poutre, treillis, suspendu), le matériau, la longueur, la largeur et le nombre de travées. Les informations sont cherchées dans cet ordre :</p>
 
 <ol>
 <li><strong>OpenStreetMap</strong> d'abord (tags <code>bridge:structure</code>, <code>material</code>, <code>length</code>, <code>width</code>…).</li>
