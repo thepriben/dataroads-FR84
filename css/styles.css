@@ -3874,7 +3874,6 @@
         /* ===== Panneaux stop / cédez le passage ===== */
         .road-sign-wrapper {
             pointer-events: none;
-            position: relative;
             width: 28px;
             height: 28px;
             background: transparent;
