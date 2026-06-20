@@ -78,6 +78,15 @@ QUERIES = {
         );
         out tags geom;
     """,
+    "road-signs": """
+        [out:json][timeout:90];
+        area["ISO3166-2"="FR-84"]->.dept;
+        (
+          node(area.dept)["highway"="stop"];
+          node(area.dept)["highway"="give_way"];
+        );
+        out geom;
+    """,
 }
 
 
@@ -442,12 +451,48 @@ def bridge_features_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     return collection(features, len(data.get("elements", [])))
 
 
+# Panneaux ponctuels : on ne garde que quelques tags pour limiter le poids du
+# fichier (plusieurs milliers de noeuds en Vaucluse).
+ROAD_SIGN_KEEP = ("highway", "direction", "traffic_sign", "name")
+
+
+def node_to_point_feature(element: dict[str, Any], keep: tuple[str, ...] | None = None) -> dict[str, Any] | None:
+    lat = element.get("lat")
+    lon = element.get("lon")
+    if lat is None or lon is None:
+        return None
+    tags = element.get("tags") or {}
+    properties = {key: tags[key] for key in keep if key in tags} if keep is not None else dict(tags)
+    properties["osm_id"] = element.get("id")
+    properties["@id"] = f"node/{element.get('id')}"
+    return {
+        "type": "Feature",
+        "id": properties["@id"],
+        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+        "properties": properties,
+    }
+
+
+def road_signs_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    features: list[dict[str, Any]] = []
+    for element in data.get("elements", []):
+        if element.get("type") != "node":
+            continue
+        if (element.get("tags") or {}).get("highway") not in ("stop", "give_way"):
+            continue
+        feature = node_to_point_feature(element, ROAD_SIGN_KEEP)
+        if feature:
+            features.append(feature)
+    return collection(features, len(data.get("elements", [])))
+
+
 CONVERTERS = {
     "departmental-roads": departmental_roads_to_geojson,
     "construction-roads": construction_roads_to_geojson,
     "communes-vaucluse": communes_to_geojson,
     "bicycle-routes": bicycle_routes_to_geojson,
     "bridges": bridge_features_to_geojson,
+    "road-signs": road_signs_to_geojson,
 }
 
 

@@ -158,6 +158,12 @@ Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit e
 
 <p><strong>Navigation.</strong> <strong>Cliquer</strong> une vignette de la galerie ou un panneau recadre la caméra dessus, l'affiche en grand au centre (les autres photos s'atténuent pour ne pas la masquer) et affiche un lien vers la source. Cliquer dans le vide désélectionne. <span class="guide-kbd">Échap</span> ou × pour fermer. Si le WebGL n'est pas disponible, une galerie 2D de repli est affichée.</p>
 
+==== [layer:layer-signs] Panneaux (stop / cédez) ====
+
+Panneaux ponctuels issus d'OpenStreetMap : '''stop''' (octogone rouge) et '''cédez le passage''' (triangle pointe en bas). Données pré-générées (workflow GitHub Actions), plusieurs milliers de points en Vaucluse.
+
+'''Comment :''' activer la couche puis zoomer. Pour éviter la surcharge, les panneaux n'apparaissent qu'au '''zoom ≥ 14''', et seuls ceux de la zone affichée sont rendus. Un panneau '''cerclé de vert''' dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
+
 ==== [layer:layer-ens] Espaces naturels sensibles (ENS) ====
 
 Polygones CD84 (DataSud). Superficie, communes, gestionnaire.

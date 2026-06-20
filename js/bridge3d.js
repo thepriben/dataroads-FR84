@@ -1064,9 +1064,9 @@
         if (lengthM) rows.push(row('Longueur', `${Math.round(lengthM)} m`));
         if (height) rows.push(row('Hauteur', `${Math.round(height)} m`));
 
+        // Le lien Commons est porté par l'image elle-même (cliquable), pas par un lien texte séparé.
         const links = [];
         if (payload.wikidataId) links.push(`<a href="https://www.wikidata.org/wiki/${escapeHtml(payload.wikidataId)}" target="_blank" rel="noopener noreferrer">Wikidata ↗</a>`);
-        if (commonsUrl) links.push(`<a href="${escapeHtml(commonsUrl)}" target="_blank" rel="noopener noreferrer">Commons ↗</a>`);
         if (payload.osmUrl) links.push(`<a href="${escapeHtml(payload.osmUrl)}" target="_blank" rel="noopener noreferrer">OSM ↗</a>`);
 
         if (!rows.length && !links.length && !imgUrl) { card.style.display = 'none'; card.innerHTML = ''; return; }

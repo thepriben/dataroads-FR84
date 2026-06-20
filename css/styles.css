@@ -2587,6 +2587,7 @@
             object-fit: cover;
             display: block;
             background: #16243d;
+            cursor: pointer;
         }
 
         .bridge3d-card-body { padding: 10px 12px; }
@@ -3868,6 +3869,86 @@
 
         .speed-picto-wrapper.has-mapillary .speed-picto:hover {
             transform: scale(1.12);
+        }
+
+        /* ===== Panneaux stop / cédez le passage ===== */
+        .road-sign-wrapper {
+            pointer-events: none;
+            position: relative;
+            width: 28px;
+            height: 28px;
+            background: transparent;
+            border: none;
+        }
+        .road-sign-wrapper.has-mapillary {
+            pointer-events: auto;
+        }
+
+        .rs-stop {
+            clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+        }
+        .rs-yield {
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+        }
+
+        .road-sign-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            background: #05CB63;
+        }
+
+        .road-sign-shape {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 23px;
+            height: 23px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #c0392b;
+            filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+            transition: transform 0.12s ease;
+        }
+        .road-sign-wrapper.has-mapillary .road-sign-shape:hover {
+            transform: translate(-50%, -50%) scale(1.14);
+        }
+        /* Cédez : intérieur blanc dans le triangle rouge */
+        .road-sign-shape.rs-yield::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            right: 3px;
+            bottom: 6px;
+            background: #fff;
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+        }
+        .road-sign-stop-txt {
+            color: #fff;
+            font-family: 'Oswald', 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 7.5px;
+            letter-spacing: 0.3px;
+            line-height: 1;
+        }
+
+        /* Pastilles de légende */
+        .road-sign-swatch {
+            width: 18px;
+            height: 18px;
+            background: #c0392b;
+        }
+        .road-sign-swatch--stop {
+            clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+        }
+        .road-sign-swatch--yield {
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
         }
 
         /* Popup photo Mapillary du panneau de vitesse */
