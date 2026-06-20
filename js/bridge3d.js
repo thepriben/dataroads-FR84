@@ -45,9 +45,12 @@
     function structureKind(payload) {
         const s = String(payload.structure || '').toLowerCase();
         const b = String(payload.bridgeTag || '').toLowerCase();
+        const name = String(payload.title || '').toLowerCase();
+        // Aqueduc : ouvrage élancé portant un canal d'eau — distinct de l'arche routière.
+        if (b === 'aqueduct' || s.includes('aqueduc') || /\baqueduc/.test(name)) return 'aqueduct';
         if (s.includes('suspension') || s.includes('cable')) return 'suspension';
         if (s.includes('truss') || s.includes('treillis')) return 'truss';
-        if (s.includes('arch') || s.includes('humpback') || b === 'aqueduct' || b === 'viaduct') return 'arch';
+        if (s.includes('arch') || s.includes('humpback') || b === 'viaduct') return 'arch';
         if (s.includes('beam') || s.includes('girder') || s.includes('slab')) return 'beam';
         return 'beam';
     }
@@ -60,9 +63,10 @@
         if (payload.pillarCount && payload.pillarCount > 0) {
             return clamp(payload.pillarCount + 1, 1, 24);
         }
-        const typicalSpan = kind === 'arch' ? 18 : kind === 'truss' ? 30 : 26;
+        const archLike = kind === 'arch' || kind === 'aqueduct';
+        const typicalSpan = archLike ? 18 : kind === 'truss' ? 30 : 26;
         const est = Math.round(L / typicalSpan);
-        return clamp(est, kind === 'arch' ? 2 : 1, kind === 'arch' ? 16 : 8);
+        return clamp(est, archLike ? 2 : 1, archLike ? 18 : 8);
     }
 
     // ================= État du moteur 3D (réutilisé entre ouvertures) =================
@@ -161,7 +165,8 @@
         const t = String(label || '').toLowerCase();
         if (t.includes('susp') || t.includes('cable') || t.includes('câble') || t.includes('hauban')) return 'suspension';
         if (t.includes('treillis') || t.includes('truss')) return 'truss';
-        if (t.includes('arch') || t.includes('arc') || t.includes('voûte') || t.includes('voute') || t.includes('aqueduc')) return 'arch';
+        if (t.includes('aqueduc') || t.includes('aqueduct')) return 'aqueduc';
+        if (t.includes('arch') || t.includes('arc') || t.includes('voûte') || t.includes('voute')) return 'arch';
         if (t.includes('poutre') || t.includes('beam') || t.includes('girder') || t.includes('dalle') || t.includes('slab')) return 'beam';
         return '';
     }
@@ -235,7 +240,11 @@
         // L suit la longueur réelle de l'axe (plafond large) pour que le modèle
         // s'aligne sur l'emprise du pont sur la carte 2D, sans décalage longitudinal.
         const L = clamp(payload.axisLengthM || 40, 12, 1500);
-        const W = clamp(payload.widthM || (kind === 'truss' ? 9 : 8), 4, 22);
+        const W = clamp(
+            payload.widthM || (kind === 'truss' ? 9 : kind === 'aqueduct' ? 4 : 8),
+            kind === 'aqueduct' ? 2.5 : 4,
+            22
+        );
         const baseColor = materialColor(payload.material);
         const stone = new THREE.MeshStandardMaterial({ color: baseColor, roughness: 0.9, metalness: 0.04 });
         const metal = new THREE.MeshStandardMaterial({ color: 0x788596, roughness: 0.5, metalness: 0.55 });
@@ -266,6 +275,43 @@
                 addBox(root, w, deckBottom, W * 0.72, px, deckBottom / 2, 0, stone);
             }
             addBox(root, L, deckThickness, W, 0, deckY, 0, deckMat);
+        } else if (kind === 'aqueduct') {
+            // Aqueduc : arches portées en hauteur par des piédroits élancés,
+            // surmontées d'un canal d'eau (specus) entre deux parapets.
+            const n = deriveSpanCount(payload, 'arch', L);
+            const spanW = L / n;
+            const rise = clamp(spanW * 0.5, 2.5, 14);
+            // Hauteur des piédroits sous les arches (Wikidata P2048 si dispo, sinon élancé).
+            const pierBottom = clamp(payload.heightM ? payload.heightM - rise : rise * 2.4, rise + 1.5, 42);
+            const archTop = pierBottom + rise;
+            deckY = archTop + deckThickness / 2;
+            const archDepth = W * 0.85;
+            for (let i = 0; i < n; i++) {
+                const cx = -L / 2 + spanW * (i + 0.5);
+                const arch = makeArchMesh(spanW * 0.96, rise, archDepth, stone);
+                arch.position.set(cx, pierBottom, 0);
+                root.add(arch);
+            }
+            // Piédroits hauts entre arches + culées massives aux extrémités.
+            const pierW = clamp(spanW * 0.16, 0.8, 4);
+            for (let i = 0; i <= n; i++) {
+                const px = -L / 2 + spanW * i;
+                const isEnd = (i === 0 || i === n);
+                const w = isEnd ? pierW * 1.7 : pierW;
+                addBox(root, w, archTop, W * 0.8, px, archTop / 2, 0, stone);
+            }
+            // Plateforme support sous le canal.
+            addBox(root, L, deckThickness, W, 0, deckY, 0, stone);
+            // Canal d'eau : deux parapets de pierre + lame d'eau bleue.
+            const channelW = clamp(W * 0.5, 1.2, 5);
+            const wallH = clamp(W * 0.4, 0.9, 2.6);
+            const wallT = clamp(W * 0.13, 0.3, 1);
+            const wallY = deckY + deckThickness / 2 + wallH / 2;
+            const wallZ = channelW / 2 + wallT / 2;
+            addBox(root, L, wallH, wallT, 0, wallY, wallZ, stone);
+            addBox(root, L, wallH, wallT, 0, wallY, -wallZ, stone);
+            const water = new THREE.MeshStandardMaterial({ color: 0x2f7fd0, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.85 });
+            addBox(root, L, 0.22, channelW, 0, deckY + deckThickness / 2 + wallH * 0.45, 0, water);
         } else if (kind === 'suspension') {
             const deckBottom = clamp(L * 0.07, 3, 12);
             deckY = deckBottom + deckThickness / 2;
@@ -1049,6 +1095,7 @@
             if (info.spans && info.spans > 0 && payload.spanCountHint !== info.spans) { payload.spanCountHint = info.spans; changed = true; }
             if ((!payload.axisLengthM || payload.axisLengthM <= 0) && info.length && info.length > 0) { payload.axisLengthM = info.length; changed = true; }
             if (payload.widthM == null && info.width && info.width > 0) { payload.widthM = info.width; changed = true; }
+            if (payload.heightM == null && info.height && info.height > 0) { payload.heightM = info.height; changed = true; }
             if (!changed) return;
             if (!payload.metaChips.some(c => c.label === 'Wikidata')) {
                 payload.metaChips.push({ label: 'Wikidata', value: payload.wikidataId });

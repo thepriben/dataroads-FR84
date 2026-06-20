@@ -155,7 +155,7 @@
 <video src="assets/dataroads-bridges.mp4" controls preload="metadata" loop muted playsinline style="width:100%;border-radius:8px;display:block;"></video>
 <figcaption>Demo of the Bridges feature (3D view) — 18 June 2026.</figcaption>
 </figure>
-<p><strong>Model &amp; data sources.</strong> The model is generated on the fly from the structure type (arch, beam, truss, suspension), material, length, width and number of spans. Information is looked up in this order:</p>
+<p><strong>Model &amp; data sources.</strong> The model is generated on the fly from the structure type (arch, aqueduct, beam, truss, suspension), material, length, width and number of spans. Information is looked up in this order:</p>
 <ol>
 <li><strong>OpenStreetMap</strong> first (<code>bridge:structure</code>, <code>material</code>, <code>length</code>, <code>width</code>… tags).</li>
 <li><strong>Wikidata</strong> next, if the bridge is linked to it, to fill the gaps: structure type (P31), material (P186), number of spans (P1314), length (P2043), height (P2048), width (P2049). A small <strong>info card</strong> (name, image, inception, material, dimensions) then appears, with clickable links to <em>Wikidata</em> and OpenStreetMap.</li>
