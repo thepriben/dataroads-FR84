@@ -160,9 +160,11 @@ Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit e
 
 ==== [layer:layer-signs] Panneaux (stop / cédez) ====
 
-Panneaux ponctuels issus d'OpenStreetMap : '''stop''' (octogone rouge) et '''cédez le passage''' (triangle pointe en bas). Données pré-générées (workflow GitHub Actions), plusieurs milliers de points en Vaucluse.
+Couche issue d'OpenStreetMap : '''stop''' (octogone rouge) et '''cédez le passage''' (triangle pointe en bas), pré-générée par un workflow GitHub Actions (plusieurs milliers de points en Vaucluse).
 
-'''Comment :''' activer la couche. Quand c'est dézoomé, les panneaux sont regroupés en '''grappes''' (cercle rouge avec le nombre de panneaux) ; cliquer une grappe zoome dessus. À partir du '''zoom ≥ 15''', les '''vrais panneaux''' s'affichent (octogone stop, triangle cédez), uniquement pour la zone visible. Un panneau '''cerclé de vert''' dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
+'''Quelle donnée exactement ?''' Ce sont les nœuds OSM <code>highway=stop</code> et <code>highway=give_way</code> : ils marquent la '''règle de circulation au croisement''' (où l'on doit s'arrêter / céder le passage), avec le tag <code>direction</code> pour le sens concerné. '''Ce ne sont pas les objets « panneau » physiques''' (qui seraient <code>traffic_sign=stop</code> / <code>give_way</code>, très peu cartographiés en France). On affiche donc des pictogrammes réalistes posés sur ces points réglementaires : la couverture est bien plus complète, au prix de cette nuance sémantique.
+
+'''Comment :''' activer la couche. Quand c'est dézoomé, les points sont regroupés en '''grappes''' (cercle rouge avec le nombre d'éléments) ; cliquer une grappe zoome dessus. À partir du '''zoom ≥ 15''', les '''pictogrammes''' s'affichent (octogone stop, triangle cédez), uniquement pour la zone visible. Un pictogramme '''cerclé de vert''' dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
 
 ==== [layer:layer-ens] Espaces naturels sensibles (ENS) ====
 
