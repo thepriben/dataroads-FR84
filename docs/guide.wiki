@@ -162,7 +162,7 @@ Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit e
 
 Panneaux ponctuels issus d'OpenStreetMap : '''stop''' (octogone rouge) et '''cédez le passage''' (triangle pointe en bas). Données pré-générées (workflow GitHub Actions), plusieurs milliers de points en Vaucluse.
 
-'''Comment :''' activer la couche puis zoomer. Pour éviter la surcharge, les panneaux n'apparaissent qu'au '''zoom ≥ 14''', et seuls ceux de la zone affichée sont rendus. Un panneau '''cerclé de vert''' dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
+'''Comment :''' activer la couche. Quand c'est dézoomé, les panneaux sont regroupés en '''grappes''' (cercle rouge avec le nombre de panneaux) ; cliquer une grappe zoome dessus. À partir du '''zoom ≥ 15''', les '''vrais panneaux''' s'affichent (octogone stop, triangle cédez), uniquement pour la zone visible. Un panneau '''cerclé de vert''' dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
 
 ==== [layer:layer-ens] Espaces naturels sensibles (ENS) ====
 

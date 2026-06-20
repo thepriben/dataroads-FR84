@@ -2399,8 +2399,9 @@
         let roadSignsFeatures = [];
         let roadSignsZoomHandler = null;
         let roadSignsLoadPromise = null;
-        const ROAD_SIGNS_MIN_ZOOM = 14;
-        const ROAD_SIGNS_MAX_MARKERS = 600;
+        const ROAD_SIGNS_SIGN_ZOOM = 15;        // >= : panneaux individuels ; en dessous : grappes
+        const ROAD_SIGNS_CLUSTER_CELL_PX = 58;  // taille de cellule de grappe (px écran)
+        const ROAD_SIGNS_MAX_MARKERS = 1500;    // garde-fou pour les panneaux individuels
         const ROAD_SIGN_LABELS = { stop: 'Stop', give_way: 'Cédez le passage' };
 
         function roadSignDivIcon(kind, hasMapillary) {
@@ -2460,19 +2461,68 @@
             return marker;
         }
 
+        function roadSignClusterIcon(count) {
+            const size = count >= 500 ? 48 : count >= 100 ? 42 : count >= 20 ? 36 : 30;
+            const label = count >= 1000 ? `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k` : String(count);
+            return L.divIcon({
+                html: `<div class="road-sign-cluster" style="width:${size}px;height:${size}px;">${label}</div>`,
+                className: 'road-sign-cluster-wrapper',
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
+            });
+        }
+
+        // Agrège les panneaux visibles en grappes par grille d'écran (px) au zoom courant.
+        function renderRoadSignClusters(visible, zoom) {
+            const cell = ROAD_SIGNS_CLUSTER_CELL_PX;
+            const buckets = new Map();
+            visible.forEach(sign => {
+                const p = window.map.project([sign.lat, sign.lng], zoom);
+                const key = `${Math.floor(p.x / cell)}|${Math.floor(p.y / cell)}`;
+                let bucket = buckets.get(key);
+                if (!bucket) { bucket = { sx: 0, sy: 0, n: 0, stop: 0, yield: 0 }; buckets.set(key, bucket); }
+                bucket.sx += p.x; bucket.sy += p.y; bucket.n++;
+                if (sign.kind === 'stop') bucket.stop++; else bucket.yield++;
+            });
+            buckets.forEach(bucket => {
+                const center = window.map.unproject([bucket.sx / bucket.n, bucket.sy / bucket.n], zoom);
+                const marker = L.marker(center, {
+                    icon: roadSignClusterIcon(bucket.n),
+                    interactive: true,
+                    keyboard: false,
+                    zIndexOffset: 330
+                });
+                marker.bindTooltip(`${bucket.n} panneau${bucket.n > 1 ? 'x' : ''} · ${bucket.stop} stop / ${bucket.yield} cédez — cliquer pour zoomer`, { direction: 'top' });
+                marker.on('click', () => {
+                    window.map.flyTo(center, Math.min(window.map.getZoom() + 3, ROAD_SIGNS_SIGN_ZOOM + 1), { duration: 0.6 });
+                });
+                marker.addTo(roadSignsLayer);
+            });
+        }
+
         function renderRoadSigns() {
             roadSignsLayer.clearLayers();
-            if (!roadSignsVisible || !roadSignsDataLoaded) return;
-            if (window.map.getZoom() < ROAD_SIGNS_MIN_ZOOM) return;
+            if (!roadSignsVisible || !roadSignsDataLoaded || !window.map) return;
+            const zoom = window.map.getZoom();
             const bounds = window.map.getBounds();
-            let count = 0;
+            const visible = [];
             for (const feature of roadSignsFeatures) {
                 const coords = feature.geometry && feature.geometry.coordinates;
                 if (!coords) continue;
                 const lng = coords[0], lat = coords[1];
                 if (!bounds.contains([lat, lng])) continue;
-                makeRoadSignMarker(lat, lng, feature.properties && feature.properties.highway).addTo(roadSignsLayer);
-                if (++count >= ROAD_SIGNS_MAX_MARKERS) break;
+                visible.push({ lat, lng, kind: feature.properties && feature.properties.highway });
+            }
+            if (zoom >= ROAD_SIGNS_SIGN_ZOOM) {
+                // Panneaux individuels (vrais pictogrammes) une fois suffisamment zoomé.
+                let count = 0;
+                for (const sign of visible) {
+                    makeRoadSignMarker(sign.lat, sign.lng, sign.kind).addTo(roadSignsLayer);
+                    if (++count >= ROAD_SIGNS_MAX_MARKERS) break;
+                }
+            } else {
+                // Grappes quand c'est dézoomé.
+                renderRoadSignClusters(visible, zoom);
             }
         }
 

@@ -3950,6 +3950,31 @@
             clip-path: polygon(50% 100%, 0 0, 100% 0);
         }
 
+        /* Grappes (zoom dézoomé) */
+        .road-sign-cluster-wrapper {
+            background: transparent;
+            border: none;
+        }
+        .road-sign-cluster {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(192, 57, 43, 0.92);
+            color: #fff;
+            font-family: 'Oswald', 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            line-height: 1;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            transition: transform 0.12s ease;
+        }
+        .road-sign-cluster:hover {
+            transform: scale(1.1);
+        }
+
         /* Popup photo Mapillary du panneau de vitesse */
         .speed-sign-popup .speed-sign-photo {
             margin-top: 8px;

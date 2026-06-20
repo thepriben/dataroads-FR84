@@ -60,7 +60,8 @@
             'bicycle-routes',
             'bridges',
             'sensitive-natural-zones',
-            'inaturalist-sensitive-zones'
+            'inaturalist-sensitive-zones',
+            'road-signs'
         ]);
         const data = await fetchJson(cachePath, { cache: 'no-cache' }, {
             timeoutMs: largeGeoJsonSources.has(cacheName) ? 60000 : 20000
