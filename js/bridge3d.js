@@ -1051,6 +1051,8 @@
         const row = (label, value) => `<div class="bridge3d-card-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
         const name = (wd && wd.label) || payload.title || 'Ouvrage';
         const imgUrl = wd && wd.image ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(wd.image)}?width=360` : '';
+        // Page du fichier sur Wikimedia Commons (P18).
+        const commonsUrl = wd && wd.image ? `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(wd.image)}` : '';
         const material = payload.material || (wd && wd.matStr) || '';
         const lengthM = (payload.axisLengthM && payload.axisLengthM > 0) ? payload.axisLengthM : (wd && wd.length) || null;
         const height = wd && wd.height ? wd.height : null;
@@ -1064,12 +1066,13 @@
 
         const links = [];
         if (payload.wikidataId) links.push(`<a href="https://www.wikidata.org/wiki/${escapeHtml(payload.wikidataId)}" target="_blank" rel="noopener noreferrer">Wikidata ↗</a>`);
+        if (commonsUrl) links.push(`<a href="${escapeHtml(commonsUrl)}" target="_blank" rel="noopener noreferrer">Commons ↗</a>`);
         if (payload.osmUrl) links.push(`<a href="${escapeHtml(payload.osmUrl)}" target="_blank" rel="noopener noreferrer">OSM ↗</a>`);
 
         if (!rows.length && !links.length && !imgUrl) { card.style.display = 'none'; card.innerHTML = ''; return; }
 
         card.innerHTML =
-            (imgUrl ? `<img class="bridge3d-card-img" src="${imgUrl}" alt="" loading="lazy" onerror="this.style.display='none'">` : '')
+            (imgUrl ? `<a href="${escapeHtml(commonsUrl)}" target="_blank" rel="noopener noreferrer" title="Voir sur Wikimedia Commons"><img class="bridge3d-card-img" src="${imgUrl}" alt="" loading="lazy" onerror="this.parentNode.style.display='none'"></a>` : '')
             + '<div class="bridge3d-card-body">'
             + `<div class="bridge3d-card-title">${escapeHtml(name)}</div>`
             + (rows.length ? `<div class="bridge3d-card-rows">${rows.join('')}</div>` : '')
