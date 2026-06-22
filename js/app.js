@@ -9073,7 +9073,7 @@
         // zooms), pictures (>= 15) et grid (< 6, agrégat).
         let panoramaxCoverageLayer = null;
         let panoramaxCoverageVisible = false;
-        const PANORAMAX_TEAL = '#16A085';
+        const PANORAMAX_VIOLET = '#7C3AED';
         const PANORAMAX_TILES_URL = 'https://api.panoramax.xyz/api/map/{z}/{x}/{y}.mvt';
 
         function getPanoramaxCoverageLayer() {
@@ -9086,9 +9086,9 @@
                 minZoom: 0,
                 maxNativeZoom: 15,
                 vectorTileLayerStyles: {
-                    sequences: { weight: 2, color: PANORAMAX_TEAL, opacity: 0.75 },
-                    pictures: () => ({ radius: 1.8, fill: true, fillColor: PANORAMAX_TEAL, fillOpacity: 0.55, stroke: false }),
-                    grid: () => ({ radius: 3, fill: true, fillColor: PANORAMAX_TEAL, fillOpacity: 0.4, stroke: false })
+                    sequences: { weight: 2, color: PANORAMAX_VIOLET, opacity: 0.8 },
+                    pictures: () => ({ radius: 1.8, fill: true, fillColor: PANORAMAX_VIOLET, fillOpacity: 0.6, stroke: false }),
+                    grid: () => ({ radius: 3, fill: true, fillColor: PANORAMAX_VIOLET, fillOpacity: 0.45, stroke: false })
                 }
             });
             return panoramaxCoverageLayer;
@@ -9275,11 +9275,7 @@
             container.innerHTML = `
                 <div style="font-size:0.78rem; color:#5b6770; font-weight:600; margin-bottom:4px;">Limites de vitesse (km/h)</div>
                 <div class="limitations-legend-scale">${scaleHtml}</div>
-                <div style="font-size:0.7rem; color:#7f8c8d; margin-top:6px;">Inconnue&nbsp;: <span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:${SPEED_UNKNOWN_COLOR};vertical-align:middle;"></span></div>
-                <div style="font-size:0.7rem; color:#7f8c8d; margin-top:8px; padding-top:6px; border-top:1px solid #ecf0f1;">
-                    Pictogrammes <strong style="color:#2C3E50;">vitesse</strong> regroupés en grappes au dézoom (clic = zoom), individuels au zoom ≥ 13. Liseret <strong style="color:#05CB63;">vert</strong> = photo Mapillary à proximité, cliquez pour l'afficher.<br>
-                    Restrictions <strong style="color:#C0392B;">🏔️ hauteur</strong> · <strong style="color:#8E44AD;">🚛 poids</strong> sur ponts et tronçons remarquables au zoom ≥ 11.
-                </div>
+                <div style="font-size:0.7rem; color:#7f8c8d; margin-top:6px;">Inconnue&nbsp;: <span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:${SPEED_UNKNOWN_COLOR};vertical-align:middle;"></span> · <code>maxspeed</code> · <code>maxheight</code> · <code>maxweight</code></div>
             `;
         }
 
