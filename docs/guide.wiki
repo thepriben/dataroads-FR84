@@ -101,9 +101,9 @@ Accidents du millésime 2024 (BAAC), classés : mortels, blessés hospitalisés,
 
 ==== [layer:layer-comptages] Stations de comptage ====
 
-Stations CD84 (data.gouv.fr), classées par trafic : élevé (> 20 k véh/j), moyen, faible.
+Stations CD84 (data.gouv.fr), classées par trafic selon une gamme '''rouge cerise''' (élevé, > 20 k véh/j) → '''rose clair''' (faible).
 
-'''Comment :''' activer dans la légende ''ou'' via le bouton '''Comptages CD84''' sur la carte (les deux restent synchronisés). Clic sur une station : MJA, part PL, année.
+'''Comment :''' activer dans la légende ''ou'' via le bouton '''Comptages''' sur la carte (les deux restent synchronisés). Clic sur une station : MJA, part PL, année.
 
 === [family:realtime] Temps réel ===
 
@@ -154,7 +154,7 @@ Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit e
 
 <p><strong>Carte 2D sous le pont.</strong> Un fond cartographique (CartoDB Voyager) est posé à plat sous le modèle, centré sur l'ouvrage et orienté nord : on y voit les <strong>fleuves en bleu</strong> et les voiries. Repli sur un plan d'eau uni si les tuiles sont indisponibles.</p>
 
-<p><strong>Photos Panoramax / Mapillary.</strong> Chaque photo est posée à son <strong>lieu réel de prise de vue</strong> (géolocalisation du fournisseur), avec un marqueur et un mât au sol. L'image est tournée vers l'extérieur (point de vue du photographe) ; le dos, face au pont, est coloré selon la source — <strong>vert</strong> pour Mapillary, <strong>gris clair</strong> pour Panoramax. Une <strong>pastille de couleur</strong> identifie le rôle de l'élément documenté (pile, culée, tablier…), avec le même code couleur que la carte.</p>
+<p><strong>Photos Panoramax / Mapillary.</strong> Chaque photo est posée à son <strong>lieu réel de prise de vue</strong> (géolocalisation du fournisseur), avec un marqueur et un mât au sol. L'image est tournée vers l'extérieur (point de vue du photographe) ; le dos, face au pont, est coloré selon la source — <strong>vert</strong> pour Mapillary, <strong>violet</strong> pour Panoramax. Une <strong>pastille de couleur</strong> identifie le rôle de l'élément documenté (pile, culée, tablier…), avec le même code couleur que la carte.</p>
 
 <p><strong>Navigation.</strong> <strong>Cliquer</strong> une vignette de la galerie ou un panneau recadre la caméra dessus, l'affiche en grand au centre (les autres photos s'atténuent pour ne pas la masquer) et affiche un lien vers la source. Cliquer dans le vide désélectionne. <span class="guide-kbd">Échap</span> ou × pour fermer. Si le WebGL n'est pas disponible, une galerie 2D de repli est affichée.</p>
 
@@ -165,6 +165,12 @@ Couche issue d'OpenStreetMap : '''stop''' (octogone rouge) et '''cédez le passa
 '''Quelle donnée exactement ?''' Ce sont les nœuds OSM <code>highway=stop</code> et <code>highway=give_way</code> : ils marquent la '''règle de circulation au croisement''' (où l'on doit s'arrêter / céder le passage), avec le tag <code>direction</code> pour le sens concerné. '''Ce ne sont pas les objets « panneau » physiques''' (qui seraient <code>traffic_sign=stop</code> / <code>give_way</code>, très peu cartographiés en France). On affiche donc des pictogrammes réalistes posés sur ces points réglementaires : la couverture est bien plus complète, au prix de cette nuance sémantique.
 
 '''Comment :''' activer la couche. Quand c'est dézoomé, les points sont regroupés en '''grappes''' (cercle rouge avec le nombre d'éléments) ; cliquer une grappe zoome dessus. À partir du '''zoom ≥ 15''', les '''pictogrammes''' s'affichent (octogone stop, triangle cédez), uniquement pour la zone visible. Un pictogramme '''cerclé de vert''' dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
+
+==== [layer:layer-guideposts] Panneaux directionnels ====
+
+Mâts directionnels issus d'OpenStreetMap (nœuds <code>information=guidepost</code>) : les poteaux à lames qui indiquent les destinations de randonnée, de vélo et les points d'intérêt (plusieurs milliers en Vaucluse, dont le réseau CD84).
+
+'''Comment :''' activer la couche. Au dézoom, les points sont regroupés en '''grappes''' (cliquer = zoomer) ; au '''zoom ≥ 15''', un pictogramme '''mât directionnel''' (poteau + lames bleue/verte) s'affiche. Le popup liste les destinations. Une '''pastille verte''' sur le mât indique une photo Mapillary à proximité (cliquer pour l'afficher).
 
 ==== [layer:layer-ens] Espaces naturels sensibles (ENS) ====
 
@@ -209,10 +215,10 @@ Calendrier par source (OSM, Wikidata, externe, incubateur, météo, statique) et
 En haut à droite de la carte :
 
 * '''Maison''' — vue initiale du département.
-* '''Comptages CD84''' — active la couche stations de comptage (sync avec la légende).
-* '''Convois except.''' — met en évidence le réseau régional et territorial, atténue le local (aide au gabarit exceptionnel).
-* '''Limitations''' — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, panneaux de vitesse et pictogrammes hauteur / poids. Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
-* '''Mapillary''' — affiche la couverture photo Mapillary (zones disposant de prises de vue au sol).
+* '''Comptages''' — active la couche stations de comptage (sync avec la légende).
+* '''Limitations''' — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, panneaux de vitesse et pictogrammes hauteur / largeur / poids (regroupés en grappes au dézoom). Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
+* '''M''' — affiche la couverture photo '''Mapillary''' (zones disposant de prises de vue au sol).
+* '''P''' — affiche la couverture photo '''Panoramax''' (accent violet).
 
 {{hint|Les boutons actifs sont soulignés visuellement (fond sombre).}}
 

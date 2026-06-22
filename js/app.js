@@ -9148,7 +9148,7 @@
             const heightRaw = tags.maxheight;
             if (heightRaw && heightRaw !== 'no' && heightRaw !== 'default' && heightRaw !== 'none') {
                 const v = compactUnit(heightRaw, 'm');
-                entries.push({ icon: '🏔️', value: v, color: '#C0392B', label: `Hauteur max ${v}` });
+                entries.push({ icon: '↕️', value: v, color: '#C0392B', label: `Hauteur max ${v}` });
             }
             const weightRaw = tags.maxweight || tags.maxweightrating;
             if (weightRaw && weightRaw !== 'no' && weightRaw !== 'default' && weightRaw !== 'none') {
@@ -9158,12 +9158,12 @@
             const lengthRaw = tags.maxlength;
             if (lengthRaw && lengthRaw !== 'no' && lengthRaw !== 'default') {
                 const v = compactUnit(lengthRaw, 'm');
-                entries.push({ icon: '↔️', value: v, color: '#E67E22', label: `Longueur max ${v}` });
+                entries.push({ icon: '📏', value: v, color: '#E67E22', label: `Longueur max ${v}` });
             }
             const widthRaw = tags.maxwidth;
             if (widthRaw && widthRaw !== 'no' && widthRaw !== 'default') {
                 const v = compactUnit(widthRaw, 'm');
-                entries.push({ icon: '↕️', value: v, color: '#16A085', label: `Largeur max ${v}` });
+                entries.push({ icon: '↔️', value: v, color: '#16A085', label: `Largeur max ${v}` });
             }
             return entries;
         }
@@ -9224,6 +9224,7 @@
             // Au dézoom, on agrège tous les points (vitesse + restrictions) en grappes.
             const clusterPts = [];
             const speedKeysSeen = new Set();
+            const restrictionKeysSeen = new Set();
 
             Object.keys(window.routePolylines).forEach(ref => {
                 window.routePolylines[ref].forEach(polyline => {
@@ -9244,14 +9245,25 @@
                         }
                     }
 
+                    // Restrictions (dédupliquées par type + valeur + ~1 km), comme la vitesse,
+                    // pour qu'un même panneau porté par plusieurs segments ne s'échappe pas des grappes.
+                    const uniqueEntries = [];
+                    entries.slice(0, 2).forEach(entry => {
+                        const key = `${entry.label}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
+                        if (!restrictionKeysSeen.has(key)) {
+                            restrictionKeysSeen.add(key);
+                            uniqueEntries.push(entry);
+                        }
+                    });
+
                     if (individual) {
                         if (speedCounted) {
                             makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), kmh).addTo(speedPictoLayer);
                         }
-                        if (entries.length > 0) {
+                        if (uniqueEntries.length > 0) {
                             const isBridge = tags.bridge && tags.bridge !== 'no';
                             const isTunnel = tags.tunnel === 'yes';
-                            entries.slice(0, 2).forEach((entry, i) => {
+                            uniqueEntries.forEach((entry, i) => {
                                 const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
                                 const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
                                 marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
@@ -9260,7 +9272,7 @@
                         }
                     } else {
                         if (speedCounted) clusterPts.push({ lat: mid.lat, lng: mid.lng });
-                        entries.slice(0, 2).forEach(() => clusterPts.push({ lat: mid.lat, lng: mid.lng }));
+                        uniqueEntries.forEach(() => clusterPts.push({ lat: mid.lat, lng: mid.lng }));
                     }
                 });
             });
