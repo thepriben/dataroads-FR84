@@ -4672,10 +4672,11 @@
 
         // ========== TRAFFIC COUNTING STATIONS ==========
 
+        // Gamme rouge cerise (fort trafic) → rose clair (faible trafic).
         const TRAFFIC_STYLES = {
-            high: { fill: '#34495E', stroke: '#FFFFFF', size: 12 },
-            medium: { fill: '#95A5A6', stroke: '#FFFFFF', size: 10 },
-            low: { fill: '#D5DBDB', stroke: '#7F8C8D', size: 8 }
+            high: { fill: '#A4133C', stroke: '#FFFFFF', size: 12 },
+            medium: { fill: '#E5547F', stroke: '#FFFFFF', size: 10 },
+            low: { fill: '#FAD2DE', stroke: '#D88AA0', size: 8 }
         };
 
         function syncTrafficMarkersOnMap() {
