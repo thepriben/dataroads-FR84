@@ -3975,6 +3975,96 @@
             transform: scale(1.1);
         }
 
+        /* ===== Panneaux directionnels (information=guidepost) ===== */
+        .guidepost-wrapper {
+            pointer-events: none;
+            width: 30px;
+            height: 22px;
+            background: transparent;
+            border: none;
+        }
+        .guidepost-wrapper.has-mapillary {
+            pointer-events: auto;
+        }
+        /* Forme de flèche directionnelle (mât / fingerpost) */
+        .guidepost-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 20px;
+            background: #05CB63;
+            clip-path: polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%);
+        }
+        .guidepost-shape {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 25px;
+            height: 15px;
+            background: #1d6fb8;
+            clip-path: polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%);
+            filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+            transition: transform 0.12s ease;
+        }
+        .guidepost-wrapper.has-mapillary .guidepost-shape:hover {
+            transform: translate(-50%, -50%) scale(1.14);
+        }
+
+        .guidepost-swatch {
+            width: 22px;
+            height: 13px;
+            background: #1d6fb8;
+            clip-path: polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%);
+        }
+
+        .guidepost-cluster-wrapper {
+            background: transparent;
+            border: none;
+        }
+        .guidepost-cluster {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(29, 111, 184, 0.95);
+            color: #fff;
+            font-family: 'Oswald', 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 12px;
+            line-height: 1;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            transition: transform 0.12s ease;
+        }
+        .guidepost-cluster:hover {
+            transform: scale(1.1);
+        }
+
+        /* Liste des destinations dans le popup d'un mât directionnel */
+        .guidepost-popup .guidepost-dest {
+            margin: 6px 0 0;
+            padding-left: 16px;
+            font-size: 0.8rem;
+            color: #34434f;
+            list-style: '→ ';
+        }
+        .guidepost-popup .guidepost-dest li {
+            margin: 1px 0;
+        }
+
+        /* Bouton Mapillary compact (M stylisé) */
+        .map-tool--mapillary .map-tool-mly {
+            font-family: 'Oswald', 'DM Sans', sans-serif;
+            font-weight: 800;
+            font-size: 1rem;
+            line-height: 1;
+            letter-spacing: 0.01em;
+        }
+
         /* Popup photo Mapillary du panneau de vitesse */
         .speed-sign-popup .speed-sign-photo {
             margin-top: 8px;

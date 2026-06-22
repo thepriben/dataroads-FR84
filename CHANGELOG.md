@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- New "Panneaux directionnels" layer (OSM `information=guidepost`, ~2000 nodes in Vaucluse): clustered when zoomed out, real signposts at zoom ≥ 15, destination list in the popup, and a nearby Mapillary photo (green ring) when coverage exists — same behaviour as the stop/give-way layer.
+- `update_osm_geojson.py` now accepts dataset name arguments to refresh a single cache (e.g. `python scripts/update_osm_geojson.py guideposts`).
+
+### Changed
+
+- Mapillary toolbar button shrunk to a compact stylised "M" to save toolbar space.
+
+### Removed
+
+- "Convois exceptionnels" toolbar button hidden and disconnected (redundant with the road-hierarchy filters, little added value).
+
 ## [0.3.7] - 2026-06-13
 
 ### Fixed

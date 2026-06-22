@@ -398,6 +398,21 @@
                 </div>
 
                 <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleGuideposts && window.toggleGuideposts();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Panneaux directionnels</span>
+                        <span id="guidepostsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-guideposts" data-schedule-key="incubator"></span>
+
+                    <div class="legend-item" data-guidepost="guidepost" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color guidepost-swatch"></div>
+                        <div class="legend-label">Mâts directionnels (rando, vélo…)</div>
+                        <div class="legend-count" id="count-guideposts">-</div>
+                    </div>
+                    <div class="sensitive-zones-hint">Mâts directionnels OSM <code>information=guidepost</code> (destinations de randonnée, vélo, points d'intérêt). Grappes quand c'est dézoomé (clic = zoom) ; pictogrammes au zoom ≥ 15 ; cerclé de vert = photo Mapillary à proximité (clic).</div>
+                </div>
+
+                <div class="legend-section">
                     <div class="legend-title" onclick="window.toggleSensitiveZones && window.toggleSensitiveZones();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
                         <span>Espaces naturels sensibles</span>
                         <span id="sensitiveZonesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
@@ -620,7 +635,8 @@
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-8"/><path d="M22 20V8"/></svg></span>
                         <span class="map-tool-label">Comptages CD84</span>
                     </button>
-                    <button type="button" class="map-tool" onclick="window.toggleConvoisExceptionnels && window.toggleConvoisExceptionnels()" id="convoiBtn" title="Itinéraires adaptés aux convois exceptionnels">
+                    <!-- Convois exceptionnels : bouton désactivé (peu d'apport, redondant avec les filtres de hiérarchie). Conservé masqué pour réactivation éventuelle. -->
+                    <button type="button" class="map-tool" id="convoiBtn" title="Itinéraires adaptés aux convois exceptionnels" hidden aria-hidden="true" style="display: none;">
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h13l3-5H8l-2 5Z"/><path d="M7 18h2"/><path d="M15 18h2"/><path d="M16 13v5"/><path d="M8 13v5"/></svg></span>
                         <span class="map-tool-label">Convois&nbsp;except.</span>
                     </button>
@@ -628,9 +644,8 @@
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
                         <span class="map-tool-label">Limitations</span>
                     </button>
-                    <button type="button" class="map-tool" onclick="window.toggleMapillaryCoverage && window.toggleMapillaryCoverage()" id="mapillaryBtn" title="Couverture photo Mapillary (traces) — fiabilise les panneaux cliquables">
-                        <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L8 6H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-4l-1.5-2Z"/><circle cx="12" cy="12.5" r="3.2"/></svg></span>
-                        <span class="map-tool-label">Mapillary</span>
+                    <button type="button" class="map-tool map-tool--compact map-tool--mapillary" onclick="window.toggleMapillaryCoverage && window.toggleMapillaryCoverage()" id="mapillaryBtn" title="Couverture photo Mapillary (traces) — fiabilise les panneaux cliquables" aria-label="Couverture photo Mapillary">
+                        <span class="map-tool-mly" aria-hidden="true">M</span>
                     </button>
                 </div>
 

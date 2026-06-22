@@ -31,6 +31,7 @@
                 'bicycle-routes': 'data/osm/bicycle-routes.geojson',
                 bridges: 'data/osm/bridges.geojson',
                 'road-signs': 'data/osm/road-signs.geojson',
+                guideposts: 'data/osm/guideposts.geojson',
                 'vaucluse-boundary': 'data/static/vaucluse-boundary.geojson',
                 communes: 'data/osm/communes-vaucluse.geojson',
                 accidents: 'data/static/accidents-vaucluse.geojson',
