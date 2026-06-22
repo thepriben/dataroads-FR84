@@ -9208,9 +9208,10 @@
         }
 
         // Affiche les pictos vitesse / restrictions visibles dans la vue actuelle.
-        // Zoom strategy:
-        //   - zoom <  LIMITATIONS_SIGN_ZOOM : grappes (vitesse) + restrictions ponts/tunnels
-        //   - zoom ≥ LIMITATIONS_SIGN_ZOOM : pictos vitesse individuels + toutes restrictions
+        // Zoom strategy :
+        //   - zoom <  LIMITATIONS_SIGN_ZOOM : grappes regroupant vitesse ET restrictions
+        //     (hauteur, poids, longueur, largeur) de façon équivalente
+        //   - zoom ≥ LIMITATIONS_SIGN_ZOOM : pictos vitesse + restrictions individuels
         function renderPictograms() {
             speedPictoLayer.clearLayers();
             restrictionLayer.clearLayers();
@@ -9220,8 +9221,8 @@
             const bounds = window.map.getBounds();
             const individual = zoom >= LIMITATIONS_SIGN_ZOOM;
 
-            // Collecte des points vitesse (dédupliqués) + restrictions notables.
-            const speedPts = [];
+            // Au dézoom, on agrège tous les points (vitesse + restrictions) en grappes.
+            const clusterPts = [];
             const speedKeysSeen = new Set();
 
             Object.keys(window.routePolylines).forEach(ref => {
@@ -9231,35 +9232,40 @@
                     if (!mid || !bounds.contains(mid)) return;
 
                     const kmh = parseMaxspeed(tags.maxspeed);
+                    const entries = restrictionEntriesFromTags(tags);
+
+                    // Vitesse (dédupliquée par ref + valeur + ~1 km).
+                    let speedCounted = false;
                     if (kmh !== null) {
-                        // Clé approximative (ref + vitesse + ~1 km) pour limiter les doublons.
                         const key = `${ref}|${kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
                         if (!speedKeysSeen.has(key)) {
                             speedKeysSeen.add(key);
-                            speedPts.push({ lat: mid.lat, lng: mid.lng, kmh });
+                            speedCounted = true;
                         }
                     }
 
-                    // Restrictions : ponts/tunnels toujours, le reste seulement au zoom fin.
-                    const isBridge = tags.bridge && tags.bridge !== 'no';
-                    const isTunnel = tags.tunnel === 'yes';
-                    const entries = restrictionEntriesFromTags(tags);
-                    if (entries.length > 0 && (isBridge || isTunnel || individual)) {
-                        entries.slice(0, 2).forEach((entry, i) => {
-                            const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
-                            const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
-                            marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
-                            marker.addTo(restrictionLayer);
-                        });
+                    if (individual) {
+                        if (speedCounted) {
+                            makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), kmh).addTo(speedPictoLayer);
+                        }
+                        if (entries.length > 0) {
+                            const isBridge = tags.bridge && tags.bridge !== 'no';
+                            const isTunnel = tags.tunnel === 'yes';
+                            entries.slice(0, 2).forEach((entry, i) => {
+                                const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
+                                const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
+                                marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
+                                marker.addTo(restrictionLayer);
+                            });
+                        }
+                    } else {
+                        if (speedCounted) clusterPts.push({ lat: mid.lat, lng: mid.lng });
+                        entries.slice(0, 2).forEach(() => clusterPts.push({ lat: mid.lat, lng: mid.lng }));
                     }
                 });
             });
 
-            if (individual) {
-                speedPts.forEach(pt => makeSpeedPictoMarker(L.latLng(pt.lat, pt.lng), pt.kmh).addTo(speedPictoLayer));
-            } else {
-                renderSpeedClusters(speedPts, zoom);
-            }
+            if (!individual) renderSpeedClusters(clusterPts, zoom);
         }
 
         function updateLimitationsLegend() {
