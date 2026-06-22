@@ -4124,9 +4124,9 @@
             box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3);
         }
         .map-tool--panoramax.is-active {
-            background: #16A085;
-            border-color: #16A085;
-            box-shadow: 0 2px 8px rgba(22, 160, 133, 0.3);
+            background: #7C3AED;
+            border-color: #7C3AED;
+            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
         }
 
         /* Popup photo Mapillary du panneau de vitesse */
