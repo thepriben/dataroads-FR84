@@ -1892,7 +1892,7 @@
             if (!hint || !window.map) return;
 
             if (!bridgeVisible) {
-                hint.textContent = 'Activez la couche, puis cliquez un pont.';
+                hint.textContent = '';
                 return;
             }
 
@@ -2657,12 +2657,15 @@
         const GUIDEPOSTS_MAX_MARKERS = 1500;
 
         function guidepostDivIcon(hasMapillary) {
-            const ring = hasMapillary ? `<span class="guidepost-ring"></span>` : '';
+            const mly = hasMapillary ? `<span class="gp-mly" title="Photo Mapillary à proximité"></span>` : '';
             return L.divIcon({
-                html: `${ring}<span class="guidepost-shape"></span>`,
+                html: `<span class="gp-post"></span>`
+                    + `<span class="gp-blade gp-blade--top"></span>`
+                    + `<span class="gp-blade gp-blade--bottom"></span>`
+                    + mly,
                 className: 'guidepost-wrapper' + (hasMapillary ? ' has-mapillary' : ''),
-                iconSize: [30, 22],
-                iconAnchor: [15, 11]
+                iconSize: [30, 28],
+                iconAnchor: [9, 27]
             });
         }
 
@@ -9129,8 +9132,7 @@
         // Affiche les pictos vitesse / restrictions visibles dans la vue actuelle.
         // Zoom strategy:
         //   - zoom <  11: gradient only, no pictograms (carto overview)
-        //   - zoom 11-12: restrictions des ponts/PL seulement
-        //   - zoom ≥ 13 : pictos vitesse + restrictions
+        //   - zoom ≥ 11 : pictos vitesse + restrictions (mêmes seuils)
         function renderPictograms() {
             speedPictoLayer.clearLayers();
             restrictionLayer.clearLayers();
@@ -9138,7 +9140,7 @@
 
             const zoom = window.map.getZoom();
             const bounds = window.map.getBounds();
-            const showSpeed = zoom >= 13;
+            const showSpeed = zoom >= 11;
             const showRestrictions = zoom >= 11;
             if (!showSpeed && !showRestrictions) return;
 
@@ -9200,7 +9202,7 @@
                 <div class="limitations-legend-scale">${scaleHtml}</div>
                 <div style="font-size:0.7rem; color:#7f8c8d; margin-top:6px;">Inconnue&nbsp;: <span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:${SPEED_UNKNOWN_COLOR};vertical-align:middle;"></span></div>
                 <div style="font-size:0.7rem; color:#7f8c8d; margin-top:8px; padding-top:6px; border-top:1px solid #ecf0f1;">
-                    Pictogrammes <strong style="color:#2C3E50;">vitesse</strong> au zoom ≥ 13. Liseret <strong style="color:#05CB63;">vert</strong> = photo Mapillary à proximité, cliquez pour l'afficher.<br>
+                    Pictogrammes <strong style="color:#2C3E50;">vitesse</strong> au zoom ≥ 11. Liseret <strong style="color:#05CB63;">vert</strong> = photo Mapillary à proximité, cliquez pour l'afficher.<br>
                     Restrictions <strong style="color:#C0392B;">🏔️ hauteur</strong> · <strong style="color:#8E44AD;">🚛 poids</strong> sur ponts et tronçons remarquables au zoom ≥ 11.
                 </div>
             `;
