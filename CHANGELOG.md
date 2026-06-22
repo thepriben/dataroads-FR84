@@ -5,7 +5,7 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.4.0] - 2026-06-21
 
 ### Added
 
@@ -18,13 +18,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Mapillary toolbar button shrunk to a compact stylised "M" to save toolbar space.
 - Guidepost markers redesigned as real fingerposts (post + pointed direction blades, green dot for nearby Mapillary coverage) so they no longer look like speed/size limitation signs.
 - Limitations: speed pictograms are now clustered when zoomed out (click a cluster to zoom in) and shown individually at zoom ≥ 13, so they are visible from the base zoom without cluttering the map.
+- Limitations: size/weight restriction pictograms (height, width, weight, length) are now included in the same clusters as speed signs, and de-duplicated by type + value + ~1 km (like speed) so a sign carried by several overlapping way-segments no longer escapes the clusters as a stray picto.
+- Limitations: dimension icons made semantically consistent — max width is now a horizontal arrow (↔️), max height a vertical arrow (↕️) and max length a ruler (📏).
 - "Comptages CD84" toolbar button renamed to "Comptages"; "Panneaux directionnels" legend title now stacks "directionnels" as a smaller grey subtitle.
+- Comptages (traffic-count stations) recoloured on a cherry-red (high traffic) → light-pink (low traffic) gradient.
+- Panoramax accent colour switched to violet across the bridge viewer, photo markers and source dots.
 - Left-column legend sections are now clearly delimited cards with a dark contour, so each feature's start/end is obvious at a glance.
 - Removed the bridge hint text entirely ("Activez la couche, puis cliquez un pont." / "Cliquez un pont pour ouvrir la vue 3D.").
 
 ### Removed
 
 - "Convois exceptionnels" toolbar button hidden and disconnected (redundant with the road-hierarchy filters, little added value).
+- "Sources photo" section (Panoramax 84 / Mapillary) removed from the left column to reduce clutter.
 
 ## [0.3.7] - 2026-06-13
 

@@ -120,8 +120,8 @@
 <p><strong>Comment :</strong> activer la couche ; cliquez un marqueur pour le détail (date, route, commune).</p>
 </div><div class="guide-layer" id="layer-comptages">
 <h4>Stations de comptage</h4>
-<p>Stations CD84 (data.gouv.fr), classées par trafic : élevé (&gt; 20 k véh/j), moyen, faible.</p>
-<p><strong>Comment :</strong> activer dans la légende <em>ou</em> via le bouton <strong>Comptages CD84</strong> sur la carte (les deux restent synchronisés). Clic sur une station : MJA, part PL, année.</p>
+<p>Stations CD84 (data.gouv.fr), classées par trafic selon une gamme <strong>rouge cerise</strong> (élevé, &gt; 20 k véh/j) → <strong>rose clair</strong> (faible).</p>
+<p><strong>Comment :</strong> activer dans la légende <em>ou</em> via le bouton <strong>Comptages</strong> sur la carte (les deux restent synchronisés). Clic sur une station : MJA, part PL, année.</p>
 </div>
 </article>
 <article class="guide-family" data-family="realtime" id="realtime">
@@ -162,13 +162,17 @@
 <li><strong>Nom de l'ouvrage</strong> en dernier recours pour le nombre d'arches (ex. « pont des 13 arches » → 13 travées).</li>
 </ol>
 <p><strong>Carte 2D sous le pont.</strong> Un fond cartographique (CartoDB Voyager) est posé à plat sous le modèle, centré sur l'ouvrage et orienté nord : on y voit les <strong>fleuves en bleu</strong> et les voiries. Repli sur un plan d'eau uni si les tuiles sont indisponibles.</p>
-<p><strong>Photos Panoramax / Mapillary.</strong> Chaque photo est posée à son <strong>lieu réel de prise de vue</strong> (géolocalisation du fournisseur), avec un marqueur et un mât au sol. L'image est tournée vers l'extérieur (point de vue du photographe) ; le dos, face au pont, est coloré selon la source — <strong>vert</strong> pour Mapillary, <strong>gris clair</strong> pour Panoramax. Une <strong>pastille de couleur</strong> identifie le rôle de l'élément documenté (pile, culée, tablier…), avec le même code couleur que la carte.</p>
+<p><strong>Photos Panoramax / Mapillary.</strong> Chaque photo est posée à son <strong>lieu réel de prise de vue</strong> (géolocalisation du fournisseur), avec un marqueur et un mât au sol. L'image est tournée vers l'extérieur (point de vue du photographe) ; le dos, face au pont, est coloré selon la source — <strong>vert</strong> pour Mapillary, <strong>violet</strong> pour Panoramax. Une <strong>pastille de couleur</strong> identifie le rôle de l'élément documenté (pile, culée, tablier…), avec le même code couleur que la carte.</p>
 <p><strong>Navigation.</strong> <strong>Cliquer</strong> une vignette de la galerie ou un panneau recadre la caméra dessus, l'affiche en grand au centre (les autres photos s'atténuent pour ne pas la masquer) et affiche un lien vers la source. Cliquer dans le vide désélectionne. <span class="guide-kbd">Échap</span> ou × pour fermer. Si le WebGL n'est pas disponible, une galerie 2D de repli est affichée.</p>
 </div><div class="guide-layer" id="layer-signs">
 <h4>Panneaux (stop / cédez)</h4>
 <p>Couche issue d'OpenStreetMap : <strong>stop</strong> (octogone rouge) et <strong>cédez le passage</strong> (triangle pointe en bas), pré-générée par un workflow GitHub Actions (plusieurs milliers de points en Vaucluse).</p>
 <p><strong>Quelle donnée exactement ?</strong> Ce sont les nœuds OSM <code>highway=stop</code> et <code>highway=give_way</code> : ils marquent la <strong>règle de circulation au croisement</strong> (où l'on doit s'arrêter / céder le passage), avec le tag <code>direction</code> pour le sens concerné. <strong>Ce ne sont pas les objets « panneau » physiques</strong> (qui seraient <code>traffic_sign=stop</code> / <code>give_way</code>, très peu cartographiés en France). On affiche donc des pictogrammes réalistes posés sur ces points réglementaires : la couverture est bien plus complète, au prix de cette nuance sémantique.</p>
 <p><strong>Comment :</strong> activer la couche. Quand c'est dézoomé, les points sont regroupés en <strong>grappes</strong> (cercle rouge avec le nombre d'éléments) ; cliquer une grappe zoome dessus. À partir du <strong>zoom ≥ 15</strong>, les <strong>pictogrammes</strong> s'affichent (octogone stop, triangle cédez), uniquement pour la zone visible. Un pictogramme <strong>cerclé de vert</strong> dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.</p>
+</div><div class="guide-layer" id="layer-guideposts">
+<h4>Panneaux directionnels</h4>
+<p>Mâts directionnels issus d'OpenStreetMap (nœuds <code>information=guidepost</code>) : les poteaux à lames qui indiquent les destinations de randonnée, de vélo et les points d'intérêt (plusieurs milliers en Vaucluse, dont le réseau CD84).</p>
+<p><strong>Comment :</strong> activer la couche. Au dézoom, les points sont regroupés en <strong>grappes</strong> (cliquer = zoomer) ; au <strong>zoom ≥ 15</strong>, un pictogramme <strong>mât directionnel</strong> (poteau + lames bleue/verte) s'affiche. Le popup liste les destinations. Une <strong>pastille verte</strong> sur le mât indique une photo Mapillary à proximité (cliquer pour l'afficher).</p>
 </div><div class="guide-layer" id="layer-ens">
 <h4>Espaces naturels sensibles (ENS)</h4>
 <p>Polygones CD84 (DataSud). Superficie, communes, gestionnaire.</p>
@@ -206,10 +210,10 @@
 <p>En haut à droite de la carte :</p>
 <ul>
 <li><strong>Maison</strong> — vue initiale du département.</li>
-<li><strong>Comptages CD84</strong> — active la couche stations de comptage (sync avec la légende).</li>
-<li><strong>Convois except.</strong> — met en évidence le réseau régional et territorial, atténue le local (aide au gabarit exceptionnel).</li>
-<li><strong>Limitations</strong> — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, panneaux de vitesse et pictogrammes hauteur / poids. Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.</li>
-<li><strong>Mapillary</strong> — affiche la couverture photo Mapillary (zones disposant de prises de vue au sol).</li>
+<li><strong>Comptages</strong> — active la couche stations de comptage (sync avec la légende).</li>
+<li><strong>Limitations</strong> — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, panneaux de vitesse et pictogrammes hauteur / largeur / poids (regroupés en grappes au dézoom). Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.</li>
+<li><strong>M</strong> — affiche la couverture photo <strong>Mapillary</strong> (zones disposant de prises de vue au sol).</li>
+<li><strong>P</strong> — affiche la couverture photo <strong>Panoramax</strong> (accent violet).</li>
 </ul>
 <p class="guide-hint">Les boutons actifs sont soulignés visuellement (fond sombre).</p>
         </section>
