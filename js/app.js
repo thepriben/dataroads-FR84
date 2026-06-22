@@ -1891,12 +1891,7 @@
             const hint = document.getElementById('bridgeZoomHint');
             if (!hint || !window.map) return;
 
-            if (!bridgeVisible) {
-                hint.textContent = '';
-                return;
-            }
-
-            hint.textContent = 'Cliquez un pont pour ouvrir la vue 3D.';
+            hint.textContent = '';
         }
 
         function updateBridgePhotoLayerVisibility() {
@@ -9069,6 +9064,47 @@
                 window.map.removeLayer(layer);
             }
             setToolActive('mapillaryBtn', mapillaryCoverageVisible);
+        };
+
+        // --- Couche couverture Panoramax (séquences/photos, tuiles vectorielles MVT) ---
+        // API publique sans jeton : /api/map/{z}/{x}/{y}.mvt — couches sequences (tous
+        // zooms), pictures (>= 15) et grid (< 6, agrégat).
+        let panoramaxCoverageLayer = null;
+        let panoramaxCoverageVisible = false;
+        const PANORAMAX_TEAL = '#16A085';
+        const PANORAMAX_TILES_URL = 'https://api.panoramax.xyz/api/map/{z}/{x}/{y}.mvt';
+
+        function getPanoramaxCoverageLayer() {
+            if (panoramaxCoverageLayer) return panoramaxCoverageLayer;
+            if (!window.L || !L.vectorGrid) return null;
+            panoramaxCoverageLayer = L.vectorGrid.protobuf(PANORAMAX_TILES_URL, {
+                rendererFactory: L.canvas.tile,
+                interactive: false,
+                attribution: '© Panoramax',
+                minZoom: 0,
+                maxNativeZoom: 15,
+                vectorTileLayerStyles: {
+                    sequences: { weight: 2, color: PANORAMAX_TEAL, opacity: 0.75 },
+                    pictures: () => ({ radius: 1.8, fill: true, fillColor: PANORAMAX_TEAL, fillOpacity: 0.55, stroke: false }),
+                    grid: () => ({ radius: 3, fill: true, fillColor: PANORAMAX_TEAL, fillOpacity: 0.4, stroke: false })
+                }
+            });
+            return panoramaxCoverageLayer;
+        }
+
+        window.togglePanoramaxCoverage = function() {
+            const layer = getPanoramaxCoverageLayer();
+            if (!layer) {
+                console.warn('Panoramax: Leaflet.VectorGrid indisponible.');
+                return;
+            }
+            panoramaxCoverageVisible = !panoramaxCoverageVisible;
+            if (panoramaxCoverageVisible) {
+                layer.addTo(window.map);
+            } else {
+                window.map.removeLayer(layer);
+            }
+            setToolActive('panoramaxBtn', panoramaxCoverageVisible);
         };
 
         // Pictogramme rectangulaire pour les restrictions (hauteur, poids, longueur, largeur).

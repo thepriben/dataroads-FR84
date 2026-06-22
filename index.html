@@ -374,7 +374,7 @@
                             <span class="bridge-source-count" id="count-bridges-mapillary">-</span>
                         </button>
                     </div>
-                    <div class="bridge-zoom-hint" id="bridgeZoomHint">Cliquez un pont pour ouvrir la vue 3D.</div>
+                    <div class="bridge-zoom-hint" id="bridgeZoomHint"></div>
                 </div>
 
                 <div class="legend-section">
@@ -646,6 +646,9 @@
                     </button>
                     <button type="button" class="map-tool map-tool--compact map-tool--mapillary" onclick="window.toggleMapillaryCoverage && window.toggleMapillaryCoverage()" id="mapillaryBtn" title="Couverture photo Mapillary (traces) — fiabilise les panneaux cliquables" aria-label="Couverture photo Mapillary">
                         <span class="map-tool-mly" aria-hidden="true">M</span>
+                    </button>
+                    <button type="button" class="map-tool map-tool--compact map-tool--panoramax" onclick="window.togglePanoramaxCoverage && window.togglePanoramaxCoverage()" id="panoramaxBtn" title="Couverture photo Panoramax (traces)" aria-label="Couverture photo Panoramax">
+                        <span class="map-tool-pnx" aria-hidden="true">P</span>
                     </button>
                 </div>
 
