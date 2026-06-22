@@ -1454,7 +1454,7 @@
         }
 
         .bridge-viewer-hero-badge--panoramax {
-            background: rgba(39, 174, 96, 0.82);
+            background: rgba(124, 58, 237, 0.85);
         }
 
         .bridge-viewer-hero-badge--mapillary {
@@ -1738,7 +1738,7 @@
         }
 
         .bridge-photo-marker.is-panoramax span {
-            color: #16A085;
+            color: #7C3AED;
         }
 
         .bridge-photo-marker.is-mapillary span {
@@ -1797,7 +1797,7 @@
         }
 
         .bridge-source-dot--panoramax {
-            background: #16A085;
+            background: #7C3AED;
         }
 
         .bridge-source-dot--mapillary {

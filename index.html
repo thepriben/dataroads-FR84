@@ -359,22 +359,7 @@
                     </div>
                 </div>
 
-                <div class="legend-section">
-                    <div class="legend-title">Sources photo</div>
-                    <div class="bridge-source-controls">
-                        <button type="button" class="bridge-source-toggle is-active" id="bridgeSourcePanoramax" onclick="window.toggleBridgePhotoProvider && window.toggleBridgePhotoProvider('panoramax')" data-provider="panoramax">
-                            <span class="bridge-source-dot bridge-source-dot--panoramax"></span>
-                            <span>Panoramax</span>
-                            <span class="bridge-source-count" id="count-bridges-panoramax">-</span>
-                        </button>
-                        <button type="button" class="bridge-source-toggle is-active" id="bridgeSourceMapillary" onclick="window.toggleBridgePhotoProvider && window.toggleBridgePhotoProvider('mapillary')" data-provider="mapillary">
-                            <span class="bridge-source-dot bridge-source-dot--mapillary"></span>
-                            <span>Mapillary</span>
-                            <span class="bridge-source-count" id="count-bridges-mapillary">-</span>
-                        </button>
-                    </div>
-                    <div class="bridge-zoom-hint" id="bridgeZoomHint"></div>
-                </div>
+                <div class="bridge-zoom-hint" id="bridgeZoomHint" hidden></div>
 
                 <div class="legend-section">
                     <div class="legend-title" onclick="window.toggleRoadSigns && window.toggleRoadSigns();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
