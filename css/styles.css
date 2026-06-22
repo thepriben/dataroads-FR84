@@ -717,6 +717,19 @@
             overflow-wrap: anywhere;
         }
 
+        /* Titre de couche sur deux lignes : libellé principal + qualificatif gris */
+        .legend-title-stacked {
+            display: inline-flex;
+            flex-direction: column;
+            line-height: 1.15;
+        }
+        .legend-title-sub {
+            font-size: 0.78em;
+            font-weight: 500;
+            color: #95a1ab;
+            letter-spacing: 0.01em;
+        }
+
         .quality-section-header {
             display: flex;
             align-items: center;
@@ -3976,48 +3989,88 @@
         }
 
         /* ===== Panneaux directionnels (information=guidepost) ===== */
+        /* Mât (fingerpost) : poteau vertical + lames directionnelles pointées. */
         .guidepost-wrapper {
             pointer-events: none;
             width: 30px;
-            height: 22px;
+            height: 28px;
             background: transparent;
             border: none;
         }
         .guidepost-wrapper.has-mapillary {
             pointer-events: auto;
         }
-        /* Forme de flèche directionnelle (mât / fingerpost) */
-        .guidepost-ring {
+        .gp-post {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 30px;
-            height: 20px;
-            background: #05CB63;
-            clip-path: polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%);
+            left: 7px;
+            bottom: 1px;
+            width: 3px;
+            height: 23px;
+            background: #5b6770;
+            border-radius: 1px;
+            box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.3);
         }
-        .guidepost-shape {
+        .gp-blade {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 25px;
-            height: 15px;
-            background: #1d6fb8;
-            clip-path: polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%);
-            filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.35));
+            left: 6px;
+            height: 8px;
+            clip-path: polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%);
+            filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.3));
             transition: transform 0.12s ease;
+            transform-origin: left center;
         }
-        .guidepost-wrapper.has-mapillary .guidepost-shape:hover {
-            transform: translate(-50%, -50%) scale(1.14);
+        .gp-blade--top {
+            top: 3px;
+            width: 19px;
+            background: #1d6fb8;
+        }
+        .gp-blade--bottom {
+            top: 13px;
+            width: 15px;
+            background: #2e8b57;
+        }
+        .guidepost-wrapper.has-mapillary:hover .gp-blade {
+            transform: scaleX(1.12);
+        }
+        /* Pastille verte = couverture photo Mapillary à proximité */
+        .gp-mly {
+            position: absolute;
+            top: 0;
+            right: 2px;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #05CB63;
+            border: 1.5px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15);
         }
 
+        /* Pastille de légende : mini-fingerpost */
         .guidepost-swatch {
-            width: 22px;
-            height: 13px;
+            position: relative;
+            width: 20px;
+            height: 18px;
+            background: transparent;
+        }
+        .guidepost-swatch::before {
+            content: '';
+            position: absolute;
+            left: 4px;
+            bottom: 0;
+            width: 2.5px;
+            height: 16px;
+            background: #5b6770;
+            border-radius: 1px;
+        }
+        .guidepost-swatch::after {
+            content: '';
+            position: absolute;
+            left: 3px;
+            top: 3px;
+            width: 15px;
+            height: 6px;
             background: #1d6fb8;
-            clip-path: polygon(0 0, 72% 0, 100% 50%, 72% 100%, 0 100%);
+            clip-path: polygon(0 0, 78% 0, 100% 50%, 78% 100%, 0 100%);
         }
 
         .guidepost-cluster-wrapper {
@@ -4384,11 +4437,35 @@
         }
 
         .legend-family-body .legend-section {
+            position: relative;
             margin: 0 0 8px 0;
-            padding: 10px 8px 8px;
+            padding: 10px 8px 8px 12px;
             background: #fff;
             border: 1px solid #e8ecef;
-            border-radius: 5px;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+            transition: box-shadow 0.18s, border-color 0.18s;
+        }
+
+        /* Fin liseré à gauche de chaque section, accentué au survol */
+        .legend-family-body .legend-section::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            border-radius: 6px 0 0 6px;
+            background: #d6dce1;
+            transition: background 0.18s;
+        }
+
+        .legend-family-body .legend-section:hover {
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+            border-color: #d3dde6;
+        }
+        .legend-family-body .legend-section:hover::before {
+            background: #2C3E50;
         }
 
         .legend-family-body .legend-section:last-child {
