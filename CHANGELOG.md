@@ -17,7 +17,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - Mapillary toolbar button shrunk to a compact stylised "M" to save toolbar space.
 - Guidepost markers redesigned as real fingerposts (post + pointed direction blades, green dot for nearby Mapillary coverage) so they no longer look like speed/size limitation signs.
-- Speed pictograms now appear from zoom ≥ 11 (same threshold as the size/weight restrictions) instead of zoom ≥ 13.
+- Limitations: speed pictograms are now clustered when zoomed out (click a cluster to zoom in) and shown individually at zoom ≥ 13, so they are visible from the base zoom without cluttering the map.
 - "Comptages CD84" toolbar button renamed to "Comptages"; "Panneaux directionnels" legend title now stacks "directionnels" as a smaller grey subtitle.
 - Left-column legend sections are now clearly delimited cards with a dark contour, so each feature's start/end is obvious at a glance.
 - Removed the bridge hint text entirely ("Activez la couche, puis cliquez un pont." / "Cliquez un pont pour ouvrir la vue 3D.").

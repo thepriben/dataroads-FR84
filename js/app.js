@@ -8825,6 +8825,8 @@
         const speedPictoLayer = L.layerGroup();
         const restrictionLayer = L.layerGroup();
         let limitationsZoomHandler = null;
+        const LIMITATIONS_SIGN_ZOOM = 13;        // >= : pictogrammes individuels ; en dessous : grappes
+        const LIMITATIONS_CLUSTER_CELL_PX = 54;  // taille de cellule de grappe (px écran)
 
         // Hot/cold color scale for speed limits (km/h).
         // Convention: cold (blue) = slow / safe, hot (red) = fast.
@@ -9165,10 +9167,49 @@
             return entries;
         }
 
+        // Bulle de grappe pour les limitations (au dézoom).
+        function speedClusterIcon(count) {
+            const size = count >= 500 ? 46 : count >= 100 ? 40 : count >= 20 ? 34 : 28;
+            const label = count >= 1000 ? `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k` : String(count);
+            return L.divIcon({
+                html: `<div class="limitations-cluster" style="width:${size}px;height:${size}px;">${label}</div>`,
+                className: 'limitations-cluster-wrapper',
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
+            });
+        }
+
+        // Agrège les pictos vitesse en grappes par grille d'écran (px) au zoom courant.
+        function renderSpeedClusters(points, zoom) {
+            const cell = LIMITATIONS_CLUSTER_CELL_PX;
+            const buckets = new Map();
+            points.forEach(pt => {
+                const p = window.map.project([pt.lat, pt.lng], zoom);
+                const key = `${Math.floor(p.x / cell)}|${Math.floor(p.y / cell)}`;
+                let bucket = buckets.get(key);
+                if (!bucket) { bucket = { sx: 0, sy: 0, n: 0 }; buckets.set(key, bucket); }
+                bucket.sx += p.x; bucket.sy += p.y; bucket.n++;
+            });
+            buckets.forEach(bucket => {
+                const center = window.map.unproject([bucket.sx / bucket.n, bucket.sy / bucket.n], zoom);
+                const marker = L.marker(center, {
+                    icon: speedClusterIcon(bucket.n),
+                    interactive: true,
+                    keyboard: false,
+                    zIndexOffset: 380
+                });
+                marker.bindTooltip(`${bucket.n} limitation${bucket.n > 1 ? 's' : ''} — cliquer pour zoomer`, { direction: 'top' });
+                marker.on('click', () => {
+                    window.map.flyTo(center, Math.min(window.map.getZoom() + 3, LIMITATIONS_SIGN_ZOOM + 1), { duration: 0.6 });
+                });
+                marker.addTo(speedPictoLayer);
+            });
+        }
+
         // Affiche les pictos vitesse / restrictions visibles dans la vue actuelle.
         // Zoom strategy:
-        //   - zoom <  11: gradient only, no pictograms (carto overview)
-        //   - zoom ≥ 11 : pictos vitesse + restrictions (mêmes seuils)
+        //   - zoom <  LIMITATIONS_SIGN_ZOOM : grappes (vitesse) + restrictions ponts/tunnels
+        //   - zoom ≥ LIMITATIONS_SIGN_ZOOM : pictos vitesse individuels + toutes restrictions
         function renderPictograms() {
             speedPictoLayer.clearLayers();
             restrictionLayer.clearLayers();
@@ -9176,12 +9217,10 @@
 
             const zoom = window.map.getZoom();
             const bounds = window.map.getBounds();
-            const showSpeed = zoom >= 11;
-            const showRestrictions = zoom >= 11;
-            if (!showSpeed && !showRestrictions) return;
+            const individual = zoom >= LIMITATIONS_SIGN_ZOOM;
 
-            // Avoid overload: skip duplicate speed pictograms for the same route
-            // identified by maxspeed value within a small radius.
+            // Collecte des points vitesse (dédupliqués) + restrictions notables.
+            const speedPts = [];
             const speedKeysSeen = new Set();
 
             Object.keys(window.routePolylines).forEach(ref => {
@@ -9190,36 +9229,36 @@
                     const mid = polylineMidLatLng(polyline);
                     if (!mid || !bounds.contains(mid)) return;
 
-                    if (showSpeed) {
-                        const kmh = parseMaxspeed(tags.maxspeed);
-                        if (kmh !== null) {
-                            // Approximate key (ref + speed + 0.005° ~ 500 m) to limit duplicates.
-                            const key = `${ref}|${kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
-                            if (!speedKeysSeen.has(key)) {
-                                speedKeysSeen.add(key);
-                                makeSpeedPictoMarker(mid, kmh).addTo(speedPictoLayer);
-                            }
+                    const kmh = parseMaxspeed(tags.maxspeed);
+                    if (kmh !== null) {
+                        // Clé approximative (ref + vitesse + ~1 km) pour limiter les doublons.
+                        const key = `${ref}|${kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
+                        if (!speedKeysSeen.has(key)) {
+                            speedKeysSeen.add(key);
+                            speedPts.push({ lat: mid.lat, lng: mid.lng, kmh });
                         }
                     }
 
-                    if (showRestrictions) {
-                        // Limit visual restrictions to "notable" segments
-                        // for readability: bridges, tunnels, or restricted segments in wide view.
-                        const isBridge = tags.bridge && tags.bridge !== 'no';
-                        const isTunnel = tags.tunnel === 'yes';
-                        const entries = restrictionEntriesFromTags(tags);
-                        const interestingZoom = zoom >= 13;
-                        if (entries.length > 0 && (isBridge || isTunnel || interestingZoom)) {
-                            entries.slice(0, 2).forEach((entry, i) => {
-                                const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
-                                const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
-                                marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
-                                marker.addTo(restrictionLayer);
-                            });
-                        }
+                    // Restrictions : ponts/tunnels toujours, le reste seulement au zoom fin.
+                    const isBridge = tags.bridge && tags.bridge !== 'no';
+                    const isTunnel = tags.tunnel === 'yes';
+                    const entries = restrictionEntriesFromTags(tags);
+                    if (entries.length > 0 && (isBridge || isTunnel || individual)) {
+                        entries.slice(0, 2).forEach((entry, i) => {
+                            const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
+                            const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
+                            marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
+                            marker.addTo(restrictionLayer);
+                        });
                     }
                 });
             });
+
+            if (individual) {
+                speedPts.forEach(pt => makeSpeedPictoMarker(L.latLng(pt.lat, pt.lng), pt.kmh).addTo(speedPictoLayer));
+            } else {
+                renderSpeedClusters(speedPts, zoom);
+            }
         }
 
         function updateLimitationsLegend() {
@@ -9238,7 +9277,7 @@
                 <div class="limitations-legend-scale">${scaleHtml}</div>
                 <div style="font-size:0.7rem; color:#7f8c8d; margin-top:6px;">Inconnue&nbsp;: <span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:${SPEED_UNKNOWN_COLOR};vertical-align:middle;"></span></div>
                 <div style="font-size:0.7rem; color:#7f8c8d; margin-top:8px; padding-top:6px; border-top:1px solid #ecf0f1;">
-                    Pictogrammes <strong style="color:#2C3E50;">vitesse</strong> au zoom ≥ 11. Liseret <strong style="color:#05CB63;">vert</strong> = photo Mapillary à proximité, cliquez pour l'afficher.<br>
+                    Pictogrammes <strong style="color:#2C3E50;">vitesse</strong> regroupés en grappes au dézoom (clic = zoom), individuels au zoom ≥ 13. Liseret <strong style="color:#05CB63;">vert</strong> = photo Mapillary à proximité, cliquez pour l'afficher.<br>
                     Restrictions <strong style="color:#C0392B;">🏔️ hauteur</strong> · <strong style="color:#8E44AD;">🚛 poids</strong> sur ponts et tronçons remarquables au zoom ≥ 11.
                 </div>
             `;
