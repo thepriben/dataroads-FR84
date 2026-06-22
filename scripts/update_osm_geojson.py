@@ -87,6 +87,14 @@ QUERIES = {
         );
         out geom;
     """,
+    "guideposts": """
+        [out:json][timeout:90];
+        area["ISO3166-2"="FR-84"]->.dept;
+        (
+          node(area.dept)["information"="guidepost"];
+        );
+        out geom;
+    """,
 }
 
 
@@ -486,6 +494,34 @@ def road_signs_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     return collection(features, len(data.get("elements", [])))
 
 
+# Panneaux directionnels (information=guidepost) : on conserve les tags utiles à
+# l'affichage (nom, destination, réseau) sans alourdir le fichier.
+GUIDEPOST_KEEP = (
+    "information",
+    "tourism",
+    "name",
+    "ref",
+    "destination",
+    "direction",
+    "operator",
+    "hiking",
+    "bicycle",
+)
+
+
+def guideposts_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    features: list[dict[str, Any]] = []
+    for element in data.get("elements", []):
+        if element.get("type") != "node":
+            continue
+        if (element.get("tags") or {}).get("information") != "guidepost":
+            continue
+        feature = node_to_point_feature(element, GUIDEPOST_KEEP)
+        if feature:
+            features.append(feature)
+    return collection(features, len(data.get("elements", [])))
+
+
 CONVERTERS = {
     "departmental-roads": departmental_roads_to_geojson,
     "construction-roads": construction_roads_to_geojson,
@@ -493,6 +529,7 @@ CONVERTERS = {
     "bicycle-routes": bicycle_routes_to_geojson,
     "bridges": bridge_features_to_geojson,
     "road-signs": road_signs_to_geojson,
+    "guideposts": guideposts_to_geojson,
 }
 
 
@@ -536,8 +573,19 @@ def main() -> int:
     print(f"Overpass endpoint: {ENDPOINT}")
     print(f"User-Agent: {USER_AGENT}")
 
+    selected = sys.argv[1:]
+    if selected:
+        unknown = [name for name in selected if name not in QUERIES]
+        if unknown:
+            print(f"Unknown dataset(s): {', '.join(unknown)}", file=sys.stderr)
+            print(f"Available: {', '.join(QUERIES)}", file=sys.stderr)
+            return 2
+        queries = {name: QUERIES[name] for name in selected}
+    else:
+        queries = QUERIES
+
     changed = False
-    for name, query in QUERIES.items():
+    for name, query in queries.items():
         changed = refresh_cache(name, query) or changed
 
     return 0

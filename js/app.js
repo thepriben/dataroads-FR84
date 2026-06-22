@@ -341,6 +341,7 @@
                 ['bisonFuteToggleIcon', bisonFuteVisible],
                 ['bridgesToggleIcon', bridgeVisible],
                 ['roadSignsToggleIcon', roadSignsVisible],
+                ['guidepostsToggleIcon', guidepostsVisible],
                 ['sensitiveZonesToggleIcon', sensitiveZonesVisible],
                 ['inaturalistSensitivesToggleIcon', inaturalistSensitivesVisible],
                 ['webcamsToggleIcon', webcamsVisible]
@@ -463,12 +464,14 @@
                     if (targetVisible) {
                         ensureLayerToggle(bridgeVisible, window.toggleBridges);
                         ensureLayerToggle(roadSignsVisible, window.toggleRoadSigns);
+                        ensureLayerToggle(guidepostsVisible, window.toggleGuideposts);
                         ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerToggle(webcamsVisible, window.toggleWebcams);
                     } else {
                         ensureLayerOff(bridgeVisible, window.toggleBridges);
                         ensureLayerOff(roadSignsVisible, window.toggleRoadSigns);
+                        ensureLayerOff(guidepostsVisible, window.toggleGuideposts);
                         ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerOff(webcamsVisible, window.toggleWebcams);
@@ -1457,6 +1460,7 @@
                 if (bridgePhotoProviderVisibility.mapillary) active.push('mly');
             }
             if (roadSignsVisible) active.push('signs');
+            if (guidepostsVisible) active.push('guide');
             if (sensitiveZonesVisible) active.push('ens');
             if (inaturalistSensitivesVisible) active.push('inat');
             if (webcamsVisible) active.push('wcam');
@@ -1577,6 +1581,9 @@
                 case 'signs':
                     setBooleanLayerIfNeeded(roadSignsVisible, desired, window.toggleRoadSigns);
                     return !desired || roadSignsDataLoaded;
+                case 'guide':
+                    setBooleanLayerIfNeeded(guidepostsVisible, desired, window.toggleGuideposts);
+                    return !desired || guidepostsDataLoaded;
                 case 'pnx':
                     if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
                     setBridgeProviderIfNeeded('panoramax', desired);
@@ -1722,9 +1729,10 @@
                 }
                 case 'incubator': {
                     let visible = 0;
-                    const total = 5;
+                    const total = 6;
                     if (bridgeVisible) visible++;
                     if (roadSignsVisible) visible++;
+                    if (guidepostsVisible) visible++;
                     if (sensitiveZonesVisible) visible++;
                     if (inaturalistSensitivesVisible) visible++;
                     if (webcamsVisible) visible++;
@@ -1750,6 +1758,8 @@
                     return bridgeVisible;
                 case 'freshness-road-signs':
                     return roadSignsVisible;
+                case 'freshness-guideposts':
+                    return guidepostsVisible;
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
@@ -2630,6 +2640,252 @@
                 return;
             }
             syncRoadSignsOnMap();
+        };
+
+        // ========== GUIDEPOSTS (panneaux directionnels information=guidepost) ==========
+        // Mâts directionnels OSM (information=guidepost, ~2000 en 84) : même rendu que
+        // les panneaux stop/cédez — grappes au dézoom, marqueurs au zoom, anneau vert
+        // Mapillary + photo de proximité dans le popup quand une couverture existe.
+        const guidepostsLayer = L.layerGroup();
+        let guidepostsVisible = false;
+        let guidepostsDataLoaded = false;
+        let guidepostsFeatures = [];
+        let guidepostsZoomHandler = null;
+        let guidepostsLoadPromise = null;
+        const GUIDEPOSTS_SIGN_ZOOM = 15;
+        const GUIDEPOSTS_CLUSTER_CELL_PX = 58;
+        const GUIDEPOSTS_MAX_MARKERS = 1500;
+
+        function guidepostDivIcon(hasMapillary) {
+            const ring = hasMapillary ? `<span class="guidepost-ring"></span>` : '';
+            return L.divIcon({
+                html: `${ring}<span class="guidepost-shape"></span>`,
+                className: 'guidepost-wrapper' + (hasMapillary ? ' has-mapillary' : ''),
+                iconSize: [30, 22],
+                iconAnchor: [15, 11]
+            });
+        }
+
+        function guidepostTitle(props) {
+            const p = props || {};
+            return p.name || p.ref || p.destination || 'Panneau directionnel';
+        }
+
+        // Destinations OSM : "|" sépare les directions, ";" sépare les lieux d'une direction.
+        function guidepostDestinationsHtml(props) {
+            const raw = props && props.destination;
+            if (!raw) return '';
+            const directions = String(raw).split('|')
+                .map(part => part.split(';').map(s => s.trim()).filter(Boolean).join(', '))
+                .filter(Boolean);
+            if (!directions.length) return '';
+            const items = directions.map(dir => `<li>${escapeHtml(dir)}</li>`).join('');
+            return `<ul class="guidepost-dest">${items}</ul>`;
+        }
+
+        function guidepostPopupHtml(props, img, state) {
+            const title = escapeHtml(guidepostTitle(props));
+            const dests = guidepostDestinationsHtml(props);
+            let body;
+            if (state === 'loading') {
+                body = `<div class="speed-sign-photo-msg">📷 Recherche d'une photo Mapillary…</div>`;
+            } else if (!img || !img.thumb_1024_url) {
+                body = `<div class="speed-sign-photo-msg">Pas encore de photo disponible sur Mapillary à proximité.</div>`;
+            } else {
+                const when = img.captured_at
+                    ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
+                    : '';
+                body = `
+                    <a href="${(window.mapillaryPageUrl && window.mapillaryPageUrl(img.id)) || '#'}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
+                        <img class="speed-sign-photo-img" src="${img.thumb_1024_url}" alt="Photo Mapillary à proximité du panneau directionnel" loading="lazy">
+                    </a>
+                    <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
+                `;
+            }
+            return `
+                <div class="route-popup speed-sign-popup guidepost-popup">
+                    <h3>${title}</h3>
+                    ${dests}
+                    <div class="speed-sign-photo">${body}</div>
+                </div>
+            `;
+        }
+
+        function makeGuidepostMarker(lat, lng, props) {
+            const marker = L.marker([lat, lng], {
+                icon: guidepostDivIcon(false),
+                interactive: true,
+                keyboard: false,
+                riseOnHover: true,
+                zIndexOffset: 340
+            });
+            marker.bindPopup(guidepostPopupHtml(props, null, 'loading'), { minWidth: 220, maxWidth: 280 });
+            const checkNearby = window.checkMapillaryNearby || (() => Promise.resolve(null));
+            checkNearby(lat, lng).then(img => {
+                if (img && img.thumb_1024_url) {
+                    marker.setIcon(guidepostDivIcon(true));
+                    marker.setPopupContent(guidepostPopupHtml(props, img, 'ok'));
+                }
+            }).catch(() => {});
+            return marker;
+        }
+
+        function guidepostClusterIcon(count) {
+            const size = count >= 500 ? 48 : count >= 100 ? 42 : count >= 20 ? 36 : 30;
+            const label = count >= 1000 ? `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k` : String(count);
+            return L.divIcon({
+                html: `<div class="guidepost-cluster" style="width:${size}px;height:${size}px;">${label}</div>`,
+                className: 'guidepost-cluster-wrapper',
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
+            });
+        }
+
+        function renderGuidepostClusters(visible, zoom) {
+            const cell = GUIDEPOSTS_CLUSTER_CELL_PX;
+            const buckets = new Map();
+            visible.forEach(sign => {
+                const p = window.map.project([sign.lat, sign.lng], zoom);
+                const key = `${Math.floor(p.x / cell)}|${Math.floor(p.y / cell)}`;
+                let bucket = buckets.get(key);
+                if (!bucket) { bucket = { sx: 0, sy: 0, n: 0 }; buckets.set(key, bucket); }
+                bucket.sx += p.x; bucket.sy += p.y; bucket.n++;
+            });
+            buckets.forEach(bucket => {
+                const center = window.map.unproject([bucket.sx / bucket.n, bucket.sy / bucket.n], zoom);
+                const marker = L.marker(center, {
+                    icon: guidepostClusterIcon(bucket.n),
+                    interactive: true,
+                    keyboard: false,
+                    zIndexOffset: 320
+                });
+                marker.bindTooltip(`${bucket.n} panneau${bucket.n > 1 ? 'x' : ''} directionnel${bucket.n > 1 ? 's' : ''} — cliquer pour zoomer`, { direction: 'top' });
+                marker.on('click', () => {
+                    window.map.flyTo(center, Math.min(window.map.getZoom() + 3, GUIDEPOSTS_SIGN_ZOOM + 1), { duration: 0.6 });
+                });
+                marker.addTo(guidepostsLayer);
+            });
+        }
+
+        function renderGuideposts() {
+            guidepostsLayer.clearLayers();
+            if (!guidepostsVisible || !guidepostsDataLoaded || !window.map) return;
+            const zoom = window.map.getZoom();
+            const bounds = window.map.getBounds();
+            const visible = [];
+            for (const feature of guidepostsFeatures) {
+                const coords = feature.geometry && feature.geometry.coordinates;
+                if (!coords) continue;
+                const lng = coords[0], lat = coords[1];
+                if (!bounds.contains([lat, lng])) continue;
+                visible.push({ lat, lng, props: feature.properties || {} });
+            }
+            if (zoom >= GUIDEPOSTS_SIGN_ZOOM) {
+                let count = 0;
+                for (const sign of visible) {
+                    makeGuidepostMarker(sign.lat, sign.lng, sign.props).addTo(guidepostsLayer);
+                    if (++count >= GUIDEPOSTS_MAX_MARKERS) break;
+                }
+            } else {
+                renderGuidepostClusters(visible, zoom);
+            }
+        }
+
+        function setGuidepostsLegendCounts(features) {
+            const el = document.getElementById('count-guideposts');
+            if (el) el.textContent = (features || []).length.toLocaleString('fr-FR');
+        }
+
+        function applyGuidepostsVisibleUi() {
+            const icon = document.getElementById('guidepostsToggleIcon');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            document.querySelectorAll('[data-guidepost]').forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+        }
+
+        function applyGuidepostsHiddenUi() {
+            const icon = document.getElementById('guidepostsToggleIcon');
+            setToggleIcon(icon, false);
+            if (icon) icon.style.opacity = '';
+            document.querySelectorAll('[data-guidepost]').forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+        }
+
+        function syncGuidepostsOnMap() {
+            if (guidepostsVisible) {
+                if (!window.map.hasLayer(guidepostsLayer)) guidepostsLayer.addTo(window.map);
+                if (!guidepostsZoomHandler) {
+                    guidepostsZoomHandler = () => renderGuideposts();
+                    window.map.on('zoomend moveend', guidepostsZoomHandler);
+                }
+                renderGuideposts();
+                applyGuidepostsVisibleUi();
+            } else {
+                guidepostsLayer.clearLayers();
+                if (window.map.hasLayer(guidepostsLayer)) window.map.removeLayer(guidepostsLayer);
+                if (guidepostsZoomHandler) {
+                    window.map.off('zoomend moveend', guidepostsZoomHandler);
+                    guidepostsZoomHandler = null;
+                }
+                applyGuidepostsHiddenUi();
+            }
+            syncLegendChrome();
+        }
+
+        window.loadGuideposts = function({ show } = {}) {
+            if (guidepostsDataLoaded) {
+                if (show) guidepostsVisible = true;
+                syncGuidepostsOnMap();
+                return Promise.resolve(guidepostsFeatures);
+            }
+            if (guidepostsLoadPromise) return guidepostsLoadPromise;
+            guidepostsLoadPromise = (async () => {
+                try {
+                    const data = await window.InforouteApi.fetchGeoJson('guideposts');
+                    renderFreshnessBadge(document.getElementById('freshness-guideposts'), {
+                        generatedAt: data._cache?.generated_at,
+                        scheduleKey: 'incubator'
+                    });
+                    guidepostsFeatures = data.features || [];
+                    guidepostsDataLoaded = true;
+                    setGuidepostsLegendCounts(guidepostsFeatures);
+                    if (show) guidepostsVisible = true;
+                    syncGuidepostsOnMap();
+                    tryApplyAppUrlState();
+                    console.log(`✓ ${guidepostsFeatures.length} panneau(x) directionnel(s) chargés`);
+                    return guidepostsFeatures;
+                } catch (error) {
+                    console.error('Erreur chargement panneaux directionnels:', error);
+                    setGuidepostsLegendCounts([]);
+                    renderFreshnessBadge(document.getElementById('freshness-guideposts'), {
+                        scheduleKey: 'incubator',
+                        errorMsg: error.message
+                    });
+                    applyGuidepostsHiddenUi();
+                    syncLegendChrome();
+                    return [];
+                } finally {
+                    guidepostsLoadPromise = null;
+                }
+            })();
+            return guidepostsLoadPromise;
+        };
+
+        window.toggleGuideposts = function() {
+            guidepostsVisible = !guidepostsVisible;
+            if (!guidepostsVisible) { syncGuidepostsOnMap(); return; }
+            if (!guidepostsDataLoaded) {
+                const icon = document.getElementById('guidepostsToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                window.loadGuideposts({ show: true });
+                return;
+            }
+            syncGuidepostsOnMap();
         };
 
         // ========== SENSITIVE NATURAL ZONES & iNATURALIST ==========
