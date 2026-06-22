@@ -4109,13 +4109,24 @@
             margin: 1px 0;
         }
 
-        /* Bouton Mapillary compact (M stylisé) */
-        .map-tool--mapillary .map-tool-mly {
+        /* Boutons compacts Mapillary (M) / Panoramax (P) */
+        .map-tool--mapillary .map-tool-mly,
+        .map-tool--panoramax .map-tool-pnx {
             font-family: 'Oswald', 'DM Sans', sans-serif;
             font-weight: 800;
             font-size: 1rem;
             line-height: 1;
             letter-spacing: 0.01em;
+        }
+        .map-tool--mapillary.is-active {
+            background: #2ECC71;
+            border-color: #2ECC71;
+            box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3);
+        }
+        .map-tool--panoramax.is-active {
+            background: #16A085;
+            border-color: #16A085;
+            box-shadow: 0 2px 8px rgba(22, 160, 133, 0.3);
         }
 
         /* Popup photo Mapillary du panneau de vitesse */
@@ -4436,36 +4447,20 @@
             border-top: 1px solid #e8ecef;
         }
 
+        /* Chaque couche = une carte sobre, délimitée par un fin liseré, pour
+           repérer d'un coup d'œil le début et la fin de chaque feature. */
         .legend-family-body .legend-section {
             position: relative;
-            margin: 0 0 8px 0;
-            padding: 10px 8px 8px 12px;
+            margin: 0 0 9px 0;
+            padding: 9px 10px;
             background: #fff;
-            border: 1px solid #e8ecef;
+            border: 1px solid #2c3e50;
             border-radius: 6px;
-            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-            transition: box-shadow 0.18s, border-color 0.18s;
-        }
-
-        /* Fin liseré à gauche de chaque section, accentué au survol */
-        .legend-family-body .legend-section::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            bottom: 0;
-            width: 3px;
-            border-radius: 6px 0 0 6px;
-            background: #d6dce1;
-            transition: background 0.18s;
+            transition: box-shadow 0.18s;
         }
 
         .legend-family-body .legend-section:hover {
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-            border-color: #d3dde6;
-        }
-        .legend-family-body .legend-section:hover::before {
-            background: #2C3E50;
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
         }
 
         .legend-family-body .legend-section:last-child {

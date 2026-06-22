@@ -9,6 +9,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- New compact Panoramax "P" toolbar button (vector-tile coverage traces), next to the Mapillary "M".
 - New "Panneaux directionnels" layer (OSM `information=guidepost`, ~2000 nodes in Vaucluse): clustered when zoomed out, real signposts at zoom ≥ 15, destination list in the popup, and a nearby Mapillary photo (green ring) when coverage exists — same behaviour as the stop/give-way layer.
 - `update_osm_geojson.py` now accepts dataset name arguments to refresh a single cache (e.g. `python scripts/update_osm_geojson.py guideposts`).
 
@@ -18,8 +19,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Guidepost markers redesigned as real fingerposts (post + pointed direction blades, green dot for nearby Mapillary coverage) so they no longer look like speed/size limitation signs.
 - Speed pictograms now appear from zoom ≥ 11 (same threshold as the size/weight restrictions) instead of zoom ≥ 13.
 - "Comptages CD84" toolbar button renamed to "Comptages"; "Panneaux directionnels" legend title now stacks "directionnels" as a smaller grey subtitle.
-- Left-column legend sections get a thin left accent strip and a subtle hover elevation.
-- Removed the "Activez la couche, puis cliquez un pont." bridge hint when the layer is off.
+- Left-column legend sections are now clearly delimited cards with a dark contour, so each feature's start/end is obvious at a glance.
+- Removed the bridge hint text entirely ("Activez la couche, puis cliquez un pont." / "Cliquez un pont pour ouvrir la vue 3D.").
 
 ### Removed
 
