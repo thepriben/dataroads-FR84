@@ -1,16 +1,11 @@
+# dataroads-FR84 — Démo Inforoute 084
+
+🇫🇷 Français · [🇬🇧 English](README.en.md)
+
 > Concepteur du projet : Jean-Louis Zimmermann [@JLZIMMERMANN](https://github.com/JLZIMMERMANN), chargé de mission outils digitaux routiers au sein du CD84 en 2026.
 
----
-
-<img width="1000" alt="image" src="image.png" />
-
-
----
-
-# Démo Inforoute 084
-
 Prototype de carte web pour explorer le réseau routier départemental du Vaucluse.
-Ce démonstrateur incubé au sein du Bureau de l'information Routière (Conseil Départemental du Vaucluse) propose de faire converger des fonctionnalités grâce à un outil léger qui se veut intuitif : lecture rapide du réseau, croisement avec l'accidentologie, repérage des points de comptage et première vérification de la qualité des données OpenStreetMap.
+Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil Départemental du Vaucluse), fait converger plusieurs fonctionnalités dans un outil léger et intuitif : lecture rapide du réseau, croisement avec l'accidentologie, repérage des points de comptage et première vérification de la qualité des données OpenStreetMap.
 
 ## Ce que montre la carte
 
@@ -71,13 +66,13 @@ http://localhost:8080/
 
 ## Guide utilisateur
 
-Le guide (`guide.html`) est généré depuis `docs/guide.wiki` (syntaxe Wiki, style MediaWiki) :
+Les guides FR et EN (`guide.html`, `guide.en.html`) sont générés depuis `docs/guide.wiki` (syntaxe Wiki, style MediaWiki) :
 
 ```bash
 python3 scripts/build_guide.py
 ```
 
-Après modification du Wiki, régénérer la page puis committer `docs/guide.wiki` et `guide.html` ensemble.
+Après modification du Wiki, régénérer les pages puis committer `docs/guide.wiki` et les fichiers `guide*.html` ensemble.
 
 ## Topo technique
 
@@ -100,7 +95,11 @@ python3 scripts/update_external_data.py
 `scripts/update_osm_geojson.py` interroge Overpass avec un `User-Agent` explicite :
 
 ```text
-demo-inforoute-084/0.1.0 (https://github.com/thepriben/demo-inforoute-084)
+dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 ```
 
 `scripts/update_external_data.py` matérialise les données data.gouv.fr et Info Routière dans `data/external/`. Si Info Routière est indisponible, le script conserve un GeoJSON vide avec l'erreur dans `_cache`.
+
+## Articles & présentations
+
+- [Structuring Road Information in Open Data: A Nested Wikidata – OSM – BD TOPO (IGN) Architecture Co-produced by Territorial Authorities](https://2026.stateofthemap.org/sessions/VS9YKN/) — Jean-Louis Zimmermann, State of the Map 2026, Paris.
