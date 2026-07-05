@@ -1,0 +1,105 @@
+# dataroads-FR84 — Inforoute 084 Demo
+
+[🇫🇷 Français](README.md) · 🇬🇧 English
+
+> Project designer: Jean-Louis Zimmermann [@JLZIMMERMANN](https://github.com/JLZIMMERMANN), digital road tools officer at CD84 in 2026.
+
+Web map prototype for exploring the departmental road network of Vaucluse (France).
+This demonstrator, incubated within the Road Information Bureau (Vaucluse Departmental Council), brings several features together in a lightweight, intuitive tool: quick reading of the network, cross-referencing with accident data, locating traffic counting stations, and a first check of OpenStreetMap data quality.
+
+## What the map shows
+
+- The Vaucluse departmental road network, with a simple hierarchy: regional, territorial and local networks.
+- The department boundary and the municipalities, to put roads in their territorial context.
+- CD84 traffic counting stations, classified by traffic level.
+- Accident data provided for 2024, displayed on demand to avoid cluttering the map.
+- Roads under construction or planned, from the OSM cache.
+- Current weather over Avignon, useful as a quick operational signal.
+- An OSM quality panel to spot road sections that do or do not have a usable OSM relation.
+
+## Value for CD84
+
+The prototype's main purpose is to make road data readable in a single interface. For a field agent or a business manager, it helps answer simple questions quickly:
+
+- Where are the most structuring departmental roads?
+- Which roads carry the heaviest traffic according to available counts?
+- Where do the accidents of the loaded vintage concentrate?
+- Which municipalities are affected by a road or an axis?
+- Which OSM road sections are well documented, and which deserve a correction?
+- Can a file published on data.gouv.fr or an OSM extract be used without calling APIs on every visit?
+
+## Data freshness
+
+The page indicates external data refreshed every 3 hours. The browser reads local GeoJSON files, and the update scripts regenerate those files.
+
+- Static data: roads, department boundary, municipalities, accident data, and demo fallback.
+- Data refreshed every 3 hours: CD84 traffic counts from data.gouv.fr and Info Routière events.
+- Direct dynamic data: Open-Meteo weather, requested by the browser at load time and then every 10 minutes.
+- Overpass API: never called by the browser. It is only used by the OSM refresh script.
+
+## Vintage consistency
+
+State of the dataset versioned in this repository:
+
+| Data | Source | Vintage or freshness | Comment |
+| --- | --- | --- | --- |
+| Departmental roads | OpenStreetMap | cache from 2026-05-17 22:52 UTC | Network data, not a CD84 administrative vintage. |
+| Roads under construction | OpenStreetMap | cache from 2026-05-17 22:53 UTC | Some openings indicated between 2025 and 2027 according to OSM tags. |
+| Municipalities | OpenStreetMap | cache from 2026-05-17 22:53 UTC | 151 municipalities; population tags point to 2021. |
+| Vaucluse boundary | OpenStreetMap | local GeoJSON | Department 84 boundary, frozen in `data/static/`. |
+| Accident data | Provided file / BAAC | 2024 | 113 accidents, all dated 2024. |
+| CD84 traffic counts | data.gouv.fr | 1996-2025 | 3,098 observations; the map displays the latest available year per station. |
+| Road events | Info Routière | 3-hour cache | |
+| Weather | Open-Meteo | current conditions | Direct call, not versioned. |
+
+## Running the demo locally
+
+```bash
+python3 -m http.server 8080
+```
+
+Then open:
+
+```text
+http://localhost:8080/
+```
+
+## User guide
+
+The FR and EN guides (`guide.html`, `guide.en.html`) are generated from `docs/guide.wiki` (Wiki syntax, MediaWiki style):
+
+```bash
+python3 scripts/build_guide.py
+```
+
+After editing the Wiki, regenerate the pages and commit `docs/guide.wiki` and the `guide*.html` files together.
+
+## Technical overview
+
+The data architecture is separated by usage:
+
+- `data/osm/`: GeoJSON derived from OpenStreetMap, generated via Overpass by a script.
+- `data/static/`: frozen GeoJSON, such as the Vaucluse boundary and the 2024 accident data.
+- `data/external/`: GeoJSON automatically refreshed from external sources.
+- `data/demo/`: fallback data to keep the map usable if a source is missing.
+
+`js/config.js` centralises file paths and dynamic sources. `js/api.js` provides a JSON/GeoJSON loader with browser cache. `js/app.js` reads the files declared in the configuration.
+
+Two Python scripts maintain the data:
+
+```bash
+python3 scripts/update_osm_geojson.py
+python3 scripts/update_external_data.py
+```
+
+`scripts/update_osm_geojson.py` queries Overpass with an explicit `User-Agent`:
+
+```text
+dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
+```
+
+`scripts/update_external_data.py` materialises data.gouv.fr and Info Routière data into `data/external/`. If Info Routière is unavailable, the script keeps an empty GeoJSON with the error recorded in `_cache`.
+
+## Articles & presentations
+
+- [Structuring Road Information in Open Data: A Nested Wikidata – OSM – BD TOPO (IGN) Architecture Co-produced by Territorial Authorities](https://2026.stateofthemap.org/sessions/VS9YKN/) — Jean-Louis Zimmermann, State of the Map 2026, Paris.
