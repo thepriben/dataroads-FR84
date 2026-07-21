@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.7.1] - 2026-07-21
+
+### Changed
+
+- **Counting station UX (issue #9 follow-up):** clicking a station now draws a distinct indigo accent trace (with a white casing) over the road axis instead of reusing the hierarchy glow, so the road reads clearly as a line and no longer blends with the round count markers.
+- Counting-station popup redesigned: wider and offset, with a compact header, the multi-year evolution chart moved to the top, and a two-column stats grid (MJA, taux PL, débit PL, classe) for better use of space.
+
 ## [0.7.0] - 2026-07-21
 
 ### Added
@@ -175,7 +182,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Data refresh scripts `update_osm_geojson.py` and `update_external_data.py`.
 - GitHub Pages deployment and automated data-refresh workflows.
 
-[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.4.0...v0.5.0

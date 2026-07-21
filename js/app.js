@@ -4987,6 +4987,7 @@
         window.routePolylines = {}; // Store polylines by route ref (global for toggleHierarchy)
         let allRoadsList = []; // Full route list for search
         window.highlightedRoute = null; // Currently highlighted route (global for toggleHierarchy)
+        window.stationAxisLayers = []; // Accent trace drawn when a counting station is clicked (issue #9)
         window.shadowPolylines = {}; // Shadow polylines for highlighted routes (by ref, global)
 
         async function loadDepartmentalRoads() {
@@ -6210,9 +6211,49 @@
                     });
                 });
             });
-            
+
+            clearStationAxisTrace();
             window.map.closePopup();
         }
+
+        // Remove the accent trace drawn for a clicked counting station.
+        function clearStationAxisTrace() {
+            if (Array.isArray(window.stationAxisLayers)) {
+                window.stationAxisLayers.forEach(layer => {
+                    if (window.map && window.map.hasLayer(layer)) window.map.removeLayer(layer);
+                });
+            }
+            window.stationAxisLayers = [];
+        }
+        window.clearStationAxisTrace = clearStationAxisTrace;
+
+        // Draw a distinct accent trace over a road axis when a counting station is
+        // clicked (issue #9). A vivid indigo line with a white casing reads clearly
+        // as the road, separate from the round count markers, and keeps the current
+        // view while filling the side info panel with the axis details.
+        function highlightStationAxis(key) {
+            clearStationAxisTrace();
+            const polylines = window.routePolylines && window.routePolylines[key];
+            if (!polylines || !polylines.length) return;
+
+            polylines.forEach(source => {
+                const coords = source.getLatLngs();
+                const casing = L.polyline(coords, {
+                    color: '#ffffff', weight: 11, opacity: 0.85,
+                    lineCap: 'round', lineJoin: 'round', interactive: false
+                }).addTo(window.map);
+                const trace = L.polyline(coords, {
+                    color: '#4f46e5', weight: 6, opacity: 0.95,
+                    lineCap: 'round', lineJoin: 'round', interactive: false
+                }).addTo(window.map);
+                window.stationAxisLayers.push(casing, trace);
+            });
+            window.stationAxisLayers.forEach(layer => layer.bringToFront());
+
+            const hierarchy = polylines[0].options.roadHierarchy;
+            displayRoadInfo(key, hierarchy);
+        }
+        window.highlightStationAxis = highlightStationAxis;
 
         // Build the route list
         function createRoadList() {
@@ -6301,6 +6342,8 @@
         // station click (issue #9) so the station popup stays in view.
         function highlightRoute(ref, options = {}) {
             const { zoom = true } = options;
+            // Clear any station-triggered axis trace so the two highlights never stack.
+            if (typeof clearStationAxisTrace === 'function') clearStationAxisTrace();
             // Remove previous shadows
             Object.values(shadowPolylines).forEach(shadows => {
                 shadows.forEach(shadow => map.removeLayer(shadow));
@@ -8084,7 +8127,7 @@
             const trendColor = pct > 2 ? '#c0392b' : (pct < -2 ? '#27ae60' : '#7f8c8d');
             const sign = delta > 0 ? '+' : '';
 
-            const W = 260, H = 72, padL = 6, padR = 6, padT = 12, padB = 16;
+            const W = 300, H = 78, padL = 6, padR = 6, padT = 12, padB = 16;
             const years = points.map(p => p.year);
             const mjas = points.map(p => p.mja);
             const minYear = Math.min(...years), maxYear = Math.max(...years);
@@ -8255,28 +8298,43 @@
                 // Store for visibility toggle
                 trafficMarkers.push(marker);
 
-                // Popup with counting information
+                // Popup with counting information (issue #9 / UX): compact header,
+                // the multi-year chart first, then a two-column stats grid.
+                const classeCell = props.classe
+                    ? `<div class="tp-cell"><span class="tp-k">Classe</span><span class="tp-v">${props.classe}</span></div>`
+                    : '';
+                const axisHint = (routeName && routeName !== 'N/A')
+                    ? `<div class="tp-axis">🛣️ Axe <strong>${routeName}</strong> surligné sur la carte</div>`
+                    : '';
+
                 const popupContent = `
-                    <div class="route-popup">
-                        <h3>📊 Station de comptage</h3>
-                        <div class="detail"><strong>Route&nbsp;:</strong> ${routeName || 'N/A'}</div>
-                        <div class="detail"><strong>Section&nbsp;:</strong> ${sectionName || 'N/A'}</div>
-                        <div class="detail"><strong>Année&nbsp;:</strong> ${yearValue || 'N/A'}</div>
-                        <div class="detail" style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd;">
-                            <strong>MJA (tous véhicules)&nbsp;:</strong> ${formatNumber(mja, ' véh/jour')}
+                    <div class="route-popup traffic-popup">
+                        <div class="tp-header">
+                            <span class="tp-badge">📊 Station</span>
+                            <div class="tp-title">
+                                <span class="tp-route">${routeName || 'N/A'}</span>
+                                <span class="tp-meta">Section ${sectionName || 'N/A'} · ${yearValue || 'N/A'}</span>
+                            </div>
                         </div>
-                        <div class="detail"><strong>Taux PL&nbsp;:</strong> ${Number.isFinite(tauxPL) ? tauxPL.toFixed(1) + '%' : 'N/A'}</div>
-                        <div class="detail"><strong>Débit PL&nbsp;:</strong> ${formatNumber(debitPL, ' PL/jour')}</div>
-                        ${props.classe ? `<div class="detail"><strong>Classification&nbsp;:</strong> ${props.classe}</div>` : ''}
                         ${historyChart}
-                        ${routeName && routeName !== 'N/A' ? `<div class="detail" style="margin-top: 6px; font-size: 0.72rem; color: #95a5a6;">🛣️ L'axe <strong>${routeName}</strong> est surligné sur la carte.</div>` : ''}
-                        <div class="detail" style="margin-top: 8px; font-size: 0.75rem; color: #999;">
-                            <strong>Source&nbsp;:</strong> ${sourceUsed || 'Inconnue'}
+                        <div class="tp-grid">
+                            <div class="tp-cell"><span class="tp-k">MJA (tous véh.)</span><span class="tp-v">${formatNumber(mja, ' véh/j')}</span></div>
+                            <div class="tp-cell"><span class="tp-k">Taux PL</span><span class="tp-v">${Number.isFinite(tauxPL) ? tauxPL.toFixed(1) + '%' : 'N/A'}</span></div>
+                            <div class="tp-cell"><span class="tp-k">Débit PL</span><span class="tp-v">${formatNumber(debitPL, ' PL/j')}</span></div>
+                            ${classeCell}
                         </div>
+                        ${axisHint}
+                        <div class="tp-source">Source&nbsp;: ${sourceUsed || 'Inconnue'}</div>
                     </div>
                 `;
 
-                marker.bindPopup(popupContent);
+                marker.bindPopup(popupContent, {
+                    className: 'traffic-popup-wrap',
+                    minWidth: 300,
+                    maxWidth: 340,
+                    offset: L.point(8, -10),
+                    autoPanPadding: L.point(60, 70)
+                });
 
                 // Effet de survol
                 marker.on('mouseover', function() {
@@ -8295,11 +8353,12 @@
                     });
                 });
 
-                // Contextualise the count (issue #9): clicking a station highlights
-                // the matching road axis without moving the map off the station.
+                // Contextualise the count (issue #9): clicking a station draws a
+                // distinct accent trace over the matching road axis, without moving
+                // the map off the station.
                 marker.on('click', function() {
                     const key = findRoutePolylineKey(routeName);
-                    if (key) highlightRoute(key, { zoom: false });
+                    if (key) highlightStationAxis(key);
                 });
             });
 
