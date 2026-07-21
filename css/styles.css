@@ -2545,9 +2545,17 @@
             color: #14b8e6;
         }
 
-        .map-tool--waze.is-active .map-tool-icon svg,
-        .map-tool--waze .map-tool-icon svg {
-            color: #14b8e6;
+        .map-tool--waze .map-tool-waze {
+            font-family: 'Oswald', 'DM Sans', sans-serif;
+            font-weight: 800;
+            font-size: 1rem;
+            line-height: 1;
+            letter-spacing: 0.01em;
+        }
+        .map-tool--waze.is-active {
+            background: #14b8e6;
+            border-color: #14b8e6;
+            box-shadow: 0 2px 8px rgba(20, 184, 230, 0.3);
         }
 
         @media (max-width: 640px) {
