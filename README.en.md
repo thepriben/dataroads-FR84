@@ -67,13 +67,13 @@ http://localhost:8080/
 
 ## User guide
 
-The FR and EN guides (`guide.html`, `guide.en.html`) are generated from `docs/guide.wiki` (Wiki syntax, MediaWiki style):
+The FR guide (`guide.html`) is generated from `docs/guide.wiki` (Wiki syntax, MediaWiki style):
 
 ```bash
 python3 scripts/build_guide.py
 ```
 
-After editing the Wiki, regenerate the pages and commit `docs/guide.wiki` and the `guide*.html` files together.
+After editing the Wiki, regenerate the page and commit `docs/guide.wiki` and `guide.html` together. The EN guide (`guide.en.html`) is maintained by hand: mirror the equivalent changes there.
 
 ## Technical overview
 

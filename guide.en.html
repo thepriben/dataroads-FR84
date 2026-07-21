@@ -120,8 +120,9 @@
 <p><strong>How:</strong> enable the layer; click a marker for details (date, road, municipality).</p>
 </div><div class="guide-layer" id="layer-comptages">
 <h4>Traffic-count stations</h4>
-<p>CD84 stations (data.gouv.fr), classified by traffic: high (&gt; 20k veh/day), medium, low.</p>
-<p><strong>How:</strong> enable in the legend <em>or</em> via the <strong>CD84 counts</strong> button on the map (both stay in sync). Click a station: AADT, HGV share, year.</p>
+<p>CD84 stations (data.gouv.fr / DataSud), classified by traffic: high (&gt; 20k veh/day), medium, low. Each badge shows the <strong>rounded average traffic</strong> at its centre (e.g. <code>22k</code> for 22,136 veh/day), readable regardless of colour.</p>
+<p><strong>How:</strong> enable in the legend <em>or</em> via the <strong>CD84 counts</strong> button on the map (both stay in sync). Click a station for a detailed card: <strong>AADT</strong> (all vehicles), HGV share and flow, and a <strong>traffic-evolution chart</strong> across every available vintage (1996–2025) with the first → last trend.</p>
+<p>Clicking a station also <strong>highlights the matching road axis</strong> — a distinct <strong>indigo</strong> trace, separate from the round count badges — and shows the axis details (length, municipalities crossed…) in the <em>Route information</em> panel, without moving the view.</p>
 </div>
 </article>
 <article class="guide-family" data-family="realtime" id="realtime">
@@ -212,6 +213,7 @@
 <li><strong>Home</strong> — initial department view.</li>
 <li><strong>Counts</strong> — enables the traffic-count stations layer (synced with the legend).</li>
 <li><strong>Speed limits</strong> — colours segments by OSM max speed; at zoom ≥ 11, speed signs and height / width / weight pictograms (grouped into clusters when zoomed out). A sign ringed in green has a nearby Mapillary photo: click it to view.</li>
+<li><strong>W</strong> — opens the <strong>Waze Live Map</strong> (real-time community traffic: jams and incidents), <strong>centred on the current map view</strong>, with a pin at the centre. French UI, distances in kilometres. Close with ×, by clicking outside, or <span class="guide-kbd">Esc</span>. Placed to the left of <strong>M</strong>.</li>
 <li><strong>M</strong> — shows <strong>Mapillary</strong> photo coverage (areas with ground-level imagery).</li>
 <li><strong>P</strong> — shows <strong>Panoramax</strong> photo coverage (violet accent).</li>
 </ul>

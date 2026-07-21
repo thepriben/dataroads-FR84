@@ -67,13 +67,13 @@ http://localhost:8080/
 
 ## Guide utilisateur
 
-Les guides FR et EN (`guide.html`, `guide.en.html`) sont générés depuis `docs/guide.wiki` (syntaxe Wiki, style MediaWiki) :
+Le guide FR (`guide.html`) est généré depuis `docs/guide.wiki` (syntaxe Wiki, style MediaWiki) :
 
 ```bash
 python3 scripts/build_guide.py
 ```
 
-Après modification du Wiki, régénérer les pages puis committer `docs/guide.wiki` et les fichiers `guide*.html` ensemble.
+Après modification du Wiki, régénérer la page puis committer `docs/guide.wiki` et `guide.html` ensemble. Le guide EN (`guide.en.html`) est maintenu à la main : pensez à y reporter les changements équivalents.
 
 ## Topo technique
 

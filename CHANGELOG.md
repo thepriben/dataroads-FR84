@@ -11,6 +11,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - Waze Live Map embed now uses the French locale (`/fr/` → French UI and kilometres) and drops a pin at the centre, making the recentring on the current dataroads view explicit. (The embed already opened centred on the map's current position and zoom; confirmed against the official Waze iFrame parameters `lat`/`lon`/`zoom`.)
 
+### Documentation
+
+- User guide refreshed (FR `guide.html` from `docs/guide.wiki`, and EN `guide.en.html` by hand) for the recent counting features: value badges (e.g. `22k`), multi-vintage evolution chart, station → road-axis highlight, and the new Waze "W" toolbar button. README (FR/EN) clarified: the FR guide is generated from the wiki, the EN guide is maintained by hand.
+
 ## [0.8.1] - 2026-07-21
 
 ### Changed
