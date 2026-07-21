@@ -2561,6 +2561,92 @@
             }
         }
 
+        /* ===== Popup station de comptage (issue #9 / UX) ===== */
+        .leaflet-popup.traffic-popup-wrap .leaflet-popup-content {
+            margin: 12px 14px;
+            width: auto !important;
+        }
+
+        .traffic-popup .tp-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .traffic-popup .tp-badge {
+            flex: 0 0 auto;
+            background: #2c3e50;
+            color: #ffffff;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .traffic-popup .tp-title {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+            min-width: 0;
+        }
+
+        .traffic-popup .tp-route {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1f2a37;
+        }
+
+        .traffic-popup .tp-meta {
+            font-size: 0.72rem;
+            color: #7f8c8d;
+        }
+
+        .traffic-popup .tp-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 10px;
+            margin-top: 8px;
+        }
+
+        .traffic-popup .tp-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            background: #f6f8fa;
+            border-radius: 6px;
+            padding: 6px 9px;
+        }
+
+        .traffic-popup .tp-k {
+            font-size: 0.64rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #95a5a6;
+        }
+
+        .traffic-popup .tp-v {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .traffic-popup .tp-axis {
+            margin-top: 8px;
+            font-size: 0.74rem;
+            color: #4f46e5;
+            background: #eef2ff;
+            border-radius: 6px;
+            padding: 5px 9px;
+        }
+
+        .traffic-popup .tp-source {
+            margin-top: 8px;
+            font-size: 0.7rem;
+            color: #9098a3;
+        }
+
         /* ===== Visionneuse 3D des ponts (plein écran) ===== */
         .bridge3d-overlay {
             position: fixed;
