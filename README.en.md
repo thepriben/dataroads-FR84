@@ -15,6 +15,7 @@ This demonstrator, incubated within the Road Information Bureau (Vaucluse Depart
 - Accident data provided for 2024, displayed on demand to avoid cluttering the map.
 - Roads under construction or planned, from the OSM cache.
 - Current weather over Avignon, useful as a quick operational signal.
+- Real-time Waze traffic (community-reported jams and incidents), via the Waze Live Map embed loaded on demand.
 - An OSM quality panel to spot road sections that do or do not have a usable OSM relation.
 
 ## Value for CD84
