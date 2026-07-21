@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-07-21
+
+### Added
+
+- **Traffic evolution per counting station (issue #23):** counting-station popups now embed an inline SVG sparkline of the yearly AADT (MJA) history using the full multi-vintage data.gouv.fr / DataSud series (1996–2025), instead of only the latest year. A first→last trend indicator shows the absolute and percentage change over the period (▲/▼/▬ with cherry-red for increase, green for decrease), plus the number of vintages and the first→last values.
+
+### Changed
+
+- Traffic-count loading keeps the complete yearly history per station (`stationsById`) while still styling the marker by the most recent vintage.
+
 ## [0.4.0] - 2026-06-21
 
 ### Added
@@ -149,7 +159,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Data refresh scripts `update_osm_geojson.py` and `update_external_data.py`.
 - GitHub Pages deployment and automated data-refresh workflows.
 
-[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.4.0...v0.5.0
 [0.3.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.2.0...v0.2.1

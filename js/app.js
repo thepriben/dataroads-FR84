@@ -8029,6 +8029,77 @@
             window.InforouteApi.getLiveSource('weather').refreshMs || (10 * 60 * 1000)
         );
 
+        // Build an inline SVG sparkline of the yearly AADT (MJA) history for a
+        // counting station, plus a first→last trend indicator (issue #23).
+        function buildTrafficHistoryChart(history) {
+            const byYear = new Map();
+            (history || []).forEach(h => {
+                if (!Number.isFinite(h.year) || !Number.isFinite(h.mja)) return;
+                const prev = byYear.get(h.year);
+                // Keep the highest observation when a year has duplicates.
+                if (prev === undefined || h.mja > prev) byYear.set(h.year, h.mja);
+            });
+
+            const points = [...byYear.entries()]
+                .map(([year, mja]) => ({ year, mja }))
+                .sort((a, b) => a.year - b.year);
+
+            if (points.length === 0) return '';
+
+            const fmt = value => Number.isFinite(value) ? value.toLocaleString('fr-FR') : 'N/A';
+
+            if (points.length === 1) {
+                return `
+                    <div class="detail" style="margin-top:8px;padding-top:8px;border-top:1px solid #ddd;color:#777;font-size:0.75rem;">
+                        Un seul millésime disponible (${points[0].year}) — évolution non traçable.
+                    </div>`;
+            }
+
+            const first = points[0];
+            const last = points[points.length - 1];
+            const delta = last.mja - first.mja;
+            const pct = first.mja ? (delta / first.mja) * 100 : 0;
+            const arrow = pct > 2 ? '▲' : (pct < -2 ? '▼' : '▬');
+            const trendColor = pct > 2 ? '#c0392b' : (pct < -2 ? '#27ae60' : '#7f8c8d');
+            const sign = delta > 0 ? '+' : '';
+
+            const W = 260, H = 72, padL = 6, padR = 6, padT = 12, padB = 16;
+            const years = points.map(p => p.year);
+            const mjas = points.map(p => p.mja);
+            const minYear = Math.min(...years), maxYear = Math.max(...years);
+            const minMja = Math.min(...mjas), maxMja = Math.max(...mjas);
+            const spanYear = (maxYear - minYear) || 1;
+            const spanMja = (maxMja - minMja) || 1;
+            const xOf = y => padL + ((y - minYear) / spanYear) * (W - padL - padR);
+            const yOf = m => padT + (1 - (m - minMja) / spanMja) * (H - padT - padB);
+
+            const poly = points.map(p => `${xOf(p.year).toFixed(1)},${yOf(p.mja).toFixed(1)}`).join(' ');
+            const dots = points
+                .map(p => `<circle cx="${xOf(p.year).toFixed(1)}" cy="${yOf(p.mja).toFixed(1)}" r="1.6" fill="#2c3e50"/>`)
+                .join('');
+            const firstDot = `<circle cx="${xOf(first.year).toFixed(1)}" cy="${yOf(first.mja).toFixed(1)}" r="2.6" fill="#3498db"/>`;
+            const lastDot = `<circle cx="${xOf(last.year).toFixed(1)}" cy="${yOf(last.mja).toFixed(1)}" r="2.6" fill="${trendColor}"/>`;
+
+            return `
+                <div class="detail" style="margin-top:8px;padding-top:8px;border-top:1px solid #ddd;">
+                    <strong>Évolution du trafic (MJA)</strong>
+                    <div style="display:flex;align-items:baseline;gap:6px;margin:2px 0 4px;font-size:0.8rem;color:${trendColor};">
+                        <span>${arrow}</span>
+                        <strong>${sign}${fmt(delta)} véh/j</strong>
+                        <span>(${sign}${pct.toFixed(0)}%)</span>
+                        <span style="color:#999;">${first.year}→${last.year}</span>
+                    </div>
+                    <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;overflow:visible;">
+                        <polyline points="${poly}" fill="none" stroke="#2c3e50" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+                        ${dots}${firstDot}${lastDot}
+                        <text x="${padL}" y="8" font-size="8" fill="#bbb">max ${fmt(maxMja)}</text>
+                        <text x="${padL}" y="${H - 4}" font-size="8" fill="#999">${minYear}</text>
+                        <text x="${W - padR}" y="${H - 4}" font-size="8" fill="#999" text-anchor="end">${maxYear}</text>
+                    </svg>
+                    <div style="font-size:0.7rem;color:#999;">${points.length} millésimes · ${fmt(first.mja)} → ${fmt(last.mja)} véh/j</div>
+                </div>`;
+        }
+
         // Load counting data from script-updated local GeoJSON
         async function loadTrafficCountingData() {
             console.log('🚦 === DÉBUT CHARGEMENT STATIONS DE COMPTAGE ===');
@@ -8081,25 +8152,36 @@
             // Compteurs pour les statistiques
             const trafficCounts = { high: 0, medium: 0, low: 0 };
             
-            // Filter to most recent data per station
-            const latestDataByStation = {};
+            // Group every observation per station: keep the full yearly history
+            // (issue #23) plus a pointer to the most recent year for marker styling.
+            const stationsById = {};
             geojsonData.features.forEach(feature => {
                 const props = feature.properties;
                 const stationId = props.section_compteur ?? props.section_co ?? props.identifian ?? props.id_station ?? props.id;
                 const year = Number.parseInt(props.annee ?? props.year ?? props.an, 10);
 
                 if (!stationId || !Number.isFinite(year)) return;
-                
-                if (!latestDataByStation[stationId] || year > latestDataByStation[stationId].year) {
-                    latestDataByStation[stationId] = {
-                        feature: feature,
-                        year: year
-                    };
+
+                let entry = stationsById[stationId];
+                if (!entry) {
+                    entry = stationsById[stationId] = { feature, year, history: [] };
+                }
+
+                entry.history.push({
+                    year,
+                    mja: Number(props.mja_tv ?? props.mja ?? props.mja_jour),
+                    tauxPL: Number(props.taux_pl ?? props.tauxpl ?? props.taux_pl_pc),
+                    debitPL: Number(props.debit_pl ?? props.debitpl ?? props.pl_jour)
+                });
+
+                if (year > entry.year) {
+                    entry.year = year;
+                    entry.feature = feature;
                 }
             });
 
             // Afficher les stations de comptage
-            Object.values(latestDataByStation).forEach(data => {
+            Object.values(stationsById).forEach(data => {
                 const feature = data.feature;
                 const props = feature.properties;
                 
@@ -8119,7 +8201,9 @@
                 const yearValue = props.annee ?? props.year ?? props.an ?? 'N/A';
                 
                 const formatNumber = (value, suffix = '') => Number.isFinite(value) ? `${value.toLocaleString()}${suffix}` : 'N/A';
-                
+
+                const historyChart = buildTrafficHistoryChart(data.history);
+
                 // Determine traffic category (light gray → dark gray)
                 let style, category;
                 if (mja >= 20000) {
@@ -8163,6 +8247,7 @@
                         <div class="detail"><strong>Taux PL&nbsp;:</strong> ${Number.isFinite(tauxPL) ? tauxPL.toFixed(1) + '%' : 'N/A'}</div>
                         <div class="detail"><strong>Débit PL&nbsp;:</strong> ${formatNumber(debitPL, ' PL/jour')}</div>
                         ${props.classe ? `<div class="detail"><strong>Classification&nbsp;:</strong> ${props.classe}</div>` : ''}
+                        ${historyChart}
                         <div class="detail" style="margin-top: 8px; font-size: 0.75rem; color: #999;">
                             <strong>Source&nbsp;:</strong> ${sourceUsed || 'Inconnue'}
                         </div>
@@ -8198,7 +8283,7 @@
 
             // Update statistics
             const totalStations = trafficCounts.high + trafficCounts.medium + trafficCounts.low;
-            const years = Object.values(latestDataByStation).map(d => d.year).filter(Number.isFinite);
+            const years = Object.values(stationsById).map(d => d.year).filter(Number.isFinite);
             const latestYear = years.length ? Math.max(...years) : 'N/A';
             const sourceYears = formatYearRange(collectYears(geojsonData.features, ['annee', 'year', 'an']));
             renderFreshnessBadge(document.getElementById('freshness-traffic'), {
