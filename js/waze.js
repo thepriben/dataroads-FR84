@@ -27,12 +27,13 @@
             // Ignore and keep the department fallback.
         }
 
-        // Waze embed zoom uses the same web-mercator scale as Leaflet; clamp it
-        // to a range the live map renders comfortably.
+        // Waze embed zoom is the same slippy-map scale as Leaflet; clamp to the
+        // range the live map supports (official docs: 3–17).
         zoom = Math.max(8, Math.min(16, Number.isFinite(zoom) ? zoom : FALLBACK.zoom));
 
-        return `https://embed.waze.com/iframe?zoom=${zoom}` +
-            `&lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&pin=0`;
+        // /fr/ → French UI and kilometres; pin=1 marks the dataroads view centre.
+        return `https://embed.waze.com/fr/iframe?zoom=${zoom}` +
+            `&lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}&pin=1`;
     }
 
     function setOpen(isOpen) {

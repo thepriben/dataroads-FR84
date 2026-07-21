@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.8.2] - 2026-07-21
+
+### Changed
+
+- Waze Live Map embed now uses the French locale (`/fr/` → French UI and kilometres) and drops a pin at the centre, making the recentring on the current dataroads view explicit. (The embed already opened centred on the map's current position and zoom; confirmed against the official Waze iFrame parameters `lat`/`lon`/`zoom`.)
+
 ## [0.8.1] - 2026-07-21
 
 ### Changed
@@ -202,7 +208,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Data refresh scripts `update_osm_geojson.py` and `update_external_data.py`.
 - GitHub Pages deployment and automated data-refresh workflows.
 
-[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/thepriben/dataroads-FR84/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.0...v0.7.1
