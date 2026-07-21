@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.7.0] - 2026-07-21
+
+### Added
+
+- **Counting station → road axis highlight (issue #9):** clicking a traffic-counting station now highlights the matching departmental road axis on the map (glow effect) and shows the axis details in the side panel, contextualising the count. Route matching is space/case-insensitive so CD84 `D975` resolves to OSM `D 975`.
+
+### Changed
+
+- `highlightRoute()` accepts an `options.zoom` flag; highlighting from a station click keeps the current view (no auto-recentre) so the station popup stays visible.
+
 ## [0.6.0] - 2026-07-21
 
 ### Added
@@ -165,7 +175,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Data refresh scripts `update_osm_geojson.py` and `update_external_data.py`.
 - GitHub Pages deployment and automated data-refresh workflows.
 
-[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.4.0...v0.5.0
 [0.3.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.3.0...v0.3.1

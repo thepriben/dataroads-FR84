@@ -6296,8 +6296,11 @@
             });
         }
         
-        // Highlight a route
-        function highlightRoute(ref) {
+        // Highlight a route. options.zoom (default true) controls whether the map
+        // recentres on the whole axis — disabled when highlighting from a counting
+        // station click (issue #9) so the station popup stays in view.
+        function highlightRoute(ref, options = {}) {
+            const { zoom = true } = options;
             // Remove previous shadows
             Object.values(shadowPolylines).forEach(shadows => {
                 shadows.forEach(shadow => map.removeLayer(shadow));
@@ -6376,9 +6379,11 @@
                     polyline.bringToFront();
                 });
                 
-                // Centrer la carte sur la route
-                const bounds = L.latLngBounds(polylines.map(p => p.getBounds()));
-                map.fitBounds(bounds, { padding: [50, 50] });
+                // Centrer la carte sur la route (sauf si appelé depuis une station)
+                if (zoom) {
+                    const bounds = L.latLngBounds(polylines.map(p => p.getBounds()));
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
                 
                 // Update visual list
                 document.querySelectorAll('.road-item').forEach(item => {
@@ -8029,6 +8034,22 @@
             window.InforouteApi.getLiveSource('weather').refreshMs || (10 * 60 * 1000)
         );
 
+        // Normalise a road reference for matching (drop spaces, upper-case):
+        // OSM "D 975" and CD84 "D975" must resolve to the same axis.
+        function normalizeRouteRef(value) {
+            return String(value ?? '').replace(/\s+/g, '').toUpperCase();
+        }
+
+        // Find the routePolylines key matching a counting station's road name
+        // (issue #9). Returns null when the axis is not part of the OSM network.
+        function findRoutePolylineKey(routeName) {
+            const target = normalizeRouteRef(routeName);
+            if (!target || !window.routePolylines) return null;
+            if (window.routePolylines[routeName]) return routeName;
+            return Object.keys(window.routePolylines)
+                .find(key => normalizeRouteRef(key) === target) || null;
+        }
+
         // Build an inline SVG sparkline of the yearly AADT (MJA) history for a
         // counting station, plus a first→last trend indicator (issue #23).
         function buildTrafficHistoryChart(history) {
@@ -8248,6 +8269,7 @@
                         <div class="detail"><strong>Débit PL&nbsp;:</strong> ${formatNumber(debitPL, ' PL/jour')}</div>
                         ${props.classe ? `<div class="detail"><strong>Classification&nbsp;:</strong> ${props.classe}</div>` : ''}
                         ${historyChart}
+                        ${routeName && routeName !== 'N/A' ? `<div class="detail" style="margin-top: 6px; font-size: 0.72rem; color: #95a5a6;">🛣️ L'axe <strong>${routeName}</strong> est surligné sur la carte.</div>` : ''}
                         <div class="detail" style="margin-top: 8px; font-size: 0.75rem; color: #999;">
                             <strong>Source&nbsp;:</strong> ${sourceUsed || 'Inconnue'}
                         </div>
@@ -8271,6 +8293,13 @@
                         weight: 2,
                         fillOpacity: 0.9
                     });
+                });
+
+                // Contextualise the count (issue #9): clicking a station highlights
+                // the matching road axis without moving the map off the station.
+                marker.on('click', function() {
+                    const key = findRoutePolylineKey(routeName);
+                    if (key) highlightRoute(key, { zoom: false });
                 });
             });
 
