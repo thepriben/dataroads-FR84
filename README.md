@@ -15,6 +15,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 - L'accidentologie fournie pour 2024, affichable à la demande pour ne pas surcharger la carte.
 - Les routes en construction ou en projet issues du cache OSM.
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
+- Le trafic temps réel Waze (bouchons et incidents communautaires), via la carte Waze Live Map intégrée à la demande.
 - Un panneau de qualité OSM pour repérer les tronçons qui ont ou non une relation OSM exploitable.
 
 ## Intérêt pour le CD84

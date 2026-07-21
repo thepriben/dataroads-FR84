@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-07-21
+
+### Added
+
+- **Real-time Waze traffic layer (issue #10):** new "Waze" toolbar button opening the official Waze Live Map embed in a modal, showing community-reported jams and incidents in real time. The iframe is lazy-loaded and centred on the current map view when opened, and unloaded on close so it never polls in the background. Waze exposes no open data API for arbitrary areas, so this is the embed-based approach (no credentials); a Waze for Cities (CCP) feed could later add native markers if the department obtains one.
+
 ## [0.5.0] - 2026-07-21
 
 ### Added
@@ -159,7 +165,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Data refresh scripts `update_osm_geojson.py` and `update_external_data.py`.
 - GitHub Pages deployment and automated data-refresh workflows.
 
-[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.4.0...v0.5.0
 [0.3.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.2.1...v0.3.0

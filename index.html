@@ -616,6 +616,10 @@
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-8"/><path d="M22 20V8"/></svg></span>
                         <span class="map-tool-label">Comptages</span>
                     </button>
+                    <button type="button" class="map-tool map-tool--waze" onclick="window.toggleWazePanel && window.toggleWazePanel()" id="wazeLiveBtn" title="Trafic temps réel Waze (carte live communautaire)" aria-haspopup="dialog" aria-controls="wazeOverlay">
+                        <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 9.5 9.5 0 0 1-4-.9L3 21l1.9-5.5a8.38 8.38 0 0 1-.9-4 8.5 8.5 0 0 1 17 0Z"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/></svg></span>
+                        <span class="map-tool-label">Waze</span>
+                    </button>
                     <!-- Convois exceptionnels : bouton désactivé (peu d'apport, redondant avec les filtres de hiérarchie). Conservé masqué pour réactivation éventuelle. -->
                     <button type="button" class="map-tool" id="convoiBtn" title="Itinéraires adaptés aux convois exceptionnels" hidden aria-hidden="true" style="display: none;">
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h13l3-5H8l-2 5Z"/><path d="M7 18h2"/><path d="M15 18h2"/><path d="M16 13v5"/><path d="M8 13v5"/></svg></span>
@@ -677,6 +681,25 @@
             </div>
         </div>
 
+        <div class="waze-overlay" id="wazeOverlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="wazeTitle" onclick="if (event.target === this) window.toggleWazePanel && window.toggleWazePanel(false)">
+            <div class="waze-panel" id="wazePanel">
+                <div class="waze-header">
+                    <div>
+                        <p class="waze-kicker">Trafic temps réel</p>
+                        <h2 id="wazeTitle">Waze Live Map — Vaucluse</h2>
+                        <p class="waze-subtitle">Bouchons et incidents remontés en direct par la communauté Waze.</p>
+                    </div>
+                    <button type="button" class="waze-close" onclick="window.toggleWazePanel && window.toggleWazePanel(false)" aria-label="Fermer la carte Waze">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                <div class="waze-frame-wrap">
+                    <iframe id="wazeFrame" title="Waze Live Map — Vaucluse" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allow="geolocation"></iframe>
+                </div>
+                <p class="waze-note">Source&nbsp;: <a href="https://www.waze.com/live-map" target="_blank" rel="noopener noreferrer">Waze Live Map</a> — données communautaires temps réel, indépendantes des comptages CD84 et de l'accidentologie.</p>
+            </div>
+        </div>
+
         <div class="bridge3d-overlay" id="bridge3dOverlay" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="bridge3dTitle" onclick="if (event.target === this) window.closeBridgeViewer && window.closeBridgeViewer()">
             <div class="bridge3d-panel">
                 <div class="bridge3d-header">
@@ -716,6 +739,7 @@
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
     <script src="js/app.js?v=20260620-6"></script>
+    <script src="js/waze.js?v=20260721-1"></script>
     <script src="js/bridge3d.js?v=20260620-3"></script>
 </body>
 </html>
