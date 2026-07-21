@@ -2647,6 +2647,37 @@
             color: #9098a3;
         }
 
+        /* ===== Pastilles de comptage avec valeur (issue #15) ===== */
+        .traffic-count-icon {
+            background: none;
+            border: 0;
+        }
+
+        .traffic-count-icon .tcm {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            color: #ffffff;
+            font-weight: 700;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+            transition: transform 0.12s ease;
+        }
+
+        /* Light-pink low-traffic fill needs dark text to stay readable. */
+        .traffic-count-icon .tcm--low {
+            color: #7a1f3d;
+        }
+
+        .traffic-count-icon:hover .tcm {
+            transform: scale(1.14);
+        }
+
         /* ===== Visionneuse 3D des ponts (plein écran) ===== */
         .bridge3d-overlay {
             position: fixed;

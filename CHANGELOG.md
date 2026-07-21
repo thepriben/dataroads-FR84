@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.8.0] - 2026-07-21
+
+### Added
+
+- **Traffic-count value badges (issue #15):** counting stations now display the rounded AADT inside the circle (e.g. `22k` for 22,136 véh/j, `5,3k`, or the raw number below 1000), so the magnitude is readable at a glance without relying on colour. Circles remain sized by traffic threshold.
+
+### Fixed
+
+- Network-stats AADT range no longer depends on parsing popup HTML (which broke when the popup label changed to `véh/j`): the numeric AADT is now stored on each station marker.
+
+### Changed
+
+- Counting stations are rendered as `divIcon` badges instead of plain SVG circles; hover feedback moved to CSS.
+
 ## [0.7.1] - 2026-07-21
 
 ### Changed
@@ -182,7 +196,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Data refresh scripts `update_osm_geojson.py` and `update_external_data.py`.
 - GitHub Pages deployment and automated data-refresh workflows.
 
-[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/thepriben/dataroads-FR84/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/thepriben/dataroads-FR84/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/thepriben/dataroads-FR84/compare/v0.5.0...v0.6.0

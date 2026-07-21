@@ -5883,14 +5883,8 @@
 
             const mjaValues = [];
             (typeof trafficMarkers !== 'undefined' ? trafficMarkers : []).forEach(marker => {
-                const popup = marker.getPopup && marker.getPopup();
-                if (!popup) return;
-                const html = popup.getContent ? popup.getContent() : '';
-                const match = String(html).match(/MJA[^:]*:[^>]*?([\d\u00a0\u202f,. ]+)\s*v[ée]h\/jour/i);
-                if (match) {
-                    const num = Number.parseInt(match[1].replace(/[^0-9]/g, ''), 10);
-                    if (Number.isFinite(num) && num > 0) mjaValues.push(num);
-                }
+                const num = marker.trafficMja;
+                if (Number.isFinite(num) && num > 0) mjaValues.push(num);
             });
 
             let mjaRange = null;
@@ -8093,6 +8087,33 @@
                 .find(key => normalizeRouteRef(key) === target) || null;
         }
 
+        // Compact AADT label for a counting badge (issue #15): 22136 → "22k",
+        // 5300 → "5,3k", 740 → "740".
+        function formatTrafficShort(mja) {
+            if (!Number.isFinite(mja) || mja <= 0) return '·';
+            if (mja >= 10000) return Math.round(mja / 1000) + 'k';
+            if (mja >= 1000) return (mja / 1000).toFixed(1).replace('.', ',') + 'k';
+            return String(Math.round(mja));
+        }
+
+        // Build a divIcon badge showing the rounded AADT inside the station circle
+        // (issue #15). Size stays proportional to the traffic threshold; the value
+        // makes the magnitude readable regardless of colour.
+        function makeTrafficDivIcon(mja, style, category) {
+            const label = formatTrafficShort(mja);
+            const diameter = style.size * 2 + 14; // high 38 / medium 34 / low 30 px
+            const fontSize = Math.max(10, Math.round(diameter * 0.3));
+            const html = `<span class="tcm tcm--${category}" style="width:${diameter}px;height:${diameter}px;`
+                + `background:${style.fill};border-color:${style.stroke};font-size:${fontSize}px;">${label}</span>`;
+            return L.divIcon({
+                className: 'traffic-count-icon',
+                html,
+                iconSize: [diameter, diameter],
+                iconAnchor: [diameter / 2, diameter / 2],
+                popupAnchor: [0, -diameter / 2]
+            });
+        }
+
         // Build an inline SVG sparkline of the yearly AADT (MJA) history for a
         // counting station, plus a first→last trend indicator (issue #23).
         function buildTrafficHistoryChart(history) {
@@ -8284,16 +8305,14 @@
                     trafficCounts.low++;
                 }
 
-                // Create marker (hidden by default — see trafficVisible)
-                const marker = L.circleMarker([lat, lon], {
-                    radius: style.size,
-                    fillColor: style.fill,
-                    color: style.stroke,
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.9,
-                    stationType: 'counting'  // For identification when toggling traffic
+                // Create marker (hidden by default — see trafficVisible). Uses a
+                // divIcon badge so the rounded AADT is printed inside the circle.
+                const marker = L.marker([lat, lon], {
+                    icon: makeTrafficDivIcon(mja, style, category),
+                    keyboard: false
                 });
+                // Keep the numeric AADT on the marker for stats (avoids parsing HTML).
+                marker.trafficMja = Number.isFinite(mja) ? mja : null;
 
                 // Store for visibility toggle
                 trafficMarkers.push(marker);
@@ -8336,22 +8355,7 @@
                     autoPanPadding: L.point(60, 70)
                 });
 
-                // Effet de survol
-                marker.on('mouseover', function() {
-                    this.setStyle({
-                        radius: style.size + 3,
-                        weight: 3,
-                        fillOpacity: 1
-                    });
-                });
-
-                marker.on('mouseout', function() {
-                    this.setStyle({
-                        radius: style.size,
-                        weight: 2,
-                        fillOpacity: 0.9
-                    });
-                });
+                // Hover feedback is handled in CSS (.traffic-count-icon:hover).
 
                 // Contextualise the count (issue #9): clicking a station draws a
                 // distinct accent trace over the matching road axis, without moving
