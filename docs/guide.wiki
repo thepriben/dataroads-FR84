@@ -101,9 +101,11 @@ Accidents du millésime 2024 (BAAC), classés : mortels, blessés hospitalisés,
 
 ==== [layer:layer-comptages] Stations de comptage ====
 
-Stations CD84 (data.gouv.fr), classées par trafic selon une gamme '''rouge cerise''' (élevé, > 20 k véh/j) → '''rose clair''' (faible).
+Stations CD84 (data.gouv.fr / DataSud), classées par trafic selon une gamme '''rouge cerise''' (élevé, > 20 k véh/j) → '''rose clair''' (faible). Chaque pastille affiche le '''trafic moyen arrondi''' en son centre (ex. {{{22k}}} pour 22 136 véh/j), lisible quelle que soit la couleur.
 
-'''Comment :''' activer dans la légende ''ou'' via le bouton '''Comptages''' sur la carte (les deux restent synchronisés). Clic sur une station : MJA, part PL, année.
+'''Comment :''' activer dans la légende ''ou'' via le bouton '''Comptages''' sur la carte (les deux restent synchronisés). Clic sur une station : fiche détaillée avec la '''MJA''' (tous véhicules), la part et le débit poids lourds, et un '''graphe d'évolution du trafic''' sur tous les millésimes disponibles (1996–2025) avec la tendance premier → dernier millésime.
+
+Le clic '''met aussi en évidence l'axe routier concerné''' — un tracé '''indigo''' distinct des pastilles de comptage — et affiche les informations de l'axe (longueur, communes traversées…) dans le panneau ''Informations Route'', sans déplacer la vue.
 
 === [family:realtime] Temps réel ===
 
@@ -217,6 +219,7 @@ En haut à droite de la carte :
 * '''Maison''' — vue initiale du département.
 * '''Comptages''' — active la couche stations de comptage (sync avec la légende).
 * '''Limitations''' — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, panneaux de vitesse et pictogrammes hauteur / largeur / poids (regroupés en grappes au dézoom). Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
+* '''W''' — ouvre la '''carte Waze Live Map''' (trafic temps réel communautaire : bouchons et incidents), '''centrée sur la vue courante''' de la carte, avec un repère au centre. Interface en français, distances en kilomètres. Fermer par × , clic à l'extérieur ou <span class="guide-kbd">Échap</span>. Bouton placé à gauche du '''M'''.
 * '''M''' — affiche la couverture photo '''Mapillary''' (zones disposant de prises de vue au sol).
 * '''P''' — affiche la couverture photo '''Panoramax''' (accent violet).
 
