@@ -97,7 +97,7 @@ Données historiques ou agrégées — à charger à la demande pour ne pas surc
 
 Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel :
 * '''Couleur = ancienneté''' — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre.
-* '''Taille = gravité''' — un point mortel (tué) est plus gros qu'un blessé hospitalisé, lui-même plus gros qu'un blessé léger.
+* '''Gravité''' — un '''anneau noir''' entoure les accidents mortels et les blessés hospitalisés (le mortel étant en plus légèrement plus gros) ; les blessés légers n'ont qu'un fin liseré blanc, sans anneau.
 
 La légende embarque une '''dataviz temporelle''' : l'échelle de couleur ancien → récent, un '''mini-histogramme''' du nombre d'accidents par année, et un '''curseur de plage d'années''' (de / à) pour filtrer le nuage.
 

@@ -12,7 +12,7 @@ This demonstrator, incubated within the Road Information Bureau (Vaucluse Depart
 - The Vaucluse departmental road network, with a simple hierarchy: regional, territorial and local networks.
 - The department boundary and the municipalities, to put roads in their territorial context.
 - CD84 traffic counting stations, classified by traffic level.
-- Multi-year accident data (BAAC, 2019-2024) rendered as a cloud: colour by recency, size by severity, with a per-year histogram and a year slider to explore the trend.
+- Multi-year accident data (BAAC, 2019-2024) rendered as a cloud: colour by recency, severity shown by a black ring (hospitalised and fatal), with a per-year histogram and a year slider to explore the trend.
 - Roads under construction or planned, from the OSM cache.
 - Current weather over Avignon, useful as a quick operational signal.
 - Real-time Waze traffic (community-reported jams and incidents), via the Waze Live Map embed loaded on demand.

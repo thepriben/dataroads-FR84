@@ -12,7 +12,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 - Le réseau départemental du Vaucluse, avec une hiérarchie simple : réseau régional, territorial et local.
 - La limite du département et les communes, pour replacer les routes dans leur contexte territorial.
 - Les stations de comptage CD84, classées par niveau de trafic.
-- L'accidentologie multi-millésimes (BAAC, 2019-2024) sous forme de nuage : couleur selon l'ancienneté, taille selon la gravité, histogramme et curseur d'années pour explorer l'évolution.
+- L'accidentologie multi-millésimes (BAAC, 2019-2024) sous forme de nuage : couleur selon l'ancienneté, gravité signalée par un anneau noir (blessés hospitalisés et mortels), histogramme et curseur d'années pour explorer l'évolution.
 - Les routes en construction ou en projet issues du cache OSM.
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
 - Le trafic temps réel Waze (bouchons et incidents communautaires), via la carte Waze Live Map intégrée à la demande.

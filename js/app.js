@@ -8403,7 +8403,10 @@
         // Points are drawn on a shared canvas renderer to stay smooth with ~2000 pts,
         // and can be filtered by a year range via the timeline slider in the legend.
 
-        const ACCIDENT_SIZE = { mortel: 7, grave: 5, leger: 3.5 };
+        // Severity is read mainly from the black ring (hospitalised & fatal) vs the
+        // thin white outline (slight). Hospitalised and slight share the same radius
+        // on purpose — the ring is the discriminator; only fatal is enlarged.
+        const ACCIDENT_SIZE = { mortel: 6.5, grave: 4.5, leger: 4.5 };
         const accidentCanvasRenderer = L.canvas({ padding: 0.4 });
         let accidentYearBounds = { min: null, max: null };   // full data range
         let accidentYearFilter = { min: null, max: null };   // current slider range
@@ -8472,14 +8475,16 @@
                         ? '💀 Accident mortel'
                         : (gravite === 'grave' ? '🚑 Blessé(s) hospitalisé(s)' : '⚠️ Blessé(s) léger(s)');
 
+                    // Black ring = hospitalised or fatal ; thin white outline = slight.
+                    const hasRing = (gravite === 'mortel' || gravite === 'grave');
                     const marker = L.circleMarker([lat, lon], {
                         renderer: accidentCanvasRenderer,
                         radius: size,
                         fillColor: accidentRecencyColor(year),
-                        color: gravite === 'mortel' ? '#1a0000' : '#ffffff',
-                        weight: gravite === 'mortel' ? 1.1 : 0.6,
-                        opacity: 0.85,
-                        fillOpacity: 0.82
+                        color: hasRing ? '#111111' : '#ffffff',
+                        weight: hasRing ? 1.6 : 0.6,
+                        opacity: hasRing ? 0.95 : 0.85,
+                        fillOpacity: 0.85
                     });
                     marker.accidentYear = Number.isFinite(year) ? year : null;
                     marker.accidentGravite = gravite;

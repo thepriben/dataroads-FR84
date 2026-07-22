@@ -4755,9 +4755,19 @@
         .legend-color.acc-dot {
             border-radius: 50%;
             background: #e8541e;
-            border: 1.5px solid #fff;
+            border: 1px solid #fff;
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
             flex: 0 0 auto;
+        }
+        /* Black ring = blessé hospitalisé / mortel (same-size dots, ring is the tell) */
+        .legend-color.acc-dot--ring {
+            border: 2px solid #111;
+            box-shadow: none;
+        }
+        .acc-hint {
+            color: #999;
+            font-size: 0.72em;
+            font-weight: 400;
         }
 
         .accidents-timeline {
