@@ -15,7 +15,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 - L'accidentologie multi-millésimes (BAAC, 2019-2024) sous forme de nuage : couleur selon l'ancienneté, gravité signalée par un anneau noir (blessés hospitalisés et mortels), histogramme et curseur d'années pour explorer l'évolution.
 - Les routes en construction ou en projet issues du cache OSM.
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
-- Le trafic temps réel Waze (bouchons et incidents communautaires), via la carte Waze Live Map intégrée à la demande.
+- Le trafic Waze communautaire (bouchons et incidents) : couche native (tracés de bouchons + marqueurs d'incidents) si le flux partenaire *Waze for Cities* est configuré, sinon la carte Waze Live Map intégrée en repli.
 - Un panneau de qualité OSM pour repérer les tronçons qui ont ou non une relation OSM exploitable.
 
 ## Intérêt pour le CD84
@@ -100,6 +100,10 @@ dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 ```
 
 `scripts/update_external_data.py` matérialise les données data.gouv.fr et Info Routière dans `data/external/`. Si Info Routière est indisponible, le script conserve un GeoJSON vide avec l'erreur dans `_cache`.
+
+### Activer la couche Waze native
+
+Waze n'expose pas d'API ouverte par zone (l'endpoint de la live-map renvoie un HTTP 403 aux IP de datacenter, donc inexploitable en CI). La couche native s'appuie donc sur le **flux partenaire officiel [Waze for Cities](https://www.waze.com/wazeforcities/)** (gratuit, sur inscription). Une fois l'URL du flux obtenue, ajoutez-la en **secret de dépôt** `WAZE_FEED_URL` : le workflow *Update External Data* génère alors `data/external/waze.geojson` (alertes + bouchons) toutes les 3 h, et le front bascule automatiquement sur la couche native. Sans secret, le bouton **W** ouvre la carte Waze Live Map en repli.
 
 ## Articles & présentations
 

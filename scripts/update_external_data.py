@@ -25,6 +25,12 @@ DATA_DIR = ROOT / "data" / "external"
 APP_VERSION = os.environ.get("APP_VERSION", read_version())
 USER_AGENT = os.environ.get("APP_USER_AGENT", user_agent())
 
+# Official Waze for Cities (ex-CCP) partner feed URL, injected as a secret.
+# When unset, we leave a "not configured" placeholder and the front-end falls
+# back to the Waze Live Map iframe. The feed returns the same JSON schema as the
+# live map (alerts + jams), so a single parser covers both.
+WAZE_FEED_URL = os.environ.get("WAZE_FEED_URL", "").strip()
+
 TRAFFIC_COUNTING_URL = (
     "https://www.data.gouv.fr/api/1/datasets/r/"
     "a43b0841-856b-44f5-b4a7-74c5275b13a0"
@@ -258,6 +264,107 @@ def fetch_road_events(source_url: str) -> dict[str, Any]:
     return datex_to_geojson(xml_bytes)
 
 
+def waze_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    """Convert a Waze for Cities feed (alerts + jams) into GeoJSON.
+
+    Alerts become Point features, traffic jams become LineString features. The
+    feed shares the schema of the public live map, so this also works verbatim
+    should a reachable live-map endpoint ever be used.
+    """
+    features: list[dict[str, Any]] = []
+
+    for alert in data.get("alerts") or []:
+        loc = alert.get("location") or {}
+        x, y = loc.get("x"), loc.get("y")
+        if x is None or y is None:
+            continue
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [x, y]},
+            "properties": {
+                "kind": "alert",
+                "type": alert.get("type"),
+                "subtype": alert.get("subtype"),
+                "street": alert.get("street"),
+                "city": alert.get("city"),
+                "description": alert.get("reportDescription") or "",
+                "reliability": alert.get("reliability"),
+                "confidence": alert.get("confidence"),
+                "pubMillis": alert.get("pubMillis"),
+            },
+        })
+
+    for jam in data.get("jams") or []:
+        line = jam.get("line") or []
+        coords = [[p.get("x"), p.get("y")] for p in line
+                  if p.get("x") is not None and p.get("y") is not None]
+        if len(coords) < 2:
+            continue
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": coords},
+            "properties": {
+                "kind": "jam",
+                "street": jam.get("street"),
+                "city": jam.get("city"),
+                "speedKMH": jam.get("speedKMH"),
+                "length": jam.get("length"),
+                "delay": jam.get("delay"),
+                "level": jam.get("level"),
+            },
+        })
+
+    return {"type": "FeatureCollection", "features": features}
+
+
+def fetch_waze(source_url: str) -> dict[str, Any]:
+    return waze_to_geojson(fetch_json(source_url, timeout=60))
+
+
+def update_waze() -> bool:
+    """Refresh data/external/waze.geojson from the partner feed if configured.
+
+    Without a feed URL we write a lightweight placeholder once (configured=false)
+    so the front-end knows to keep using the iframe fallback, and we avoid
+    committing a fresh timestamp on every scheduled run.
+    """
+    output_path = DATA_DIR / "waze.geojson"
+
+    if not WAZE_FEED_URL:
+        if output_path.exists():
+            print("data/external/waze.geojson: WAZE_FEED_URL unset, keeping placeholder")
+            return False
+        placeholder = {
+            "type": "FeatureCollection",
+            "features": [],
+            "_cache": {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "source_name": "Waze for Cities (non configuré)",
+                "configured": False,
+                "note": "Set the WAZE_FEED_URL secret to enable the native layer.",
+            },
+        }
+        output_path.write_text(
+            json.dumps(placeholder, ensure_ascii=True, separators=(",", ":")) + "\n",
+            encoding="utf-8",
+        )
+        print("data/external/waze.geojson: created placeholder (feed not configured)")
+        return True
+
+    source_name = "Waze for Cities (flux partenaire)"
+    try:
+        data = as_feature_collection(fetch_waze(WAZE_FEED_URL), source_name, WAZE_FEED_URL)
+    except Exception as error:  # keep the map alive on feed hiccups
+        print(f"waze.geojson: feed unavailable, writing empty GeoJSON: {error}", file=sys.stderr)
+        data = empty_feature_collection(source_name, WAZE_FEED_URL, error)
+    data["_cache"]["configured"] = True
+
+    changed = write_json_if_changed(output_path, data)
+    state = "updated" if changed else "unchanged"
+    print(f"data/external/waze.geojson: {state}, {len(data['features'])} features")
+    return changed
+
+
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -273,6 +380,7 @@ def main() -> int:
         fetcher=fetch_road_events,
         allow_empty=True,
     )
+    update_waze()
 
     return 0
 

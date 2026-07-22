@@ -223,7 +223,7 @@ En haut à droite de la carte :
 * '''Maison''' — vue initiale du département.
 * '''Comptages''' — active la couche stations de comptage (sync avec la légende).
 * '''Limitations''' — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 11, panneaux de vitesse et pictogrammes hauteur / largeur / poids (regroupés en grappes au dézoom). Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.
-* '''W''' — ouvre la '''carte Waze Live Map''' (trafic temps réel communautaire : bouchons et incidents), '''centrée sur la vue courante''' de la carte, avec un repère au centre. Interface en français, distances en kilomètres. Fermer par × , clic à l'extérieur ou <span class="guide-kbd">Échap</span>. Bouton placé à gauche du '''M'''.
+* '''W''' — trafic '''Waze''' communautaire (bouchons et incidents). Si le flux partenaire ''Waze for Cities'' est configuré, une '''couche native''' s'affiche directement sur la carte : tracés de bouchons colorés selon la sévérité et marqueurs d'incidents (💥 accident, ⚠️ danger, 🚧 travaux, ⛔ route fermée, 👮 contrôle) ; cliquez pour le détail (axe, vitesse, retard). À défaut, le bouton ouvre la '''carte Waze Live Map''' intégrée, centrée sur la vue courante (fermer par × , clic extérieur ou <span class="guide-kbd">Échap</span>). Bouton placé à gauche du '''M'''.
 * '''M''' — affiche la couverture photo '''Mapillary''' (zones disposant de prises de vue au sol).
 * '''P''' — affiche la couverture photo '''Panoramax''' (accent violet).
 

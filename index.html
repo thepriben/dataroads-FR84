@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260722-2">
+    <link rel="stylesheet" href="css/styles.css?v=20260722-3">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -649,7 +649,7 @@
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
                         <span class="map-tool-label">Limitations</span>
                     </button>
-                    <button type="button" class="map-tool map-tool--compact map-tool--waze" onclick="window.toggleWazePanel && window.toggleWazePanel()" id="wazeLiveBtn" title="Trafic temps réel Waze (carte live communautaire)" aria-haspopup="dialog" aria-controls="wazeOverlay" aria-label="Trafic temps réel Waze">
+                    <button type="button" class="map-tool map-tool--compact map-tool--waze" onclick="window.toggleWazePanel && window.toggleWazePanel()" id="wazeLiveBtn" title="Trafic Waze : incidents et bouchons communautaires (couche native si flux configuré, sinon carte live)" aria-label="Trafic Waze — incidents et bouchons">
                         <span class="map-tool-waze" aria-hidden="true">W</span>
                     </button>
                     <button type="button" class="map-tool map-tool--compact map-tool--mapillary" onclick="window.toggleMapillaryCoverage && window.toggleMapillaryCoverage()" id="mapillaryBtn" title="Couverture photo Mapillary (traces) — fiabilise les panneaux cliquables" aria-label="Couverture photo Mapillary">
@@ -762,7 +762,7 @@
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
     <script src="js/app.js?v=20260722-2"></script>
-    <script src="js/waze.js?v=20260721-2"></script>
+    <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260620-3"></script>
 </body>
 </html>
