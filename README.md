@@ -104,3 +104,7 @@ dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 ## Articles & présentations
 
 - [Structuring Road Information in Open Data: A Nested Wikidata – OSM – BD TOPO (IGN) Architecture Co-produced by Territorial Authorities](https://2026.stateofthemap.org/sessions/VS9YKN/) — Jean-Louis Zimmermann, State of the Map 2026, Paris.
+
+## Inspirations
+
+- La dataviz de l'accidentologie (nuage multi-millésimes, couleur selon l'ancienneté, taille selon la gravité, filtre par années) s'inspire librement de [« Victimes de la route » de Loïc Bertrand](https://www.loicbertrand.eu/accidents/).
