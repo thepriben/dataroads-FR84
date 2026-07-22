@@ -95,9 +95,13 @@ Données historiques ou agrégées — à charger à la demande pour ne pas surc
 
 ==== [layer:layer-accidents] Accidentologie ====
 
-Accidents du millésime 2024 (BAAC), classés : mortels, blessés hospitalisés, blessés légers.
+Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel :
+* '''Couleur = ancienneté''' — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre.
+* '''Taille = gravité''' — un point mortel (tué) est plus gros qu'un blessé hospitalisé, lui-même plus gros qu'un blessé léger.
 
-'''Comment :''' activer la couche ; cliquez un marqueur pour le détail (date, route, commune).
+La légende embarque une '''dataviz temporelle''' : l'échelle de couleur ancien → récent, un '''mini-histogramme''' du nombre d'accidents par année, et un '''curseur de plage d'années''' (de / à) pour filtrer le nuage.
+
+'''Comment :''' activer la couche ; jouez avec le curseur d'années pour voir l'évolution dans le temps ; cliquez un point pour le détail (année, victimes, date, commune, adresse). ''Note : la géolocalisation BAAC des années les plus anciennes est plus lacunaire, d'où un nuage plus dense sur les millésimes récents.''
 
 ==== [layer:layer-comptages] Stations de comptage ====
 
@@ -250,6 +254,6 @@ Sous la plupart des couches, une pastille indique quand les données ont été g
 * '''Externe''' (comptages, Bison Futé) — toutes les 3 h.
 * '''Incubateur''' (ponts OSM) — bi-hebdo (lun. & jeu.).
 * '''Météo''' — live navigateur, ~10 min.
-* '''Statique''' (limite 84, accidents 2024) — snapshot versionné, mise à jour manuelle.
+* '''Statique''' (limite 84, accidents 2019-2024) — snapshot versionné, mise à jour manuelle.
 
 {{hint|Le détail complet est dans ''Outils & méta → Formule de rafraîchissement''.}}

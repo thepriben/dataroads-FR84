@@ -116,8 +116,9 @@
 <p>Données historiques ou agrégées — à charger à la demande pour ne pas surcharger la carte.</p>
 <div class="guide-layer" id="layer-accidents">
 <h4>Accidentologie</h4>
-<p>Accidents du millésime 2024 (BAAC), classés : mortels, blessés hospitalisés, blessés légers.</p>
-<p><strong>Comment :</strong> activer la couche ; cliquez un marqueur pour le détail (date, route, commune).</p>
+<p>Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel : * <strong>Couleur = ancienneté</strong> — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre. * <strong>Taille = gravité</strong> — un point mortel (tué) est plus gros qu'un blessé hospitalisé, lui-même plus gros qu'un blessé léger.</p>
+<p>La légende embarque une <strong>dataviz temporelle</strong> : l'échelle de couleur ancien → récent, un <strong>mini-histogramme</strong> du nombre d'accidents par année, et un '''curseur de plage d'années''' (de / à) pour filtrer le nuage.</p>
+<p><strong>Comment :</strong> activer la couche ; jouez avec le curseur d'années pour voir l'évolution dans le temps ; cliquez un point pour le détail (année, victimes, date, commune, adresse). ''Note : la géolocalisation BAAC des années les plus anciennes est plus lacunaire, d'où un nuage plus dense sur les millésimes récents.''</p>
 </div><div class="guide-layer" id="layer-comptages">
 <h4>Stations de comptage</h4>
 <p>Stations CD84 (data.gouv.fr / DataSud), classées par trafic selon une gamme <strong>rouge cerise</strong> (élevé, &gt; 20 k véh/j) → <strong>rose clair</strong> (faible). Chaque pastille affiche le <strong>trafic moyen arrondi</strong> en son centre (ex. <code>22k</code> pour 22 136 véh/j), lisible quelle que soit la couleur.</p>
@@ -245,7 +246,7 @@
 <li><strong>Externe</strong> (comptages, Bison Futé) — toutes les 3 h.</li>
 <li><strong>Incubateur</strong> (ponts OSM) — bi-hebdo (lun. &amp; jeu.).</li>
 <li><strong>Météo</strong> — live navigateur, ~10 min.</li>
-<li><strong>Statique</strong> (limite 84, accidents 2024) — snapshot versionné, mise à jour manuelle.</li>
+<li><strong>Statique</strong> (limite 84, accidents 2019-2024) — snapshot versionné, mise à jour manuelle.</li>
 </ul>
 <p class="guide-hint">Le détail complet est dans <em>Outils &amp; méta → Formule de rafraîchissement</em>.</p>
         </section>

@@ -116,8 +116,13 @@
 <p>Historical or aggregated data — loaded on demand to avoid overloading the map.</p>
 <div class="guide-layer" id="layer-accidents">
 <h4>Road safety</h4>
-<p>Crashes for the 2024 vintage (BAAC), classified: fatal, hospitalised injuries, slight injuries.</p>
-<p><strong>How:</strong> enable the layer; click a marker for details (date, road, municipality).</p>
+<p>Multi-year cloud of injury crashes (BAAC / ONISR, 2019 → 2024) geolocated across the Vaucluse. Two visual encodings:</p>
+<ul>
+<li><strong>Colour = recency</strong> — recent crashes appear in a vivid/saturated orange, older ones in a dark red.</li>
+<li><strong>Size = severity</strong> — a fatal point (killed) is larger than a hospitalised injury, itself larger than a slight injury.</li>
+</ul>
+<p>The legend embeds a <strong>temporal dataviz</strong>: the old → recent colour scale, a <strong>mini-histogram</strong> of crashes per year, and a <strong>year-range slider</strong> (from / to) to filter the cloud.</p>
+<p><strong>How:</strong> enable the layer; drag the year slider to watch the evolution over time; click a point for details (year, casualties, date, municipality, address). <em>Note: BAAC geolocation is patchier for older years, hence a denser cloud on recent vintages.</em></p>
 </div><div class="guide-layer" id="layer-comptages">
 <h4>Traffic-count stations</h4>
 <p>CD84 stations (data.gouv.fr / DataSud), classified by traffic: high (&gt; 20k veh/day), medium, low. Each badge shows the <strong>rounded average traffic</strong> at its centre (e.g. <code>22k</code> for 22,136 veh/day), readable regardless of colour.</p>
@@ -245,7 +250,7 @@
 <li><strong>External</strong> (counts, Bison Futé) — every 3 h.</li>
 <li><strong>Incubator</strong> (OSM bridges) — twice weekly (Mon. &amp; Thu.).</li>
 <li><strong>Weather</strong> — live in browser, ~10 min.</li>
-<li><strong>Static</strong> (84 boundary, 2024 crashes) — versioned snapshot, manual update.</li>
+<li><strong>Static</strong> (84 boundary, 2019-2024 crashes) — versioned snapshot, manual update.</li>
 </ul>
 <p class="guide-hint">The full detail is in <em>Tools &amp; meta → Refresh formula</em>.</p>
         </section>
