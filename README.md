@@ -107,4 +107,4 @@ dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 
 ## Inspirations
 
-- La dataviz de l'accidentologie (nuage multi-millésimes, couleur selon l'ancienneté, taille selon la gravité, filtre par années) s'inspire librement de [« Victimes de la route » de Loïc Bertrand](https://www.loicbertrand.eu/accidents/).
+- La dataviz de l'accidentologie (nuage multi-millésimes, couleur selon l'ancienneté, gravité signalée par un anneau, filtre par années) s'inspire beaucoup de [« Victimes de la route » de Loïc Bertrand](https://www.loicbertrand.eu/accidents/). Merci à lui.
