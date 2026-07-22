@@ -4636,37 +4636,31 @@
             const legendItems = document.querySelectorAll('[data-accident]');
             const title = document.querySelector('.legend-section:has([id="accidentToggleIcon"]) .legend-title');
             
+            const timeline = document.getElementById('accidents-timeline');
+
             if (accidentsVisible) {
-                // Show accidents
-                accidentMarkers.forEach(marker => marker.addTo(window.map));
+                // Show accidents (respecting the current year filter)
                 setToggleIcon(icon, true);
-                
-                // Bold title
                 if (title) title.style.fontWeight = '700';
-                
-                // Visually activate legend items
                 legendItems.forEach(item => {
                     item.style.opacity = '1';
                     item.style.pointerEvents = 'auto';
                 });
-                
-                console.log(`✓ ${accidentMarkers.length} accidents affichés`);
+                if (timeline) timeline.style.display = '';
             } else {
                 // Hide accidents
-                accidentMarkers.forEach(marker => window.map.removeLayer(marker));
                 setToggleIcon(icon, false);
-                
-                // Normal-weight title
                 if (title) title.style.fontWeight = '600';
-                
-                // Visually deactivate legend items
                 legendItems.forEach(item => {
                     item.style.opacity = '0.5';
                     item.style.pointerEvents = 'none';
                 });
-                
+                if (timeline) timeline.style.display = 'none';
                 console.log('✗ Accidents masqués');
             }
+
+            // Single source of truth for what is actually painted on the map.
+            if (typeof applyAccidentVisibility === 'function') applyAccidentVisibility();
             syncLegendChrome();
         }
 
@@ -8401,130 +8395,240 @@
             tryApplyAppUrlState();
         }
 
-        // Load accident data from local static GeoJSON
+        // ========== ACCIDENTOLOGY (multi-year "cloud", BAAC) ==========
+        //
+        // Rendering follows a dual encoding (inspired by loicbertrand.eu/accidents):
+        //   • colour  = recency  → recent years are vivid/saturated, old years dark
+        //   • size    = severity → fatal (tué) largest, then hospitalised, then light
+        // Points are drawn on a shared canvas renderer to stay smooth with ~2000 pts,
+        // and can be filtered by a year range via the timeline slider in the legend.
+
+        const ACCIDENT_SIZE = { mortel: 7, grave: 5, leger: 3.5 };
+        const accidentCanvasRenderer = L.canvas({ padding: 0.4 });
+        let accidentYearBounds = { min: null, max: null };   // full data range
+        let accidentYearFilter = { min: null, max: null };   // current slider range
+        let accidentPerYear = {};                            // {year: count}
+
+        // Recency ramp: t=0 (oldest) → deep dark maroon ; t=1 (newest) → vivid orange-red.
+        function accidentRecencyColor(year) {
+            const { min, max } = accidentYearBounds;
+            let t = 0.5;
+            if (Number.isFinite(min) && Number.isFinite(max) && max > min) {
+                t = (year - min) / (max - min);
+            }
+            t = Math.max(0, Math.min(1, t));
+            const hue = 4 + t * 24;          // 4° (dark red) → 28° (orange-red)
+            const sat = 55 + t * 45;         // 55% → 100%
+            const light = 22 + t * 32;       // 22% (dark) → 54% (vivid)
+            return `hsl(${hue.toFixed(0)}, ${sat.toFixed(0)}%, ${light.toFixed(0)}%)`;
+        }
+
+        // Load accident data from local static GeoJSON (multi-year BAAC snapshot)
         async function loadAccidentData() {
             try {
-                console.log('📊 Chargement des données d\'accidentologie...');
+                console.log('📊 Chargement des données d\'accidentologie…');
 
                 const dataToUse = await window.InforouteApi.fetchGeoJson('accidents');
                 const stats = dataToUse.metadata?.statistiques || {};
-                const features = dataToUse.features;
+                const features = dataToUse.features || [];
                 renderFreshnessBadge(document.getElementById('freshness-accidents'), {
                     generatedAt: dataToUse._cache?.generated_at,
                     scheduleKey: 'static'
                 });
                 syncLegendChrome();
-                
+
                 console.log(`✓ ${features.length} accidents chargés pour le Vaucluse`);
-                console.log('Statistiques:', stats);
-                
-                // Counters by category
-                const counts = { fatal: 0, hospitalized: 0, light: 0 };
-                
-                // Afficher chaque accident sur la carte
+
+                // Establish the year bounds first (needed by the colour ramp).
+                const years = features
+                    .map(f => Number.parseInt(f.properties?.annee, 10))
+                    .filter(Number.isFinite);
+                accidentYearBounds = {
+                    min: years.length ? Math.min(...years) : null,
+                    max: years.length ? Math.max(...years) : null
+                };
+                accidentYearFilter = { min: accidentYearBounds.min, max: accidentYearBounds.max };
+                accidentPerYear = dataToUse.metadata?.par_annee || {};
+                if (!Object.keys(accidentPerYear).length) {
+                    features.forEach(f => {
+                        const y = Number.parseInt(f.properties?.annee, 10);
+                        if (Number.isFinite(y)) accidentPerYear[y] = (accidentPerYear[y] || 0) + 1;
+                    });
+                }
+
+                accidentMarkers = [];
+
                 features.forEach(feature => {
-                    const props = feature.properties;
-                    const coords = feature.geometry.coordinates;
+                    const props = feature.properties || {};
+                    const coords = feature.geometry?.coordinates || [];
                     const lat = coords[1];
                     const lon = coords[0];
-                    
-                    // Determine color and size by severity
-                    let color, size, category, label;
-                    if (props.gravite === 'mortel') {
-                        color = '#000000';
-                        size = 12;
-                        category = 'fatal';
-                        label = '💀 Accident mortel';
-                        counts.fatal++;
-                    } else if (props.gravite === 'grave') {
-                        color = '#E74C3C';
-                        size = 10;
-                        category = 'hospitalized';
-                        label = '🚑 Blessés hospitalisés';
-                        counts.hospitalized++;
-                    } else {
-                        color = '#F39C12';
-                        size = 8;
-                        category = 'light';
-                        label = '⚠️ Blessés légers';
-                        counts.light++;
-                    }
-                    
-                    // Create marker (do NOT add to map by default)
+                    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+                    const year = Number.parseInt(props.annee, 10);
+                    const gravite = props.gravite || 'leger';
+                    const size = ACCIDENT_SIZE[gravite] || ACCIDENT_SIZE.leger;
+                    const label = gravite === 'mortel'
+                        ? '💀 Accident mortel'
+                        : (gravite === 'grave' ? '🚑 Blessé(s) hospitalisé(s)' : '⚠️ Blessé(s) léger(s)');
+
                     const marker = L.circleMarker([lat, lon], {
+                        renderer: accidentCanvasRenderer,
                         radius: size,
-                        fillColor: color,
-                        color: 'white',
-                        weight: 2,
-                        opacity: 0.9,
-                        fillOpacity: 0.7
+                        fillColor: accidentRecencyColor(year),
+                        color: gravite === 'mortel' ? '#1a0000' : '#ffffff',
+                        weight: gravite === 'mortel' ? 1.1 : 0.6,
+                        opacity: 0.85,
+                        fillOpacity: 0.82
                     });
-                    
-                    // Stocker le marqueur pour le toggle
+                    marker.accidentYear = Number.isFinite(year) ? year : null;
+                    marker.accidentGravite = gravite;
+
                     accidentMarkers.push(marker);
-                    
-                    // Popup with information
+
                     const victimesInfo = [];
                     if (props.tues > 0) victimesInfo.push(`${props.tues} tué(s)`);
                     if (props.hospitalises > 0) victimesInfo.push(`${props.hospitalises} hospitalisé(s)`);
                     if (props.legers > 0) victimesInfo.push(`${props.legers} blessé(s) léger(s)`);
-                    
+
                     const popupContent = `
                         <div class="route-popup">
                             <h3>${label}</h3>
-                            <div class="detail"><strong>Victimes&nbsp;:</strong> ${victimesInfo.join(', ')}</div>
-                            <div class="detail"><strong>Date&nbsp;:</strong> ${props.date}</div>
-                            <div class="detail"><strong>Commune&nbsp;:</strong> ${props.commune}</div>
+                            <div class="detail"><strong>Année&nbsp;:</strong> ${Number.isFinite(year) ? year : 'N/A'}</div>
+                            ${victimesInfo.length ? `<div class="detail"><strong>Victimes&nbsp;:</strong> ${victimesInfo.join(', ')}</div>` : ''}
+                            <div class="detail"><strong>Date&nbsp;:</strong> ${props.date || 'N/A'}</div>
+                            <div class="detail"><strong>Commune&nbsp;:</strong> ${props.commune || 'N/A'}</div>
                             ${props.adresse ? `<div class="detail"><strong>Adresse&nbsp;:</strong> ${props.adresse}</div>` : ''}
-                            <div class="detail"><strong>Milieu&nbsp;:</strong> ${props.milieu}</div>
-                            ${props.resume ? `<div class="detail" style="margin-top: 8px; font-size: 0.85rem; font-style: italic;">${props.resume}</div>` : ''}
+                            ${props.milieu ? `<div class="detail"><strong>Milieu&nbsp;:</strong> ${props.milieu}</div>` : ''}
                         </div>
                     `;
-                    
                     marker.bindPopup(popupContent);
-                    
-                    // Effet de survol
-                    marker.on('mouseover', function() {
-                        this.setStyle({ 
-                            radius: size + 3,
-                            weight: 3,
-                            fillOpacity: 1
-                        });
-                    });
-                    
-                    marker.on('mouseout', function() {
-                        this.setStyle({ 
-                            radius: size,
-                            weight: 2,
-                            fillOpacity: 0.7
-                        });
-                    });
                 });
-                
-                // Update counters
-                document.getElementById('count-fatal').textContent = counts.fatal;
-                document.getElementById('count-hospitalized').textContent = counts.hospitalized;
-                document.getElementById('count-light').textContent = counts.light;
-                
-                console.log('Répartition:', counts);
 
-                if (typeof window.patchDashboardMetrics === 'function') {
-                    window.patchDashboardMetrics({
-                        accidents: {
-                            total: counts.fatal + counts.hospitalized + counts.light,
-                            fatal: counts.fatal,
-                            hospitalized: counts.hospitalized,
-                            light: counts.light
-                        },
-                        vintages: {
-                            accidents: 'Millésime 2024 · BAAC'
-                        }
-                    });
-                }
+                console.log('Statistiques:', stats);
+
+                // Wire up the timeline (histogram + range slider) and paint counters.
+                setupAccidentTimeline();
+                applyAccidentVisibility();
+
                 tryApplyAppUrlState();
             } catch (error) {
                 console.error('Erreur lors du chargement de l\'accidentologie:', error);
             }
+        }
+
+        // Show/hide accident markers according to the current year filter, refresh
+        // the per-severity counters (for the filtered subset) and dashboard metrics.
+        function applyAccidentVisibility() {
+            const { min, max } = accidentYearFilter;
+            const counts = { fatal: 0, hospitalized: 0, light: 0 };
+
+            accidentMarkers.forEach(marker => {
+                const y = marker.accidentYear;
+                const inRange = !Number.isFinite(min) || !Number.isFinite(max) ||
+                    (Number.isFinite(y) && y >= min && y <= max);
+
+                // Counters reflect the year filter even while the layer is hidden.
+                if (inRange) {
+                    if (marker.accidentGravite === 'mortel') counts.fatal++;
+                    else if (marker.accidentGravite === 'grave') counts.hospitalized++;
+                    else counts.light++;
+                }
+
+                const shouldShow = accidentsVisible && inRange;
+                if (shouldShow) {
+                    if (!window.map.hasLayer(marker)) marker.addTo(window.map);
+                } else if (window.map.hasLayer(marker)) {
+                    window.map.removeLayer(marker);
+                }
+            });
+
+            const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            set('count-fatal', counts.fatal);
+            set('count-hospitalized', counts.hospitalized);
+            set('count-light', counts.light);
+
+            renderAccidentHistogram();
+
+            if (typeof window.patchDashboardMetrics === 'function') {
+                const yr = accidentYearBounds;
+                window.patchDashboardMetrics({
+                    accidents: {
+                        total: counts.fatal + counts.hospitalized + counts.light,
+                        fatal: counts.fatal,
+                        hospitalized: counts.hospitalized,
+                        light: counts.light
+                    },
+                    vintages: {
+                        accidents: (Number.isFinite(yr.min) && Number.isFinite(yr.max))
+                            ? `${yr.min}–${yr.max} · BAAC`
+                            : 'BAAC'
+                    }
+                });
+            }
+        }
+
+        // Draw the per-year histogram in the legend, colour-coded by recency, and
+        // dim the bars outside the current filter range.
+        function renderAccidentHistogram() {
+            const host = document.getElementById('accidents-histogram');
+            if (!host) return;
+            const { min, max } = accidentYearBounds;
+            if (!Number.isFinite(min) || !Number.isFinite(max)) { host.innerHTML = ''; return; }
+
+            const years = [];
+            for (let y = min; y <= max; y++) years.push(y);
+            const maxCount = Math.max(1, ...years.map(y => accidentPerYear[y] || 0));
+            const f = accidentYearFilter;
+
+            host.innerHTML = years.map(y => {
+                const c = accidentPerYear[y] || 0;
+                const h = Math.max(3, Math.round((c / maxCount) * 100));
+                const active = (!Number.isFinite(f.min) || !Number.isFinite(f.max)) ||
+                    (y >= f.min && y <= f.max);
+                const color = accidentRecencyColor(y);
+                return `<div class="acc-bar" title="${y} : ${c} accident(s)">
+                    <span class="acc-bar-fill" style="height:${h}%;background:${color};opacity:${active ? 1 : 0.25}"></span>
+                    <span class="acc-bar-year${active ? ' is-active' : ''}">${String(y).slice(2)}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // Wire the "de / à" year sliders once, after data is loaded.
+        let accidentTimelineReady = false;
+        function setupAccidentTimeline() {
+            renderAccidentHistogram();
+            const minEl = document.getElementById('acc-year-min');
+            const maxEl = document.getElementById('acc-year-max');
+            const label = document.getElementById('acc-year-label');
+            const { min, max } = accidentYearBounds;
+            if (!minEl || !maxEl || !Number.isFinite(min) || !Number.isFinite(max)) return;
+
+            [minEl, maxEl].forEach(el => {
+                el.min = String(min);
+                el.max = String(max);
+                el.step = '1';
+            });
+            minEl.value = String(min);
+            maxEl.value = String(max);
+            if (label) label.textContent = `${min}–${max}`;
+
+            if (accidentTimelineReady) return;
+            accidentTimelineReady = true;
+
+            const onChange = () => {
+                let lo = Number.parseInt(minEl.value, 10);
+                let hi = Number.parseInt(maxEl.value, 10);
+                if (lo > hi) {   // keep thumbs from crossing
+                    if (document.activeElement === minEl) { hi = lo; maxEl.value = String(hi); }
+                    else { lo = hi; minEl.value = String(lo); }
+                }
+                accidentYearFilter = { min: lo, max: hi };
+                if (label) label.textContent = lo === hi ? `${lo}` : `${lo}–${hi}`;
+                applyAccidentVisibility();
+            };
+            minEl.addEventListener('input', onChange);
+            maxEl.addEventListener('input', onChange);
         }
         
         // Load counting data after routes

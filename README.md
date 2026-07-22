@@ -12,7 +12,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 - Le réseau départemental du Vaucluse, avec une hiérarchie simple : réseau régional, territorial et local.
 - La limite du département et les communes, pour replacer les routes dans leur contexte territorial.
 - Les stations de comptage CD84, classées par niveau de trafic.
-- L'accidentologie fournie pour 2024, affichable à la demande pour ne pas surcharger la carte.
+- L'accidentologie multi-millésimes (BAAC, 2019-2024) sous forme de nuage : couleur selon l'ancienneté, taille selon la gravité, histogramme et curseur d'années pour explorer l'évolution.
 - Les routes en construction ou en projet issues du cache OSM.
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
 - Le trafic temps réel Waze (bouchons et incidents communautaires), via la carte Waze Live Map intégrée à la demande.
@@ -24,7 +24,7 @@ Le prototype sert surtout à rendre les données routières lisibles dans une in
 
 - Où sont les routes départementales les plus structurantes ?
 - Quelles routes portent les plus forts trafics selon les comptages disponibles ?
-- Où les accidents du millésime chargé se concentrent-ils ?
+- Où et quand les accidents se concentrent-ils, et comment évoluent-ils depuis 2019 ?
 - Quelles communes sont concernées par une route ou un axe ?
 - Quels tronçons OSM sont bien documentés, et lesquels méritent une correction ?
 - Est-ce qu'un fichier publié sur data.gouv.fr ou une extraction OSM peut être exploité sans appeler des API à chaque visite ?
@@ -48,7 +48,7 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 | Routes en construction | OpenStreetMap | cache du 2026-05-17 22:53 UTC | Quelques ouvertures indiquées entre 2025 et 2027 selon les tags OSM. |
 | Communes | OpenStreetMap | cache du 2026-05-17 22:53 UTC | 151 communes ; les tags de population pointent vers 2021. |
 | Limite du Vaucluse | OpenStreetMap | GeoJSON local | Limite départementale 84, figée dans `data/static/`. |
-| Accidentologie | Fichier fourni / BAAC | 2024 | 113 accidents, tous datés de 2024. |
+| Accidentologie | BAAC / ONISR (data.gouv.fr) | 2019-2024 | 1 923 accidents corporels géolocalisés (dép. 84), généré par `scripts/build_accidents_vaucluse.py`. |
 | Comptages CD84 | data.gouv.fr | 1996-2025 | 3 098 observations ; la carte affiche la dernière année disponible par station. |
 | Événements routiers | Info Routière | cache toutes les 3 h | |
 | Météo | Open-Meteo | temps courant | Appel direct, non versionné. |
@@ -80,7 +80,7 @@ Après modification du Wiki, régénérer la page puis committer `docs/guide.wik
 L'architecture des données est séparée par usage :
 
 - `data/osm/` : GeoJSON issus d'OpenStreetMap et générés par Overpass via un script.
-- `data/static/` : GeoJSON figés, comme la limite du Vaucluse et l'accidentologie 2024.
+- `data/static/` : GeoJSON figés, comme la limite du Vaucluse et l'accidentologie 2019-2024.
 - `data/external/` : GeoJSON rafraîchis automatiquement depuis des sources externes.
 - `data/demo/` : données de secours pour garder une carte exploitable si une source manque.
 

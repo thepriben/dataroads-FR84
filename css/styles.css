@@ -4748,4 +4748,100 @@
         .legend-family-body .legend-section[style*="display:none"] {
             margin: 0;
         }
+
+        /* ========== Accidentologie : dataviz temporelle (nuage BAAC) ========== */
+        /* Pastilles de légende : la taille encode la gravité, la couleur (sur la
+           carte) encode l'ancienneté ; ici une teinte médiane illustrative. */
+        .legend-color.acc-dot {
+            border-radius: 50%;
+            background: #e8541e;
+            border: 1.5px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
+            flex: 0 0 auto;
+        }
+
+        .accidents-timeline {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        /* Échelle de couleur = ancienneté (sombre → vif) */
+        .acc-scale {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.68rem;
+            color: #777;
+        }
+        .acc-scale-bar {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            background: linear-gradient(90deg,
+                hsl(4, 55%, 22%),
+                hsl(16, 78%, 38%),
+                hsl(28, 100%, 54%));
+        }
+
+        /* Mini-histogramme des accidents par année */
+        .accidents-histogram {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 48px;
+            margin: 10px 0 6px;
+        }
+        .acc-bar {
+            position: relative;
+            flex: 1 1 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            height: 100%;
+        }
+        .acc-bar-fill {
+            width: 100%;
+            border-radius: 2px 2px 0 0;
+            min-height: 3px;
+            transition: opacity 0.15s ease;
+        }
+        .acc-bar-year {
+            font-size: 0.58rem;
+            line-height: 1;
+            color: #999;
+            margin-top: 3px;
+        }
+        .acc-bar-year.is-active {
+            color: #333;
+            font-weight: 600;
+        }
+
+        /* Curseur de plage d'années */
+        .acc-range { margin-top: 4px; }
+        .acc-range-title {
+            display: block;
+            font-size: 0.72rem;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        .acc-range-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.72rem;
+            color: #666;
+            margin-top: 2px;
+        }
+        .acc-range-row > span {
+            width: 14px;
+            text-align: center;
+            flex: 0 0 auto;
+        }
+        .acc-range-row input[type="range"] {
+            flex: 1;
+            accent-color: #e8541e;
+            cursor: pointer;
+        }
     

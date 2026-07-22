@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260721-3">
+    <link rel="stylesheet" href="css/styles.css?v=20260722-1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -225,22 +225,44 @@
                     </div>
                     <span class="freshness-badge" id="freshness-accidents" data-schedule-key="static"></span>
                     
+                    <!-- Size encodes severity; colour encodes recency (see scale below). -->
                     <div class="legend-item" data-accident="mortel" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color" style="background: #000000; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff;"></div>
-                        <div class="legend-label">Accident mortel</div>
+                        <div class="legend-color acc-dot" style="width: 14px; height: 14px;"></div>
+                        <div class="legend-label">Mortel (tué)</div>
                         <div class="legend-count" id="count-fatal">-</div>
                     </div>
                     
                     <div class="legend-item" data-accident="grave" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color" style="background: #E74C3C; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>
-                        <div class="legend-label">Blessés hospitalisés</div>
+                        <div class="legend-color acc-dot" style="width: 10px; height: 10px;"></div>
+                        <div class="legend-label">Blessé hospitalisé</div>
                         <div class="legend-count" id="count-hospitalized">-</div>
                     </div>
                     
                     <div class="legend-item" data-accident="leger" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color" style="background: #F39C12; width: 8px; height: 8px; border-radius: 50%; border: 2px solid #fff;"></div>
-                        <div class="legend-label">Blessés légers</div>
+                        <div class="legend-color acc-dot" style="width: 7px; height: 7px;"></div>
+                        <div class="legend-label">Blessé léger</div>
                         <div class="legend-count" id="count-light">-</div>
+                    </div>
+
+                    <!-- Temporal dataviz: recency colour scale + per-year histogram + range slider -->
+                    <div id="accidents-timeline" class="accidents-timeline" style="display: none;">
+                        <div class="acc-scale">
+                            <span class="acc-scale-label">ancien</span>
+                            <span class="acc-scale-bar" aria-hidden="true"></span>
+                            <span class="acc-scale-label">récent</span>
+                        </div>
+                        <div id="accidents-histogram" class="accidents-histogram" aria-hidden="true"></div>
+                        <div class="acc-range">
+                            <span class="acc-range-title">Années affichées&nbsp;: <strong id="acc-year-label">—</strong></span>
+                            <label class="acc-range-row">
+                                <span>de</span>
+                                <input type="range" id="acc-year-min" aria-label="Année de début">
+                            </label>
+                            <label class="acc-range-row">
+                                <span>à</span>
+                                <input type="range" id="acc-year-max" aria-label="Année de fin">
+                            </label>
+                        </div>
                     </div>
                     
                 </div>
@@ -737,7 +759,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260721-3"></script>
+    <script src="js/app.js?v=20260722-1"></script>
     <script src="js/waze.js?v=20260721-2"></script>
     <script src="js/bridge3d.js?v=20260620-3"></script>
 </body>

@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.9.0] - 2026-07-22
+
+### Added
+
+- **Multi-year accidentology cloud (BAAC / ONISR):** the road-safety layer now shows 2019→2024 injury crashes geolocated across the Vaucluse (1,923 points) instead of the single 2024 vintage. Inspired by [loicbertrand.eu/accidents](https://www.loicbertrand.eu/accidents/), it uses a dual visual encoding — **colour = recency** (recent crashes vivid/saturated orange, older ones dark red) and **size = severity** (fatal > hospitalised > slight). Points are drawn on a Leaflet canvas renderer for smoothness.
+- **Temporal dataviz in the legend:** an old→recent colour scale, a **per-year histogram** of crash counts (colour-coded by recency), and a **year-range slider** (from / to) that filters the cloud live; per-severity counters update to the selected range.
+- **`scripts/build_accidents_vaucluse.py`:** reproducible builder that resolves the BAAC resource URLs via the data.gouv API (handling the inconsistent file names, incl. the `carcteristiques` typo), downloads Caractéristiques + Usagers per year, filters department 84, joins the worst per-accident severity, resolves commune names via `geo.api.gouv.fr`, and emits a compact `data/static/accidents-vaucluse.geojson`.
+
+### Notes
+
+- BAAC geolocation is patchier for older millésimes, so the cloud is denser on recent years — which also reinforces the "evolution over time" reading.
+
 ## [0.8.2] - 2026-07-21
 
 ### Changed
