@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.10.0] - 2026-07-22
+
+### Added
+
+- **Native Waze traffic layer (issue #10).** The "W" button can now render community Waze traffic as a real Leaflet layer instead of only the iframe: jam lines coloured by severity (level/speed) and incident markers (💥 accident, ⚠️ hazard, 🚧 roadworks, ⛔ road closed, 👮 police), with click-through popups (road, speed, delay, freshness). It activates automatically when a **Waze for Cities** partner feed is configured.
+- **`WAZE_FEED_URL` secret + `data/external/waze.geojson` pipeline.** `scripts/update_external_data.py` now fetches the official partner feed (alerts + jams) and converts it to GeoJSON on the usual 3 h schedule. Without the secret it writes a `configured:false` placeholder and the front-end keeps the Live Map iframe as a fallback.
+
+### Changed
+
+- The Waze toolbar button dynamically chooses native layer vs. iframe fallback; tooltip updated accordingly.
+
+### Notes
+
+- The unofficial Waze live-map endpoint returns HTTP 403 to datacenter IPs (GitHub Actions included) and cannot be scraped server-side, so the native layer is fed by the legal, server-reachable Waze for Cities feed. See README ("Activer la couche Waze native").
+
 ## [0.9.1] - 2026-07-22
 
 ### Changed

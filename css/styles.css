@@ -4854,4 +4854,28 @@
             accent-color: #e8541e;
             cursor: pointer;
         }
+
+        /* ========== Waze native layer (incidents + jams) ========== */
+        .waze-alert-icon {
+            background: none;
+            border: none;
+        }
+        .waze-alert-icon span {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: #fff;
+            border: 2px solid var(--wz, #6d4c41);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+            font-size: 14px;
+            line-height: 1;
+        }
+        .waze-pop .waze-pop-src {
+            margin-top: 8px;
+            font-size: 0.75rem;
+            color: #888;
+        }
     

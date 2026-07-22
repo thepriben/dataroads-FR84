@@ -15,7 +15,7 @@ This demonstrator, incubated within the Road Information Bureau (Vaucluse Depart
 - Multi-year accident data (BAAC, 2019-2024) rendered as a cloud: colour by recency, severity shown by a black ring (hospitalised and fatal), with a per-year histogram and a year slider to explore the trend.
 - Roads under construction or planned, from the OSM cache.
 - Current weather over Avignon, useful as a quick operational signal.
-- Real-time Waze traffic (community-reported jams and incidents), via the Waze Live Map embed loaded on demand.
+- Community Waze traffic (jams and incidents): a native layer (coloured jam lines + incident markers) when the *Waze for Cities* partner feed is configured, otherwise the embedded Waze Live Map as a fallback.
 - An OSM quality panel to spot road sections that do or do not have a usable OSM relation.
 
 ## Value for CD84
@@ -100,6 +100,10 @@ dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 ```
 
 `scripts/update_external_data.py` materialises data.gouv.fr and Info Routière data into `data/external/`. If Info Routière is unavailable, the script keeps an empty GeoJSON with the error recorded in `_cache`.
+
+### Enabling the native Waze layer
+
+Waze exposes no open per-area API (the live-map endpoint returns HTTP 403 to datacenter IPs, so it cannot be used in CI). The native layer therefore relies on the official **[Waze for Cities](https://www.waze.com/wazeforcities/)** partner feed (free, on registration). Once you have the feed URL, add it as the `WAZE_FEED_URL` **repository secret**: the *Update External Data* workflow then generates `data/external/waze.geojson` (alerts + jams) every 3 h, and the front-end automatically switches to the native layer. Without the secret, the **W** button opens the Waze Live Map embed as a fallback.
 
 ## Articles & presentations
 
