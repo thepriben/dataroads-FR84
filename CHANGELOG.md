@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.9.1] - 2026-07-22
+
+### Changed
+
+- **Accident severity is now read from a black ring rather than size.** Hospitalised injuries and slight injuries share the same dot radius (they were hard to tell apart); hospitalised and fatal crashes get a black ring, slight injuries keep a thin white outline. Only fatal crashes stay slightly enlarged. Legend and guides updated accordingly.
+
 ## [0.9.0] - 2026-07-22
 
 ### Added
