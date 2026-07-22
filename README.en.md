@@ -107,4 +107,4 @@ dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 
 ## Inspirations
 
-- The accident-data visualisation (multi-year cloud, colour by recency, size by severity, year filter) is loosely inspired by [Loïc Bertrand's "Victimes de la route"](https://www.loicbertrand.eu/accidents/).
+- The accident-data visualisation (multi-year cloud, colour by recency, severity shown by a ring, year filter) draws heavily on [Loïc Bertrand's "Victimes de la route"](https://www.loicbertrand.eu/accidents/). Many thanks to him.
