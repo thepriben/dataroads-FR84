@@ -97,7 +97,9 @@ Thématiques connexes valorisant d'autres missions du CD84 le long des routes d�
 * '''Aires de repos''' 🌳 ({{{highway=rest_area}}}).
 * '''Parkings-relais''' 🅿️ ({{{amenity=parking}}} + {{{park_ride}}}) — le stationnement est volontairement limité aux parkings-relais pour rester sur les aires d'arrêt le long des RD, sans afficher les milliers de parkings privés.
 
-'''Comment :''' activer la couche « Aires d'arrêt & covoiturage » ; chaque type a une pastille distincte et un compteur dans la légende. Cliquez un marqueur pour la fiche : type, capacité, gestion, accès, un indicateur de '''complétude OSM''' (attributs présents / manquants) pour inciter à enrichir la donnée, et les '''photos de rue à proximité''' issues de Mapillary et Panoramax quand une couverture existe (avec liens ''Voir'' / ''Compléter'' sur OpenStreetMap).
+Quand l'aire est cartographiée comme surface dans OSM, son '''emprise''' est tracée (remplissage clair coordonné à la couleur du type) avec un marqueur central.
+
+'''Comment :''' activer la couche « Aires d'arrêt & covoiturage » ; chaque type a une pastille distincte et un compteur dans la légende. Cliquez un marqueur (ou l'emprise) pour la fiche : type, capacité, gestion, accès, un indicateur de '''complétude OSM''' (attributs présents / manquants), le lien '''Wikidata''' s'il existe (sinon signalé « aucun lien »), et les '''photos de rue à proximité''' Mapillary et Panoramax quand une couverture existe — cliquer une vignette l'ouvre en grand. Liens ''voir'' / ''compléter'' sur OpenStreetMap.
 
 === [family:stats] Données statistiques ===
 

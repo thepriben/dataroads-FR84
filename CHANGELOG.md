@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.2] - 2026-07-25
+
+### Added
+
+- **Surfacic footprint for roadside areas.** When the OSM object is an area (149/160 features), the actual footprint is now drawn as a polygon with a light fill coordinated with the category colour, plus a centred marker; clicking the polygon opens the marker popup.
+- **Photo lightbox.** Clicking a nearby Mapillary/Panoramax thumbnail now opens it enlarged in an in-app lightbox (Esc / click to close, link to the source), instead of leaving straight to the provider site.
+- **Wikidata signalling.** Roadside-area popups now show the Wikidata link when present (`Qxxx →`) and explicitly flag "aucun lien" when missing.
+
+### Changed
+
+- Merged the two redundant "… sur OSM" buttons into a single OpenStreetMap line with compact *voir* / *compléter* actions.
+- Panoramax accent aligned to the project's violet (`#7C3AED`).
+
 ## [0.11.1] - 2026-07-25
 
 ### Added

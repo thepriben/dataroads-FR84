@@ -2046,8 +2046,29 @@
             background: rgba(0, 0, 0, 0.6);
         }
 
-        .area-pop-photo-badge.is-panoramax { background: rgba(46, 125, 50, 0.9); }
+        .area-pop-photo-badge.is-panoramax { background: rgba(124, 58, 237, 0.92); }
         .area-pop-photo-badge.is-mapillary { background: rgba(5, 203, 99, 0.92); }
+
+        .area-pop-photo-zoom {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #fff;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.45);
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .area-pop-photo:hover .area-pop-photo-zoom {
+            opacity: 1;
+        }
 
         .area-pop-photos-msg {
             font-size: 11.5px;
@@ -2057,12 +2078,97 @@
 
         .area-pop-links {
             display: flex;
-            gap: 12px;
-            align-items: center;
+            flex-direction: column;
+            gap: 3px;
         }
 
-        .area-pop-osm--edit {
-            color: #2E7D32;
+        .area-pop-src {
+            font-size: 12px;
+            color: #475467;
+        }
+
+        .area-pop-src-label {
+            font-weight: 700;
+            color: #344054;
+        }
+
+        .area-pop-src a {
+            color: var(--area-color, #3949AB);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .area-pop-src a:hover {
+            text-decoration: underline;
+        }
+
+        .area-pop-src-sep {
+            color: #cbd2dc;
+            margin: 0 1px;
+        }
+
+        .area-pop-src.is-none {
+            color: #98a2b3;
+        }
+
+        /* Lightbox photo de rue (agrandissement) */
+        .area-lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 4000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 4vh 4vw;
+            background: rgba(15, 23, 42, 0.86);
+        }
+
+        .area-lightbox.is-open {
+            display: flex;
+        }
+
+        .area-lightbox-fig {
+            margin: 0;
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .area-lightbox-img {
+            max-width: 100%;
+            max-height: 82vh;
+            border-radius: 8px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .area-lightbox-cap {
+            color: #e5e7eb;
+            font-size: 13px;
+        }
+
+        .area-lightbox-cap a {
+            color: #93c5fd;
+        }
+
+        .area-lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.16);
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .area-lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.28);
         }
 
         .webcam-leaflet-popup .leaflet-popup-content {

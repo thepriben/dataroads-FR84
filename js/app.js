@@ -4144,9 +4144,11 @@
                     });
                     if (best && bestDist <= radiusM) {
                         const thumb = best.assets?.thumb?.href || panoramaxImageUrl(best.id, 'thumb');
+                        const large = best.assets?.sd?.href || panoramaxImageUrl(best.id, 'sd');
                         result = {
                             id: best.id,
                             thumb,
+                            large,
                             datetime: best.properties?.datetime,
                             dist: Math.round(bestDist)
                         };
@@ -4176,20 +4178,29 @@
             const cards = [];
             if (photos && photos.panoramax) {
                 const when = roadsidePhotoDate(photos.panoramax.datetime);
-                const href = (typeof panoramaxPageUrl === 'function') ? panoramaxPageUrl(photos.panoramax.id) : '#';
+                const src = (typeof panoramaxPageUrl === 'function') ? panoramaxPageUrl(photos.panoramax.id) : '#';
+                const label = `Panoramax${when ? ' · ' + when : ''}`;
                 cards.push(`
-                    <a class="area-pop-photo" href="${href}" target="_blank" rel="noopener noreferrer">
+                    <a class="area-pop-photo" href="${src}" target="_blank" rel="noopener noreferrer"
+                       data-big="${escapeHtml(photos.panoramax.large || photos.panoramax.thumb)}"
+                       data-src="${escapeHtml(src)}" data-provider="Panoramax" data-label="${escapeHtml(label)}">
                         <img src="${photos.panoramax.thumb}" alt="Photo Panoramax à proximité" loading="lazy">
-                        <span class="area-pop-photo-badge is-panoramax">Panoramax${when ? ' · ' + when : ''}</span>
+                        <span class="area-pop-photo-badge is-panoramax">${label}</span>
+                        <span class="area-pop-photo-zoom" aria-hidden="true">⤢</span>
                     </a>`);
             }
             if (photos && photos.mapillary && photos.mapillary.thumb_1024_url) {
                 const when = roadsidePhotoDate(photos.mapillary.captured_at);
-                const href = (window.mapillaryPageUrl && window.mapillaryPageUrl(photos.mapillary.id)) || '#';
+                const src = (window.mapillaryPageUrl && window.mapillaryPageUrl(photos.mapillary.id)) || '#';
+                const big = photos.mapillary.thumb_2048_url || photos.mapillary.thumb_1024_url;
+                const label = `Mapillary${when ? ' · ' + when : ''}`;
                 cards.push(`
-                    <a class="area-pop-photo" href="${href}" target="_blank" rel="noopener noreferrer">
+                    <a class="area-pop-photo" href="${src}" target="_blank" rel="noopener noreferrer"
+                       data-big="${escapeHtml(big)}"
+                       data-src="${escapeHtml(src)}" data-provider="Mapillary" data-label="${escapeHtml(label)}">
                         <img src="${photos.mapillary.thumb_1024_url}" alt="Photo Mapillary à proximité" loading="lazy">
-                        <span class="area-pop-photo-badge is-mapillary">Mapillary${when ? ' · ' + when : ''}</span>
+                        <span class="area-pop-photo-badge is-mapillary">${label}</span>
+                        <span class="area-pop-photo-zoom" aria-hidden="true">⤢</span>
                     </a>`);
             }
 
@@ -4198,6 +4209,46 @@
             }
             return `<div class="area-pop-photos">${cards.join('')}</div>`;
         }
+
+        // Lightbox partagée pour agrandir une photo de rue (Mapillary / Panoramax).
+        let areaPhotoLightbox = null;
+        function openAreaPhotoLightbox(bigUrl, label, sourceUrl) {
+            if (!bigUrl) return;
+            if (!areaPhotoLightbox) {
+                areaPhotoLightbox = document.createElement('div');
+                areaPhotoLightbox.className = 'area-lightbox';
+                areaPhotoLightbox.innerHTML = `
+                    <button class="area-lightbox-close" type="button" aria-label="Fermer">✕</button>
+                    <figure class="area-lightbox-fig">
+                        <img class="area-lightbox-img" src="" alt="">
+                        <figcaption class="area-lightbox-cap"></figcaption>
+                    </figure>`;
+                document.body.appendChild(areaPhotoLightbox);
+                const close = () => areaPhotoLightbox.classList.remove('is-open');
+                areaPhotoLightbox.addEventListener('click', event => {
+                    if (event.target === areaPhotoLightbox || event.target.closest('.area-lightbox-close')) close();
+                });
+                document.addEventListener('keydown', event => {
+                    if (event.key === 'Escape') close();
+                });
+            }
+            const img = areaPhotoLightbox.querySelector('.area-lightbox-img');
+            const cap = areaPhotoLightbox.querySelector('.area-lightbox-cap');
+            img.src = bigUrl;
+            img.alt = label || 'Photo de rue';
+            cap.innerHTML = `${escapeHtml(label || '')}${sourceUrl ? ` · <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">ouvrir la source</a>` : ''}`;
+            areaPhotoLightbox.classList.add('is-open');
+        }
+
+        // Clic sur une vignette d'aire : ouvrir en grand plutôt que d'aller
+        // directement sur le site source (le lien reste dispo via Ctrl/⌘-clic).
+        document.addEventListener('click', event => {
+            const photo = event.target.closest && event.target.closest('.area-pop-photo');
+            if (!photo) return;
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+            event.preventDefault();
+            openAreaPhotoLightbox(photo.dataset.big, photo.dataset.label, photo.dataset.src);
+        });
 
         function buildRoadsideAreaPopup(props, photos, photosState) {
             const style = ROADSIDE_AREA_STYLE[props.area_kind] || { color: '#3949AB', label: 'Aire' };
@@ -4228,12 +4279,22 @@
 
             const osmType = props.osm_type || 'node';
             const osmId = props.osm_id;
-            const osmView = osmId
-                ? `<a class="area-pop-osm" href="https://www.openstreetmap.org/${osmType}/${osmId}" target="_blank" rel="noopener noreferrer">Voir sur OSM</a>`
+            // Un seul bloc OpenStreetMap avec deux actions compactes (voir / compléter)
+            // pour éviter la redondance de deux gros liens « … sur OSM ».
+            const osmLine = osmId
+                ? `<span class="area-pop-src"><span class="area-pop-src-label">OpenStreetMap</span>
+                        <a href="https://www.openstreetmap.org/${osmType}/${osmId}" target="_blank" rel="noopener noreferrer">voir</a>
+                        <span class="area-pop-src-sep">·</span>
+                        <a href="https://www.openstreetmap.org/edit?${osmType}=${osmId}" target="_blank" rel="noopener noreferrer">compléter</a>
+                   </span>`
                 : '';
-            const osmEdit = osmId
-                ? `<a class="area-pop-osm area-pop-osm--edit" href="https://www.openstreetmap.org/edit?${osmType}=${osmId}" target="_blank" rel="noopener noreferrer">Compléter dans OSM</a>`
-                : '';
+
+            const wikidataQid = /^Q\d+$/.test(String(props.wikidata || '').trim()) ? props.wikidata.trim() : null;
+            const wikidataLine = wikidataQid
+                ? `<span class="area-pop-src"><span class="area-pop-src-label">Wikidata</span>
+                        <a href="https://www.wikidata.org/wiki/${wikidataQid}" target="_blank" rel="noopener noreferrer">${escapeHtml(wikidataQid)} →</a>
+                   </span>`
+                : `<span class="area-pop-src is-none"><span class="area-pop-src-label">Wikidata</span> aucun lien</span>`;
 
             return `
                 <div class="area-pop" style="--area-color:${style.color};">
@@ -4245,19 +4306,59 @@
                         <div class="area-pop-chips">${chips}</div>
                     </div>
                     <div class="area-pop-photos-wrap">${roadsidePhotosHtml(photos, photosState)}</div>
-                    <div class="area-pop-links">${osmView}${osmEdit}</div>
+                    <div class="area-pop-links">${osmLine}${wikidataLine}</div>
                 </div>`;
         }
 
-        function makeRoadsideAreaMarker(feature) {
+        function roadsideAreaCenter(feature) {
             const props = feature.properties || {};
-            const coords = feature.geometry?.coordinates;
-            if (!coords) return null;
+            if (Array.isArray(props.center) && props.center.length === 2) {
+                return [props.center[1], props.center[0]];
+            }
+            const geom = feature.geometry || {};
+            if (geom.type === 'Point') return [geom.coordinates[1], geom.coordinates[0]];
+            if (geom.type === 'LineString' && geom.coordinates.length) {
+                const c = geom.coordinates[0];
+                return [c[1], c[0]];
+            }
+            if (geom.type === 'Polygon' && geom.coordinates[0]?.length) {
+                const c = geom.coordinates[0][0];
+                return [c[1], c[0]];
+            }
+            return null;
+        }
 
+        // Retourne les couches d'une aire : l'emprise surfacique (polygone au
+        // remplissage clair coordonné) quand elle existe, + un marqueur central.
+        function makeRoadsideAreaLayers(feature) {
+            const props = feature.properties || {};
             const style = ROADSIDE_AREA_STYLE[props.area_kind];
-            if (!style) return null;
+            if (!style) return [];
 
-            const marker = L.marker([coords[1], coords[0]], {
+            const center = roadsideAreaCenter(feature);
+            if (!center) return [];
+            const [lat, lng] = center;
+
+            const layers = [];
+            const geom = feature.geometry || {};
+
+            if (geom.type === 'Polygon' || geom.type === 'MultiPolygon' || geom.type === 'LineString') {
+                const isLine = geom.type === 'LineString';
+                const shape = L.geoJSON(geom, {
+                    style: {
+                        color: style.color,
+                        weight: isLine ? 3 : 1.5,
+                        opacity: 0.9,
+                        fill: !isLine,
+                        fillColor: style.color,
+                        fillOpacity: 0.16
+                    }
+                });
+                shape.bindTooltip(props.name || style.label, { sticky: true });
+                layers.push(shape);
+            }
+
+            const marker = L.marker([lat, lng], {
                 icon: L.divIcon({
                     className: 'area-marker-wrapper',
                     html: `<div class="area-marker" data-kind="${props.area_kind}" style="--area-color:${style.color};">${style.glyph}</div>`,
@@ -4284,7 +4385,6 @@
                     return;
                 }
                 marker._areaPhotosDone = true;
-                const [lng, lat] = coords;
                 const mlyCheck = window.checkMapillaryNearby
                     ? window.checkMapillaryNearby(lat, lng)
                     : Promise.resolve(null);
@@ -4298,7 +4398,13 @@
                 });
             });
 
-            return marker;
+            // Le polygone ouvre le popup du marqueur (photos + complétude).
+            if (layers.length) {
+                layers[0].on('click', () => marker.openPopup());
+            }
+
+            layers.push(marker);
+            return layers;
         }
 
         function setRoadsideAreasLegendCounts(features = []) {
@@ -4392,8 +4498,7 @@
 
                 roadsideAreasLayerGroup = L.layerGroup();
                 features.forEach(feature => {
-                    const marker = makeRoadsideAreaMarker(feature);
-                    if (marker) roadsideAreasLayerGroup.addLayer(marker);
+                    makeRoadsideAreaLayers(feature).forEach(layer => roadsideAreasLayerGroup.addLayer(layer));
                 });
 
                 roadsideAreasLoaded = true;
@@ -9564,7 +9669,7 @@
             if (!MAPILLARY_TOKEN) return null;
             // L'API plafonne le rayon à 50 m.
             const radius = Math.min(MAPILLARY_RADIUS_M, 50);
-            const fields = 'id,thumb_1024_url,captured_at,compass_angle,geometry';
+            const fields = 'id,thumb_1024_url,thumb_2048_url,captured_at,compass_angle,geometry';
             const url = `https://graph.mapillary.com/images?access_token=${encodeURIComponent(MAPILLARY_TOKEN)}`
                 + `&fields=${fields}&lat=${lat}&lng=${lng}&radius=${radius}&limit=1`;
             const resp = await fetch(url, { credentials: 'omit' });

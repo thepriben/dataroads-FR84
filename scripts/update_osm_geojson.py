@@ -110,7 +110,7 @@ QUERIES = {
           node(area.dept)["amenity"="parking"]["park_ride"];
           way(area.dept)["amenity"="parking"]["park_ride"];
         );
-        out center tags;
+        out tags geom;
     """,
 }
 
@@ -573,16 +573,23 @@ def roadside_area_kind(tags: dict[str, Any]) -> str | None:
     return None
 
 
-def element_point(element: dict[str, Any]) -> list[float] | None:
-    lat = element.get("lat")
-    lon = element.get("lon")
-    if lat is None or lon is None:
-        center = element.get("center") or {}
-        lat = center.get("lat")
-        lon = center.get("lon")
-    if lat is None or lon is None:
-        return None
-    return [lon, lat]
+def element_coordinates(element: dict[str, Any]) -> list[list[float]]:
+    return [
+        [point["lon"], point["lat"]]
+        for point in element.get("geometry", [])
+        if "lon" in point and "lat" in point
+    ]
+
+
+def ring_centroid(coordinates: list[list[float]]) -> list[float]:
+    ring = coordinates[:]
+    if len(ring) >= 2 and point_key(ring[0]) == point_key(ring[-1]):
+        ring = ring[:-1]
+    if not ring:
+        return coordinates[0]
+    lon = sum(point[0] for point in ring) / len(ring)
+    lat = sum(point[1] for point in ring) / len(ring)
+    return [round(lon, 7), round(lat, 7)]
 
 
 def roadside_areas_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
@@ -592,9 +599,6 @@ def roadside_areas_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
         kind = roadside_area_kind(tags)
         if not kind:
             continue
-        point = element_point(element)
-        if not point:
-            continue
 
         properties = {key: tags[key] for key in ROADSIDE_AREA_KEEP if key in tags}
         properties["area_kind"] = kind
@@ -602,11 +606,33 @@ def roadside_areas_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
         properties["osm_id"] = element.get("id")
         properties["@id"] = f"{element.get('type')}/{element.get('id')}"
 
+        if element.get("type") == "node":
+            lat = element.get("lat")
+            lon = element.get("lon")
+            if lat is None or lon is None:
+                continue
+            center = [round(lon, 7), round(lat, 7)]
+            geometry = {"type": "Point", "coordinates": center}
+        else:
+            coordinates = element_coordinates(element)
+            if len(coordinates) < 2:
+                continue
+            is_closed = len(coordinates) >= 4 and point_key(coordinates[0]) == point_key(coordinates[-1])
+            if is_closed:
+                geometry = {"type": "Polygon", "coordinates": [coordinates]}
+                center = ring_centroid(coordinates)
+            else:
+                geometry = {"type": "LineString", "coordinates": coordinates}
+                center = ring_centroid(coordinates)
+
+        # Point de rattachement du marqueur (centre du surfacique le cas échéant).
+        properties["center"] = center
+
         features.append(
             {
                 "type": "Feature",
                 "id": properties["@id"],
-                "geometry": {"type": "Point", "coordinates": point},
+                "geometry": geometry,
                 "properties": properties,
             }
         )
