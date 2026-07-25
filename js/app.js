@@ -4088,7 +4088,118 @@
             park_ride: { color: '#3949AB', glyph: '🅿️', label: 'Parking-relais' }
         };
 
-        function buildRoadsideAreaPopup(props) {
+        // Valorisation de la complétude OSM : quelques attributs clés attendus sur
+        // une aire, avec un score présent/total pour inciter à la contribution.
+        const AREA_COMPLETENESS_FIELDS = [
+            { key: 'name', label: 'Nom' },
+            { key: 'capacity', label: 'Capacité' },
+            { key: 'access', label: 'Accès' },
+            { key: 'surface', label: 'Revêtement' },
+            { key: 'lit', label: 'Éclairage' },
+            { key: 'operator', label: 'Gestionnaire' }
+        ];
+
+        function roadsideCompleteness(props) {
+            const items = AREA_COMPLETENESS_FIELDS.map(field => {
+                const present = field.key === 'operator'
+                    ? Boolean(props.operator || props.network)
+                    : props[field.key] !== undefined && props[field.key] !== '';
+                return { label: field.label, present };
+            });
+            const score = items.filter(item => item.present).length;
+            return { items, score, total: items.length };
+        }
+
+        // --- Recherche d'une photo de rue Panoramax à proximité immédiate d'un point ---
+        const panoramaxNearbyCache = new Map();
+
+        function haversineMeters(aLat, aLon, bLat, bLon) {
+            const R = 6371000;
+            const dLat = (bLat - aLat) * Math.PI / 180;
+            const dLon = (bLon - aLon) * Math.PI / 180;
+            const s = Math.sin(dLat / 2) ** 2
+                + Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+            return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+        }
+
+        async function fetchPanoramaxNearby(lat, lng, radiusM = 130) {
+            const key = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
+            if (panoramaxNearbyCache.has(key)) return panoramaxNearbyCache.get(key);
+
+            let result = null;
+            try {
+                const dLat = radiusM / 111320;
+                const dLon = radiusM / (111320 * Math.cos(lat * Math.PI / 180));
+                const bbox = `${lng - dLon},${lat - dLat},${lng + dLon},${lat + dLat}`;
+                const resp = await fetch(`https://api.panoramax.xyz/api/search?bbox=${bbox}&limit=30`, { credentials: 'omit' });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    let best = null;
+                    let bestDist = Infinity;
+                    (data.features || []).forEach(feature => {
+                        const c = feature.geometry?.coordinates;
+                        if (!c) return;
+                        const dist = haversineMeters(lat, lng, c[1], c[0]);
+                        if (dist < bestDist) { bestDist = dist; best = feature; }
+                    });
+                    if (best && bestDist <= radiusM) {
+                        const thumb = best.assets?.thumb?.href || panoramaxImageUrl(best.id, 'thumb');
+                        result = {
+                            id: best.id,
+                            thumb,
+                            datetime: best.properties?.datetime,
+                            dist: Math.round(bestDist)
+                        };
+                    }
+                }
+            } catch (error) {
+                result = null;
+            }
+
+            panoramaxNearbyCache.set(key, result);
+            return result;
+        }
+
+        function roadsidePhotoDate(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            return Number.isNaN(d.getTime())
+                ? ''
+                : d.toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' });
+        }
+
+        function roadsidePhotosHtml(photos, state) {
+            if (state === 'loading') {
+                return `<div class="area-pop-photos-msg">📷 Recherche de photos de rue (Mapillary/Panoramax)…</div>`;
+            }
+
+            const cards = [];
+            if (photos && photos.panoramax) {
+                const when = roadsidePhotoDate(photos.panoramax.datetime);
+                const href = (typeof panoramaxPageUrl === 'function') ? panoramaxPageUrl(photos.panoramax.id) : '#';
+                cards.push(`
+                    <a class="area-pop-photo" href="${href}" target="_blank" rel="noopener noreferrer">
+                        <img src="${photos.panoramax.thumb}" alt="Photo Panoramax à proximité" loading="lazy">
+                        <span class="area-pop-photo-badge is-panoramax">Panoramax${when ? ' · ' + when : ''}</span>
+                    </a>`);
+            }
+            if (photos && photos.mapillary && photos.mapillary.thumb_1024_url) {
+                const when = roadsidePhotoDate(photos.mapillary.captured_at);
+                const href = (window.mapillaryPageUrl && window.mapillaryPageUrl(photos.mapillary.id)) || '#';
+                cards.push(`
+                    <a class="area-pop-photo" href="${href}" target="_blank" rel="noopener noreferrer">
+                        <img src="${photos.mapillary.thumb_1024_url}" alt="Photo Mapillary à proximité" loading="lazy">
+                        <span class="area-pop-photo-badge is-mapillary">Mapillary${when ? ' · ' + when : ''}</span>
+                    </a>`);
+            }
+
+            if (!cards.length) {
+                return `<div class="area-pop-photos-msg">Pas de photo de rue à proximité (Mapillary/Panoramax).</div>`;
+            }
+            return `<div class="area-pop-photos">${cards.join('')}</div>`;
+        }
+
+        function buildRoadsideAreaPopup(props, photos, photosState) {
             const style = ROADSIDE_AREA_STYLE[props.area_kind] || { color: '#3949AB', label: 'Aire' };
             const title = props.name || style.label;
 
@@ -4110,10 +4221,18 @@
             addRow('Revêtement', props.surface);
             if (props.description) addRow('Note', props.description);
 
+            const completeness = roadsideCompleteness(props);
+            const chips = completeness.items.map(item =>
+                `<span class="area-pop-chip ${item.present ? 'is-present' : 'is-missing'}">${item.present ? '✓' : '✗'} ${escapeHtml(item.label)}</span>`
+            ).join('');
+
             const osmType = props.osm_type || 'node';
             const osmId = props.osm_id;
-            const osmLink = osmId
-                ? `<a class="area-pop-osm" href="https://www.openstreetmap.org/${osmType}/${osmId}" target="_blank" rel="noopener noreferrer">Voir sur OpenStreetMap</a>`
+            const osmView = osmId
+                ? `<a class="area-pop-osm" href="https://www.openstreetmap.org/${osmType}/${osmId}" target="_blank" rel="noopener noreferrer">Voir sur OSM</a>`
+                : '';
+            const osmEdit = osmId
+                ? `<a class="area-pop-osm area-pop-osm--edit" href="https://www.openstreetmap.org/edit?${osmType}=${osmId}" target="_blank" rel="noopener noreferrer">Compléter dans OSM</a>`
                 : '';
 
             return `
@@ -4121,7 +4240,12 @@
                     <h3>${escapeHtml(title)}</h3>
                     <span class="area-pop-kind">${escapeHtml(style.label)}</span>
                     ${rows.length ? `<dl>${rows.join('')}</dl>` : ''}
-                    ${osmLink}
+                    <div class="area-pop-complete">
+                        <div class="area-pop-complete-head">Complétude OSM <strong>${completeness.score}/${completeness.total}</strong></div>
+                        <div class="area-pop-chips">${chips}</div>
+                    </div>
+                    <div class="area-pop-photos-wrap">${roadsidePhotosHtml(photos, photosState)}</div>
+                    <div class="area-pop-links">${osmView}${osmEdit}</div>
                 </div>`;
         }
 
@@ -4144,11 +4268,36 @@
             });
 
             marker.bindTooltip(props.name || style.label, { direction: 'top', offset: [0, -12] });
-            marker.bindPopup(buildRoadsideAreaPopup(props), {
-                maxWidth: 320,
-                minWidth: 220,
+            marker.bindPopup(buildRoadsideAreaPopup(props, null, 'loading'), {
+                maxWidth: 340,
+                minWidth: 240,
                 className: 'area-leaflet-popup'
             });
+
+            // Photos de rue à proximité (Mapillary + Panoramax), chargées à l'ouverture
+            // du popup pour ne pas multiplier les appels API au chargement de la couche.
+            marker.on('popupopen', () => {
+                if (marker._areaPhotosDone) {
+                    if (marker._areaPhotos !== undefined) {
+                        marker.setPopupContent(buildRoadsideAreaPopup(props, marker._areaPhotos, 'done'));
+                    }
+                    return;
+                }
+                marker._areaPhotosDone = true;
+                const [lng, lat] = coords;
+                const mlyCheck = window.checkMapillaryNearby
+                    ? window.checkMapillaryNearby(lat, lng)
+                    : Promise.resolve(null);
+                Promise.allSettled([mlyCheck, fetchPanoramaxNearby(lat, lng)]).then(([mly, pnx]) => {
+                    const photos = {
+                        mapillary: mly.status === 'fulfilled' ? mly.value : null,
+                        panoramax: pnx.status === 'fulfilled' ? pnx.value : null
+                    };
+                    marker._areaPhotos = photos;
+                    marker.setPopupContent(buildRoadsideAreaPopup(props, photos, 'done'));
+                });
+            });
+
             return marker;
         }
 

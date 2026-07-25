@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.1] - 2026-07-25
+
+### Added
+
+- **Completeness & street-level photos on roadside areas.** Each roadside-area popup now shows an **OSM completeness** indicator (present/missing key attributes: name, capacity, access, surface, lit, operator — with a score) plus **nearby street-level photos** from both **Mapillary** and **Panoramax**, fetched on popup open around the area (e.g. coverage exists on RD 950). Added *View* / *Improve in OSM* links to invite contribution. New Panoramax proximity search (`/api/search` by bbox, nearest picture within ~130 m).
+
 ## [0.11.0] - 2026-07-25
 
 ### Added

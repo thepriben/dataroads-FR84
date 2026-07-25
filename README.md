@@ -14,7 +14,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 - Les stations de comptage CD84, classées par niveau de trafic.
 - L'accidentologie multi-millésimes (BAAC, 2019-2024) sous forme de nuage : couleur selon l'ancienneté, gravité signalée par un anneau noir (blessés hospitalisés et mortels), histogramme et curseur d'années pour explorer l'évolution.
 - Les routes en construction ou en projet issues du cache OSM.
-- Les aires d'arrêt le long des routes départementales (issue #7) : aires de covoiturage, aires de repos et parkings-relais, issues d'OpenStreetMap.
+- Les aires d'arrêt le long des routes départementales (issue #7) : aires de covoiturage, aires de repos et parkings-relais issues d'OpenStreetMap, avec un indicateur de complétude OSM et les photos de rue à proximité (Mapillary / Panoramax).
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
 - Le trafic Waze communautaire (bouchons et incidents) : couche native (tracés de bouchons + marqueurs d'incidents) si le flux partenaire *Waze for Cities* est configuré, sinon la carte Waze Live Map intégrée en repli.
 - Un panneau de qualité OSM pour repérer les tronçons qui ont ou non une relation OSM exploitable.

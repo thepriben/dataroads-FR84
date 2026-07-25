@@ -14,7 +14,7 @@ This demonstrator, incubated within the Road Information Bureau (Vaucluse Depart
 - CD84 traffic counting stations, classified by traffic level.
 - Multi-year accident data (BAAC, 2019-2024) rendered as a cloud: colour by recency, severity shown by a black ring (hospitalised and fatal), with a per-year histogram and a year slider to explore the trend.
 - Roads under construction or planned, from the OSM cache.
-- Roadside stopping areas along departmental roads (issue #7): car-pooling areas, rest areas and park-and-ride, sourced from OpenStreetMap.
+- Roadside stopping areas along departmental roads (issue #7): car-pooling areas, rest areas and park-and-ride from OpenStreetMap, with an OSM completeness indicator and nearby street-level photos (Mapillary / Panoramax).
 - Current weather over Avignon, useful as a quick operational signal.
 - Community Waze traffic (jams and incidents): a native layer (coloured jam lines + incident markers) when the *Waze for Cities* partner feed is configured, otherwise the embedded Waze Live Map as a fallback.
 - An OSM quality panel to spot road sections that do or do not have a usable OSM relation.
