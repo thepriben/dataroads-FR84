@@ -14,6 +14,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 - Les stations de comptage CD84, classées par niveau de trafic.
 - L'accidentologie multi-millésimes (BAAC, 2019-2024) sous forme de nuage : couleur selon l'ancienneté, gravité signalée par un anneau noir (blessés hospitalisés et mortels), histogramme et curseur d'années pour explorer l'évolution.
 - Les routes en construction ou en projet issues du cache OSM.
+- Les aires d'arrêt le long des routes départementales (issue #7) : aires de covoiturage, aires de repos et parkings-relais, issues d'OpenStreetMap.
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
 - Le trafic Waze communautaire (bouchons et incidents) : couche native (tracés de bouchons + marqueurs d'incidents) si le flux partenaire *Waze for Cities* est configuré, sinon la carte Waze Live Map intégrée en repli.
 - Un panneau de qualité OSM pour repérer les tronçons qui ont ou non une relation OSM exploitable.
@@ -47,6 +48,7 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 | Routes départementales | OpenStreetMap | cache du 2026-05-17 22:52 UTC | Données réseau, pas un millésime administratif CD84. |
 | Routes en construction | OpenStreetMap | cache du 2026-05-17 22:53 UTC | Quelques ouvertures indiquées entre 2025 et 2027 selon les tags OSM. |
 | Communes | OpenStreetMap | cache du 2026-05-17 22:53 UTC | 151 communes ; les tags de population pointent vers 2021. |
+| Aires d'arrêt & covoiturage | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 160 aires : covoiturage, aires de repos, parkings-relais le long des RD (issue #7), générées par `scripts/update_osm_geojson.py`. |
 | Limite du Vaucluse | OpenStreetMap | GeoJSON local | Limite départementale 84, figée dans `data/static/`. |
 | Accidentologie | BAAC / ONISR (data.gouv.fr) | 2019-2024 | 1 923 accidents corporels géolocalisés (dép. 84), généré par `scripts/build_accidents_vaucluse.py`. |
 | Comptages CD84 | data.gouv.fr | 1996-2025 | 3 098 observations ; la carte affiche la dernière année disponible par station. |

@@ -1887,6 +1887,90 @@
             height: 14px;
         }
 
+        /* ===== Aires connexes (covoiturage / repos / parkings-relais) ===== */
+        .area-swatch {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 11px;
+            line-height: 1;
+            background: #fff;
+            border: 2px solid var(--area-color, #3949AB);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+        }
+
+        .area-swatch--car_pooling { --area-color: #2E7D32; }
+        .area-swatch--rest_area { --area-color: #00897B; }
+        .area-swatch--park_ride { --area-color: #3949AB; }
+
+        .area-marker-wrapper {
+            background: transparent;
+            border: none;
+        }
+
+        .area-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            font-size: 14px;
+            line-height: 1;
+            background: #fff;
+            border: 2.5px solid var(--area-color, #3949AB);
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .area-pop h3 {
+            margin: 0 0 2px;
+            font-size: 15px;
+            color: #1f2933;
+        }
+
+        .area-pop .area-pop-kind {
+            display: inline-block;
+            margin-bottom: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            background: var(--area-color, #3949AB);
+        }
+
+        .area-pop dl {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 3px 10px;
+            margin: 0 0 8px;
+            font-size: 12.5px;
+        }
+
+        .area-pop dt {
+            color: #667085;
+            font-weight: 600;
+        }
+
+        .area-pop dd {
+            margin: 0;
+            color: #1f2933;
+        }
+
+        .area-pop .area-pop-osm {
+            font-size: 12px;
+            color: #3949AB;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .area-pop .area-pop-osm:hover {
+            text-decoration: underline;
+        }
+
         .webcam-leaflet-popup .leaflet-popup-content {
             margin: 10px 12px;
             width: min(380px, calc(100vw - 72px)) !important;

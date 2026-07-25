@@ -344,7 +344,8 @@
                 ['guidepostsToggleIcon', guidepostsVisible],
                 ['sensitiveZonesToggleIcon', sensitiveZonesVisible],
                 ['inaturalistSensitivesToggleIcon', inaturalistSensitivesVisible],
-                ['webcamsToggleIcon', webcamsVisible]
+                ['webcamsToggleIcon', webcamsVisible],
+                ['roadsideAreasToggleIcon', roadsideAreasVisible]
             ];
 
             layerStates.forEach(([id, visible]) => {
@@ -431,6 +432,7 @@
                         ensureLayerToggle(constructionVisible, window.toggleConstruction);
                         ensureLayerToggle(bicycleVisible, window.toggleBicycleRoutes);
                         ensureLayerToggle(citiesVisible, window.toggleCities);
+                        ensureLayerToggle(roadsideAreasVisible, window.toggleRoadsideAreas);
                         const limitationsLegend = document.getElementById('limitationsLegend');
                         if (limitationsLegend && limitationsLegend.style.display !== 'none') {
                             ensureLayerToggle(limitationsMode, window.toggleLimitationsMode);
@@ -439,6 +441,7 @@
                         ensureLayerOff(constructionVisible, window.toggleConstruction);
                         ensureLayerOff(bicycleVisible, window.toggleBicycleRoutes);
                         ensureLayerOff(citiesVisible, window.toggleCities);
+                        ensureLayerOff(roadsideAreasVisible, window.toggleRoadsideAreas);
                         ensureLayerOff(limitationsMode, window.toggleLimitationsMode);
                     }
                     break;
@@ -1255,6 +1258,9 @@
         let webcamsLayerGroup = null;
         let webcamsVisible = false;
         let webcamsLoaded = false;
+        let roadsideAreasLayerGroup = null;
+        let roadsideAreasVisible = false;
+        let roadsideAreasLoaded = false;
         let bridgeGroups = [];
         let bridgePhotoMarkers = [];
         let bridgeGroupById = new Map();
@@ -1449,6 +1455,7 @@
             if (constructionVisible) active.push('construction');
             if (bicycleVisible) active.push('bicycle');
             if (citiesVisible) active.push('cities');
+            if (roadsideAreasVisible) active.push('aires');
             if (limitationsMode) active.push('limits');
             if (accidentsVisible) active.push('accidents');
             if (trafficVisible) active.push('traffic');
@@ -1559,6 +1566,9 @@
                 case 'cities':
                     setBooleanLayerIfNeeded(citiesVisible, desired, window.toggleCities);
                     return true;
+                case 'aires':
+                    setBooleanLayerIfNeeded(roadsideAreasVisible, desired, window.toggleRoadsideAreas);
+                    return !desired || roadsideAreasLoaded;
                 case 'limits':
                     setBooleanLayerIfNeeded(limitationsMode, desired, window.toggleLimitationsMode);
                     return true;
@@ -1610,7 +1620,7 @@
             applyAppUrlHierarchyFromSet(wanted);
 
             const pendingKeys = [
-                'construction', 'bicycle', 'cities', 'limits', 'accidents', 'traffic', 'waze',
+                'construction', 'bicycle', 'cities', 'aires', 'limits', 'accidents', 'traffic', 'waze',
                 'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'ens', 'inat', 'wcam'
             ];
             let allReady = true;
@@ -1706,6 +1716,9 @@
                     total += 1;
                     if (citiesVisible) visible++;
 
+                    total += 1;
+                    if (roadsideAreasVisible) visible++;
+
                     const limitations = document.getElementById('limitationsLegend');
                     if (limitations && limitations.style.display !== 'none') {
                         total += 1;
@@ -1760,6 +1773,8 @@
                     return roadSignsVisible;
                 case 'freshness-guideposts':
                     return guidepostsVisible;
+                case 'freshness-roadside-areas':
+                    return roadsideAreasVisible;
                 case 'freshness-accidents':
                     return accidentsVisible;
                 case 'freshness-traffic':
@@ -4059,6 +4074,199 @@
                 console.error('Erreur chargement webcams:', error);
                 if (!wantVisible) applyWebcamsHiddenUi();
                 webcamsVisible = false;
+                syncLegendChrome();
+            }
+        };
+
+        // ========== AIRES CONNEXES (covoiturage / repos / parkings-relais) ==========
+        // Issue #7 : thématiques connexes valorisant d'autres missions du CD84,
+        // intégrées dans la cartographie factuelle (hors incubation).
+
+        const ROADSIDE_AREA_STYLE = {
+            car_pooling: { color: '#2E7D32', glyph: '🚗', label: 'Aire de covoiturage' },
+            rest_area: { color: '#00897B', glyph: '🌳', label: 'Aire de repos' },
+            park_ride: { color: '#3949AB', glyph: '🅿️', label: 'Parking-relais' }
+        };
+
+        function buildRoadsideAreaPopup(props) {
+            const style = ROADSIDE_AREA_STYLE[props.area_kind] || { color: '#3949AB', label: 'Aire' };
+            const title = props.name || style.label;
+
+            const rows = [];
+            const addRow = (label, value) => {
+                if (value === undefined || value === null || value === '') return;
+                rows.push(`<dt>${label}</dt><dd>${escapeHtml(String(value))}</dd>`);
+            };
+
+            addRow('Capacité', props.capacity);
+            addRow('Dont PMR', props['capacity:disabled']);
+            addRow('Gestion', props.operator || props.network);
+            if (props.park_ride && props.area_kind === 'park_ride') {
+                addRow('Type', 'Parking-relais (park & ride)');
+            }
+            if (props.access) addRow('Accès', props.access);
+            if (props.fee) addRow('Payant', props.fee === 'yes' ? 'oui' : (props.fee === 'no' ? 'non' : props.fee));
+            addRow('Horaires', props.opening_hours);
+            addRow('Revêtement', props.surface);
+            if (props.description) addRow('Note', props.description);
+
+            const osmType = props.osm_type || 'node';
+            const osmId = props.osm_id;
+            const osmLink = osmId
+                ? `<a class="area-pop-osm" href="https://www.openstreetmap.org/${osmType}/${osmId}" target="_blank" rel="noopener noreferrer">Voir sur OpenStreetMap</a>`
+                : '';
+
+            return `
+                <div class="area-pop" style="--area-color:${style.color};">
+                    <h3>${escapeHtml(title)}</h3>
+                    <span class="area-pop-kind">${escapeHtml(style.label)}</span>
+                    ${rows.length ? `<dl>${rows.join('')}</dl>` : ''}
+                    ${osmLink}
+                </div>`;
+        }
+
+        function makeRoadsideAreaMarker(feature) {
+            const props = feature.properties || {};
+            const coords = feature.geometry?.coordinates;
+            if (!coords) return null;
+
+            const style = ROADSIDE_AREA_STYLE[props.area_kind];
+            if (!style) return null;
+
+            const marker = L.marker([coords[1], coords[0]], {
+                icon: L.divIcon({
+                    className: 'area-marker-wrapper',
+                    html: `<div class="area-marker" data-kind="${props.area_kind}" style="--area-color:${style.color};">${style.glyph}</div>`,
+                    iconSize: [26, 26],
+                    iconAnchor: [13, 13]
+                }),
+                zIndexOffset: 300
+            });
+
+            marker.bindTooltip(props.name || style.label, { direction: 'top', offset: [0, -12] });
+            marker.bindPopup(buildRoadsideAreaPopup(props), {
+                maxWidth: 320,
+                minWidth: 220,
+                className: 'area-leaflet-popup'
+            });
+            return marker;
+        }
+
+        function setRoadsideAreasLegendCounts(features = []) {
+            const counts = { car_pooling: 0, rest_area: 0, park_ride: 0 };
+            features.forEach(feature => {
+                const kind = feature.properties?.area_kind;
+                if (kind && Object.prototype.hasOwnProperty.call(counts, kind)) counts[kind]++;
+            });
+            const map = {
+                'count-roadside-carpooling': counts.car_pooling,
+                'count-roadside-restarea': counts.rest_area,
+                'count-roadside-parkride': counts.park_ride
+            };
+            Object.entries(map).forEach(([id, value]) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = value.toLocaleString('fr-FR');
+            });
+        }
+
+        function applyRoadsideAreasVisibleUi() {
+            const icon = document.getElementById('roadsideAreasToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="roadsideAreasToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-roadside-area]');
+            setToggleIcon(icon, true);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = '700';
+            legendItems.forEach(item => {
+                item.style.opacity = '1';
+                item.style.pointerEvents = 'auto';
+            });
+        }
+
+        function applyRoadsideAreasHiddenUi() {
+            const icon = document.getElementById('roadsideAreasToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="roadsideAreasToggleIcon"]) .legend-title');
+            const legendItems = document.querySelectorAll('[data-roadside-area]');
+            setToggleIcon(icon, false);
+            if (title) title.style.fontWeight = '600';
+            legendItems.forEach(item => {
+                item.style.opacity = '0.5';
+                item.style.pointerEvents = 'none';
+            });
+        }
+
+        function syncRoadsideAreasOnMap() {
+            if (!roadsideAreasLayerGroup || !window.map) return;
+            const onMap = window.map.hasLayer(roadsideAreasLayerGroup);
+            if (roadsideAreasVisible && !onMap) roadsideAreasLayerGroup.addTo(window.map);
+            if (!roadsideAreasVisible && onMap) window.map.removeLayer(roadsideAreasLayerGroup);
+        }
+
+        window.toggleRoadsideAreas = function() {
+            roadsideAreasVisible = !roadsideAreasVisible;
+
+            if (!roadsideAreasVisible) {
+                syncRoadsideAreasOnMap();
+                applyRoadsideAreasHiddenUi();
+                syncLegendChrome();
+                return;
+            }
+
+            if (!roadsideAreasLoaded) {
+                const icon = document.getElementById('roadsideAreasToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                if (typeof window.loadRoadsideAreas === 'function') {
+                    window.loadRoadsideAreas({ show: true });
+                }
+                return;
+            }
+
+            syncRoadsideAreasOnMap();
+            applyRoadsideAreasVisibleUi();
+            syncLegendChrome();
+        };
+
+        window.loadRoadsideAreas = async function(options = {}) {
+            const wantVisible = options.show === true || roadsideAreasVisible || appUrlWantsLayer('aires');
+            try {
+                const data = await window.InforouteApi.fetchGeoJson('roadside-areas');
+                renderFreshnessBadge(document.getElementById('freshness-roadside-areas'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'osm'
+                });
+
+                const features = data.features || [];
+
+                if (roadsideAreasLayerGroup) {
+                    window.map?.removeLayer(roadsideAreasLayerGroup);
+                    roadsideAreasLayerGroup = null;
+                }
+
+                roadsideAreasLayerGroup = L.layerGroup();
+                features.forEach(feature => {
+                    const marker = makeRoadsideAreaMarker(feature);
+                    if (marker) roadsideAreasLayerGroup.addLayer(marker);
+                });
+
+                roadsideAreasLoaded = true;
+                setRoadsideAreasLegendCounts(features);
+
+                if (wantVisible) {
+                    roadsideAreasVisible = true;
+                    syncRoadsideAreasOnMap();
+                    applyRoadsideAreasVisibleUi();
+                } else {
+                    roadsideAreasVisible = false;
+                    syncRoadsideAreasOnMap();
+                    applyRoadsideAreasHiddenUi();
+                }
+
+                syncLegendChrome();
+                tryApplyAppUrlState();
+                console.log(`✓ ${features.length} aires connexes chargées`);
+            } catch (error) {
+                console.error('Erreur chargement aires connexes:', error);
+                if (!wantVisible) applyRoadsideAreasHiddenUi();
+                roadsideAreasVisible = false;
                 syncLegendChrome();
             }
         };
@@ -8664,6 +8872,11 @@
             if (webcamsLoaded || webcamsVisible || appUrlWantsLayer('wcam')) return;
             if (window.loadWebcams) window.loadWebcams({ show: false });
         }, 6000);
+
+        setTimeout(() => {
+            if (roadsideAreasLoaded || roadsideAreasVisible || appUrlWantsLayer('aires')) return;
+            if (window.loadRoadsideAreas) window.loadRoadsideAreas({ show: false });
+        }, 6500);
         
         // ========== ROADS UNDER CONSTRUCTION ==========
 

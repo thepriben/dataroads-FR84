@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.0] - 2026-07-25
+
+### Added
+
+- **Roadside areas & car-pooling layer (issue #7).** A new "Aires d'arrêt & covoiturage" section in the *factual cartography* family (not the incubator) surfaces related CD84 themes along departmental roads, sourced from OpenStreetMap: car-pooling areas 🚗 (`amenity=car_pooling`), rest areas 🌳 (`highway=rest_area`) and park-and-ride 🅿️ (`amenity=parking` + `park_ride`). One toggle, three legend swatches with per-category counters, distinct map markers and click-through popups (type, capacity, operator, access, OSM link). URL layer code `aires`.
+- **`roadside-areas` Overpass dataset.** `scripts/update_osm_geojson.py` now builds `data/osm/roadside-areas.geojson` (160 points), refreshed on the usual twice-weekly OSM schedule. Parking is deliberately restricted to park-and-ride sites (excluding `park_ride=no`) to stay on roadside stopping areas rather than the ~8,000 private car parks of the department.
+
 ## [0.10.0] - 2026-07-22
 
 ### Added

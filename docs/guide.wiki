@@ -89,6 +89,16 @@ Chefs-lieux et grandes communes (centres + libellés).
 
 '''Comment :''' activer la couche pour les repères toponymiques.
 
+==== [layer:layer-aires] Aires d'arrêt & covoiturage ====
+
+Thématiques connexes valorisant d'autres missions du CD84 le long des routes départementales (issue #7), issues d'OpenStreetMap :
+
+* '''Aires de covoiturage''' 🚗 ({{{amenity=car_pooling}}}).
+* '''Aires de repos''' 🌳 ({{{highway=rest_area}}}).
+* '''Parkings-relais''' 🅿️ ({{{amenity=parking}}} + {{{park_ride}}}) — le stationnement est volontairement limité aux parkings-relais pour rester sur les aires d'arrêt le long des RD, sans afficher les milliers de parkings privés.
+
+'''Comment :''' activer la couche « Aires d'arrêt & covoiturage » ; chaque type a une pastille distincte et un compteur dans la légende. Cliquez un marqueur pour la fiche (type, capacité, gestion, accès, lien OpenStreetMap).
+
 === [family:stats] Données statistiques ===
 
 Données historiques ou agrégées — à charger à la demande pour ne pas surcharger la carte.

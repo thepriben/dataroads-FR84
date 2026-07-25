@@ -95,6 +95,23 @@ QUERIES = {
         );
         out geom;
     """,
+    # Aires connexes le long des RD (issue #7) : covoiturage, aires de repos et
+    # parkings-relais (park&ride). On limite volontairement le stationnement aux
+    # parkings-relais pour rester sur les "aires d'arrêt le long des RD" et éviter
+    # les ~8000 parkings privés du département.
+    "roadside-areas": """
+        [out:json][timeout:120];
+        area["ISO3166-2"="FR-84"]->.dept;
+        (
+          node(area.dept)["amenity"="car_pooling"];
+          way(area.dept)["amenity"="car_pooling"];
+          node(area.dept)["highway"="rest_area"];
+          way(area.dept)["highway"="rest_area"];
+          node(area.dept)["amenity"="parking"]["park_ride"];
+          way(area.dept)["amenity"="parking"]["park_ride"];
+        );
+        out center tags;
+    """,
 }
 
 
@@ -522,6 +539,81 @@ def guideposts_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     return collection(features, len(data.get("elements", [])))
 
 
+# Aires connexes : tags conservés pour l'affichage sans alourdir le fichier.
+ROADSIDE_AREA_KEEP = (
+    "name",
+    "operator",
+    "network",
+    "capacity",
+    "capacity:disabled",
+    "access",
+    "fee",
+    "opening_hours",
+    "ref",
+    "park_ride",
+    "surface",
+    "covered",
+    "lit",
+    "website",
+    "description",
+    "amenity",
+    "highway",
+)
+
+
+def roadside_area_kind(tags: dict[str, Any]) -> str | None:
+    if tags.get("amenity") == "car_pooling":
+        return "car_pooling"
+    if tags.get("highway") == "rest_area":
+        return "rest_area"
+    if tags.get("amenity") == "parking":
+        park_ride = str(tags.get("park_ride", "")).strip().lower()
+        if park_ride and park_ride not in ("no", "false", "0"):
+            return "park_ride"
+    return None
+
+
+def element_point(element: dict[str, Any]) -> list[float] | None:
+    lat = element.get("lat")
+    lon = element.get("lon")
+    if lat is None or lon is None:
+        center = element.get("center") or {}
+        lat = center.get("lat")
+        lon = center.get("lon")
+    if lat is None or lon is None:
+        return None
+    return [lon, lat]
+
+
+def roadside_areas_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    features: list[dict[str, Any]] = []
+    for element in data.get("elements", []):
+        tags = element.get("tags") or {}
+        kind = roadside_area_kind(tags)
+        if not kind:
+            continue
+        point = element_point(element)
+        if not point:
+            continue
+
+        properties = {key: tags[key] for key in ROADSIDE_AREA_KEEP if key in tags}
+        properties["area_kind"] = kind
+        properties["osm_type"] = element.get("type")
+        properties["osm_id"] = element.get("id")
+        properties["@id"] = f"{element.get('type')}/{element.get('id')}"
+
+        features.append(
+            {
+                "type": "Feature",
+                "id": properties["@id"],
+                "geometry": {"type": "Point", "coordinates": point},
+                "properties": properties,
+            }
+        )
+
+    return collection(features, len(data.get("elements", [])))
+
+
 CONVERTERS = {
     "departmental-roads": departmental_roads_to_geojson,
     "construction-roads": construction_roads_to_geojson,
@@ -530,6 +622,7 @@ CONVERTERS = {
     "bridges": bridge_features_to_geojson,
     "road-signs": road_signs_to_geojson,
     "guideposts": guideposts_to_geojson,
+    "roadside-areas": roadside_areas_to_geojson,
 }
 
 

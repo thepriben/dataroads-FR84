@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260722-3">
+    <link rel="stylesheet" href="css/styles.css?v=20260725-1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -193,6 +193,32 @@
                         <div class="legend-color" style="background: #2C3E50; width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff;"></div>
                         <div class="legend-label">Chefs-lieux et grandes villes</div>
                         <div class="legend-count">7</div>
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleRoadsideAreas && window.toggleRoadsideAreas();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Aires d'arrêt &amp; covoiturage</span>
+                        <span id="roadsideAreasToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-roadside-areas" data-schedule-key="osm"></span>
+
+                    <div class="legend-item" data-roadside-area="car_pooling" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color area-swatch area-swatch--car_pooling" aria-hidden="true">🚗</div>
+                        <div class="legend-label">Aires de covoiturage</div>
+                        <div class="legend-count" id="count-roadside-carpooling">-</div>
+                    </div>
+
+                    <div class="legend-item" data-roadside-area="rest_area" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color area-swatch area-swatch--rest_area" aria-hidden="true">🌳</div>
+                        <div class="legend-label">Aires de repos</div>
+                        <div class="legend-count" id="count-roadside-restarea">-</div>
+                    </div>
+
+                    <div class="legend-item" data-roadside-area="park_ride" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color area-swatch area-swatch--park_ride" aria-hidden="true">🅿️</div>
+                        <div class="legend-label">Parkings-relais</div>
+                        <div class="legend-count" id="count-roadside-parkride">-</div>
                     </div>
                 </div>
 
@@ -761,7 +787,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260722-2"></script>
+    <script src="js/app.js?v=20260725-1"></script>
     <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260620-3"></script>
 </body>
