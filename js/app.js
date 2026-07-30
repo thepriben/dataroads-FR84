@@ -1288,7 +1288,8 @@
         };
 
         function bridgeProviderLabel(provider) {
-            return provider === 'panoramax' ? 'Panoramax' : 'Mapillary';
+            // Délègue au service centralisé StreetPhoto (voir plus bas).
+            return StreetPhoto.label(provider);
         }
         let bisonFuteMarkers = [];
         let bisonFuteVisible = false;
@@ -7675,37 +7676,54 @@
             };
         }
 
-        function providerLabel(provider) {
-            return provider === 'panoramax' ? 'Panoramax' : 'Mapillary';
-        }
+        // ─────────────────────────────────────────────────────────────────
+        // Services photo de rue (Panoramax / Mapillary) — centralisés.
+        // Un seul endroit pour construire les URLs d'images, de visionneuses
+        // et les libellés, utilisé aussi bien par les ponts que par les aires.
+        // ─────────────────────────────────────────────────────────────────
+        const StreetPhoto = {
+            label(provider) {
+                return provider === 'panoramax' ? 'Panoramax' : 'Mapillary';
+            },
+            panoramax: {
+                // Image directe (fiable partout dans le projet).
+                imageUrl(id, size = 'sd') {
+                    return `https://api.panoramax.xyz/api/pictures/${encodeURIComponent(id)}/${size}.jpg`;
+                },
+                // Permalien de visionneuse = format exact copié par le widget
+                // « Partager » du viewer Panoramax : ${origin}/#focus=pic&pic=<id>
+                // (hash, pas query). `base` = instance d'origine (lien `via`).
+                pageUrl(id, seq, base) {
+                    const host = (base || 'https://panoramax.openstreetmap.fr').replace(/\/+$/, '');
+                    let url = `${host}/#focus=pic&pic=${encodeURIComponent(id)}`;
+                    if (seq) url += `&seq=${encodeURIComponent(seq)}`;
+                    return url;
+                }
+            },
+            mapillary: {
+                pageUrl(id) {
+                    return `https://www.mapillary.com/app/?pKey=${encodeURIComponent(id)}`;
+                },
+                embedUrl(id) {
+                    return `https://www.mapillary.com/embed?image_key=${encodeURIComponent(id)}&style=photo`;
+                }
+            },
+            externalUrl(provider, id, seq, base) {
+                return provider === 'panoramax'
+                    ? this.panoramax.pageUrl(id, seq, base)
+                    : this.mapillary.pageUrl(id);
+            }
+        };
 
-        function panoramaxImageUrl(id, size = 'sd') {
-            return `https://api.panoramax.xyz/api/pictures/${encodeURIComponent(id)}/${size}.jpg`;
-        }
-
-        function panoramaxPageUrl(id, seq, base) {
-            // On cible l'instance d'origine (base, issue du lien `via`) qui héberge
-            // la photo. IMPORTANT : le viewer détecte le focus photo en testant
-            // `href.includes("&focus=pic")` — il faut donc que `focus=pic` soit
-            // précédé d'un `&` (pas d'un `?`), sinon il retombe sur la carte.
-            // D'où l'ordre : ?pic=…[&seq=…]&focus=pic
-            const host = (base || 'https://panoramax.openstreetmap.fr').replace(/\/+$/, '');
-            let url = `${host}/?pic=${encodeURIComponent(id)}`;
-            if (seq) url += `&seq=${encodeURIComponent(seq)}`;
-            url += '&focus=pic';
-            return url;
-        }
-
-        function mapillaryPageUrl(id) {
-            return `https://www.mapillary.com/app/?pKey=${encodeURIComponent(id)}`;
-        }
-
-        function mapillaryEmbedUrl(id) {
-            return `https://www.mapillary.com/embed?image_key=${encodeURIComponent(id)}&style=photo`;
-        }
+        // Wrappers rétro-compatibles (les appelants existants restent inchangés).
+        function providerLabel(provider) { return StreetPhoto.label(provider); }
+        function panoramaxImageUrl(id, size) { return StreetPhoto.panoramax.imageUrl(id, size); }
+        function panoramaxPageUrl(id, seq, base) { return StreetPhoto.panoramax.pageUrl(id, seq, base); }
+        function mapillaryPageUrl(id) { return StreetPhoto.mapillary.pageUrl(id); }
+        function mapillaryEmbedUrl(id) { return StreetPhoto.mapillary.embedUrl(id); }
 
         function bridgePhotoExternalUrl(photo) {
-            return photo.provider === 'panoramax' ? panoramaxPageUrl(photo.id) : mapillaryPageUrl(photo.id);
+            return StreetPhoto.externalUrl(photo.provider, photo.id);
         }
 
         function bridgePhotoMetaLabel(photo) {

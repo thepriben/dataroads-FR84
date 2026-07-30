@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.11] - 2026-07-30
+
+### Changed
+
+- **Centralised the Panoramax/Mapillary street-photo services.** All image URLs, viewer permalinks and provider labels now live in a single `StreetPhoto` service used by both the bridges and the roadside-area layers (backward-compatible wrappers kept), removing the previously duplicated helpers (`providerLabel`/`bridgeProviderLabel`, scattered URL builders).
+
+### Fixed
+
+- **Panoramax viewer link uses the app's own canonical permalink.** Following the format produced by the Panoramax viewer's own "Share" button — `${origin}/#focus=pic&pic=<id>` (hash, not query) — instead of the earlier query-string guesses that fell back to the map.
+
 ## [0.11.10] - 2026-07-30
 
 ### Fixed
