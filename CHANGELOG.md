@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.6] - 2026-07-30
+
+### Fixed
+
+- **Panoramax sequence link opened the wrong viewer.** The link pointed to `panoramax.openstreetmap.fr`, but nearby photos are fetched from the federated `api.panoramax.xyz` catalog, whose UUIDs are only resolved by that host's viewer — so it fell back to the map. The "▶ Séquence" link now targets `https://api.panoramax.xyz/?focus=pic&pic=…&seq=…`. Caption shortened to "▶ Séquence".
+
 ## [0.11.5] - 2026-07-30
 
 ### Fixed

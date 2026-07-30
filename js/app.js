@@ -4238,7 +4238,7 @@
             const cap = areaPhotoLightbox.querySelector('.area-lightbox-cap');
             img.src = bigUrl;
             img.alt = label || 'Photo de rue';
-            cap.innerHTML = `${escapeHtml(label || '')}${sourceUrl ? ` · <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">▶ ouvrir la séquence jouable</a>` : ''}`;
+            cap.innerHTML = `${escapeHtml(label || '')}${sourceUrl ? ` · <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">▶ Séquence</a>` : ''}`;
             areaPhotoLightbox.classList.add('is-open');
         }
 
@@ -7701,9 +7701,11 @@
         }
 
         function panoramaxPageUrl(id, seq) {
-            // Panoramax v4 lit les paramètres dans la query (?), plus dans le hash (#).
-            // Ajouter la séquence (seq) permet d'ouvrir la séquence jouable, pas la carte.
-            let url = `https://panoramax.openstreetmap.fr/?focus=pic&pic=${encodeURIComponent(id)}`;
+            // On interroge le catalogue fédéré api.panoramax.xyz : l'UUID renvoyé
+            // n'est résolu que par la visionneuse du même hôte. Panoramax v4 lit
+            // les paramètres dans la query (?), plus dans le hash (#), et la
+            // séquence (seq) ouvre la photo focalisée/jouable au lieu de la carte.
+            let url = `https://api.panoramax.xyz/?focus=pic&pic=${encodeURIComponent(id)}`;
             if (seq) url += `&seq=${encodeURIComponent(seq)}`;
             return url;
         }
