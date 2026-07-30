@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.4] - 2026-07-30
+
+### Added
+
+- **Laybys (`parking=layby`) as a fourth roadside-area category.** Roadside stopping areas along departmental roads (`amenity=parking` + `parking=layby`) now have their own legend row, counter and orange marker ("Aires d'arrêt"), fulfilling the first bullet of issue #7. Dataset grows to 213 areas (rest_area 109, layby 50, car_pooling 32, park_ride 22).
+
 ## [0.11.3] - 2026-07-30
 
 ### Fixed

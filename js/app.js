@@ -4085,7 +4085,8 @@
         const ROADSIDE_AREA_STYLE = {
             car_pooling: { color: '#2E7D32', glyph: '🚗', label: 'Aire de covoiturage' },
             rest_area: { color: '#00897B', glyph: '🌳', label: 'Aire de repos' },
-            park_ride: { color: '#3949AB', glyph: '🅿️', label: 'Parking-relais' }
+            park_ride: { color: '#3949AB', glyph: '🅿️', label: 'Parking-relais' },
+            layby: { color: '#F57C00', glyph: '🅿️', label: "Aire d'arrêt" }
         };
 
         // Valorisation de la complétude OSM : quelques attributs clés attendus sur
@@ -4408,7 +4409,7 @@
         }
 
         function setRoadsideAreasLegendCounts(features = []) {
-            const counts = { car_pooling: 0, rest_area: 0, park_ride: 0 };
+            const counts = { car_pooling: 0, rest_area: 0, park_ride: 0, layby: 0 };
             features.forEach(feature => {
                 const kind = feature.properties?.area_kind;
                 if (kind && Object.prototype.hasOwnProperty.call(counts, kind)) counts[kind]++;
@@ -4416,7 +4417,8 @@
             const map = {
                 'count-roadside-carpooling': counts.car_pooling,
                 'count-roadside-restarea': counts.rest_area,
-                'count-roadside-parkride': counts.park_ride
+                'count-roadside-parkride': counts.park_ride,
+                'count-roadside-layby': counts.layby
             };
             Object.entries(map).forEach(([id, value]) => {
                 const el = document.getElementById(id);

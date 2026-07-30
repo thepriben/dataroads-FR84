@@ -95,7 +95,10 @@ Thématiques connexes valorisant d'autres missions du CD84 le long des routes d�
 
 * '''Aires de covoiturage''' 🚗 ({{{amenity=car_pooling}}}).
 * '''Aires de repos''' 🌳 ({{{highway=rest_area}}}).
-* '''Parkings-relais''' 🅿️ ({{{amenity=parking}}} + {{{park_ride}}}) — le stationnement est volontairement limité aux parkings-relais pour rester sur les aires d'arrêt le long des RD, sans afficher les milliers de parkings privés.
+* '''Parkings-relais''' 🅿️ ({{{amenity=parking}}} + {{{park_ride}}}).
+* '''Aires d'arrêt''' 🅿️ ({{{amenity=parking}}} + {{{parking=layby}}}) — les aires d'arrêt le long des RD.
+
+Le stationnement est volontairement limité aux parkings-relais et aux aires d'arrêt (layby) pour rester sur les aires le long des RD, sans afficher les milliers de parkings privés. Les objets sont pris en compte qu'ils soient cartographiés en nœud, en contour (way) ou en relation multipolygone.
 
 Quand l'aire est cartographiée comme surface dans OSM — que ce soit un contour simple ''ou'' une relation multipolygone (ex. le P+R de l'Île Piot à Avignon) — son '''emprise''' est tracée (remplissage clair coordonné à la couleur du type) avec un marqueur central.
 

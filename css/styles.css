@@ -1905,6 +1905,7 @@
         .area-swatch--car_pooling { --area-color: #2E7D32; }
         .area-swatch--rest_area { --area-color: #00897B; }
         .area-swatch--park_ride { --area-color: #3949AB; }
+        .area-swatch--layby { --area-color: #F57C00; }
 
         .area-marker-wrapper {
             background: transparent;

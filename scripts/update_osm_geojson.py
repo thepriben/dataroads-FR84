@@ -112,6 +112,9 @@ QUERIES = {
           node(area.dept)["amenity"="parking"]["park_ride"];
           way(area.dept)["amenity"="parking"]["park_ride"];
           relation(area.dept)["amenity"="parking"]["park_ride"];
+          node(area.dept)["amenity"="parking"]["parking"="layby"];
+          way(area.dept)["amenity"="parking"]["parking"="layby"];
+          relation(area.dept)["amenity"="parking"]["parking"="layby"];
         );
         out geom;
     """,
@@ -576,6 +579,8 @@ def roadside_area_kind(tags: dict[str, Any]) -> str | None:
     if tags.get("highway") == "rest_area":
         return "rest_area"
     if tags.get("amenity") == "parking":
+        if str(tags.get("parking", "")).strip().lower() == "layby":
+            return "layby"
         park_ride = str(tags.get("park_ride", "")).strip().lower()
         if park_ride and park_ride not in ("no", "false", "0"):
             return "park_ride"

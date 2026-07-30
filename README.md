@@ -48,7 +48,7 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 | Routes départementales | OpenStreetMap | cache du 2026-05-17 22:52 UTC | Données réseau, pas un millésime administratif CD84. |
 | Routes en construction | OpenStreetMap | cache du 2026-05-17 22:53 UTC | Quelques ouvertures indiquées entre 2025 et 2027 selon les tags OSM. |
 | Communes | OpenStreetMap | cache du 2026-05-17 22:53 UTC | 151 communes ; les tags de population pointent vers 2021. |
-| Aires d'arrêt & covoiturage | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 160 aires : covoiturage, aires de repos, parkings-relais le long des RD (issue #7), générées par `scripts/update_osm_geojson.py`. |
+| Aires d'arrêt & covoiturage | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 213 aires : covoiturage, aires de repos, parkings-relais et aires d'arrêt (layby) le long des RD (issue #7), nœuds / contours / relations, générées par `scripts/update_osm_geojson.py`. |
 | Limite du Vaucluse | OpenStreetMap | GeoJSON local | Limite départementale 84, figée dans `data/static/`. |
 | Accidentologie | BAAC / ONISR (data.gouv.fr) | 2019-2024 | 1 923 accidents corporels géolocalisés (dép. 84), généré par `scripts/build_accidents_vaucluse.py`. |
 | Comptages CD84 | data.gouv.fr | 1996-2025 | 3 098 observations ; la carte affiche la dernière année disponible par station. |
