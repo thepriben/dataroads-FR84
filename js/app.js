@@ -4145,8 +4145,8 @@
                         if (dist < bestDist) { bestDist = dist; best = feature; }
                     });
                     if (best && bestDist <= radiusM) {
-                        const thumb = best.assets?.thumb?.href || panoramaxImageUrl(best.id, 'thumb');
-                        const large = best.assets?.sd?.href || panoramaxImageUrl(best.id, 'sd');
+                        const thumb = best.assets?.thumb?.href || (window.panoramaxImageUrl && window.panoramaxImageUrl(best.id, 'thumb'));
+                        const large = best.assets?.sd?.href || (window.panoramaxImageUrl && window.panoramaxImageUrl(best.id, 'sd'));
                         // Le viewer du méta-catalogue (api.panoramax.xyz) ne cible pas
                         // proprement une photo fédérée : on ouvre l'instance d'origine
                         // (lien `via`) qui héberge la photo et a un vrai viewer.
@@ -4190,7 +4190,7 @@
             const cards = [];
             if (photos && photos.panoramax) {
                 const when = roadsidePhotoDate(photos.panoramax.datetime);
-                const src = (typeof panoramaxPageUrl === 'function') ? panoramaxPageUrl(photos.panoramax.id, photos.panoramax.seq, photos.panoramax.viewer) : '#';
+                const src = (window.panoramaxPageUrl && window.panoramaxPageUrl(photos.panoramax.id, photos.panoramax.seq, photos.panoramax.viewer)) || '#';
                 const label = `Panoramax${when ? ' · ' + when : ''}`;
                 cards.push(`
                     <a class="area-pop-photo" href="${src}" target="_blank" rel="noopener noreferrer"
@@ -4222,18 +4222,21 @@
             return `<div class="area-pop-photos">${cards.join('')}</div>`;
         }
 
-        // Clic sur une vignette d'aire : ouvrir la séquence source dans un nouvel
-        // onglet, sans fermer la popup Leaflet (stopPropagation) ni ouvrir deux
-        // fois l'onglet (preventDefault + window.open explicite).
+        // Clic sur une vignette d'aire : ouvrir le viewer source dans un nouvel
+        // onglet, sans fermer la popup Leaflet (stopPropagation). On neutralise
+        // TOUJOURS le comportement par défaut du lien AVANT tout `return`, sinon
+        // un href="#" ouvrirait notre propre site (dataroads) dans un onglet.
+        // On n'ouvre que des URLs absolues http(s).
         document.addEventListener('click', event => {
             const photo = event.target.closest && event.target.closest('.area-pop-photo');
             if (!photo) return;
             if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
-            const href = photo.getAttribute('href');
-            if (!href || href === '#') return;
             event.preventDefault();
             event.stopPropagation();
-            window.open(href, '_blank', 'noopener,noreferrer');
+            const href = photo.getAttribute('href');
+            if (href && /^https?:\/\//i.test(href)) {
+                window.open(href, '_blank', 'noopener,noreferrer');
+            }
         });
 
         function buildRoadsideAreaPopup(props, photos, photosState) {
@@ -9753,9 +9756,11 @@
             });
         }
 
-        // Exposé pour les couches définies hors de ce bloc DOMContentLoaded (ex. panneaux).
+        // Exposé pour les couches définies hors de ce bloc DOMContentLoaded (ex. panneaux, aires).
         window.checkMapillaryNearby = checkMapillaryNearby;
         window.mapillaryPageUrl = mapillaryPageUrl;
+        window.panoramaxPageUrl = panoramaxPageUrl;
+        window.panoramaxImageUrl = panoramaxImageUrl;
 
         function speedDivIcon(kmh, hasMapillary) {
             return L.divIcon({

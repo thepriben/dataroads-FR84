@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.12] - 2026-07-30
+
+### Fixed
+
+- **Real root cause of the Panoramax link opening our own map.** `roadsidePhotosHtml` runs outside the main `DOMContentLoaded` block, so it can only reach helpers exposed on `window` (as Mapillary already was). `panoramaxPageUrl`/`panoramaxImageUrl` were never exposed, so the reference resolved to `undefined` and the thumbnail href fell back to `#` — clicking then opened dataroads itself (its map) in a new tab. Now `window.panoramaxPageUrl`/`window.panoramaxImageUrl` are exposed and used, so the Panoramax thumbnail opens the real picture, symmetrically to Mapillary.
+
 ## [0.11.11] - 2026-07-30
 
 ### Changed
