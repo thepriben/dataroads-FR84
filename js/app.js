@@ -4146,9 +4146,18 @@
                     if (best && bestDist <= radiusM) {
                         const thumb = best.assets?.thumb?.href || panoramaxImageUrl(best.id, 'thumb');
                         const large = best.assets?.sd?.href || panoramaxImageUrl(best.id, 'sd');
+                        // Le viewer du méta-catalogue (api.panoramax.xyz) ne cible pas
+                        // proprement une photo fédérée : on ouvre l'instance d'origine
+                        // (lien `via`) qui héberge la photo et a un vrai viewer.
+                        const viaLink = (best.links || []).find(l => l && l.rel === 'via' && typeof l.href === 'string');
+                        let viewer = viaLink ? viaLink.href.replace(/\/+$/, '') : null;
+                        if (!viewer && best.assets?.hd?.href) {
+                            try { viewer = new URL(best.assets.hd.href).origin; } catch (e) { viewer = null; }
+                        }
                         result = {
                             id: best.id,
                             seq: best.collection || null,
+                            viewer: viewer || 'https://panoramax.openstreetmap.fr',
                             thumb,
                             large,
                             datetime: best.properties?.datetime,
@@ -4180,7 +4189,7 @@
             const cards = [];
             if (photos && photos.panoramax) {
                 const when = roadsidePhotoDate(photos.panoramax.datetime);
-                const src = (typeof panoramaxPageUrl === 'function') ? panoramaxPageUrl(photos.panoramax.id, photos.panoramax.seq) : '#';
+                const src = (typeof panoramaxPageUrl === 'function') ? panoramaxPageUrl(photos.panoramax.id, photos.panoramax.seq, photos.panoramax.viewer) : '#';
                 const label = `Panoramax${when ? ' · ' + when : ''}`;
                 cards.push(`
                     <a class="area-pop-photo" href="${src}" target="_blank" rel="noopener noreferrer"
@@ -7700,12 +7709,13 @@
             return `https://api.panoramax.xyz/api/pictures/${encodeURIComponent(id)}/${size}.jpg`;
         }
 
-        function panoramaxPageUrl(id, seq) {
-            // On interroge le catalogue fédéré api.panoramax.xyz : l'UUID renvoyé
-            // n'est résolu que par la visionneuse du même hôte. Panoramax v4 lit
-            // les paramètres dans la query (?), plus dans le hash (#), et la
+        function panoramaxPageUrl(id, seq, base) {
+            // Panoramax v4 lit les paramètres dans la query (?), plus le hash (#).
+            // On cible l'instance d'origine (base, issue du lien `via`) car le
+            // viewer du méta-catalogue ne focalise pas une photo fédérée. La
             // séquence (seq) ouvre la photo focalisée/jouable au lieu de la carte.
-            let url = `https://api.panoramax.xyz/?focus=pic&pic=${encodeURIComponent(id)}`;
+            const host = (base || 'https://panoramax.openstreetmap.fr').replace(/\/+$/, '');
+            let url = `${host}/?focus=pic&pic=${encodeURIComponent(id)}`;
             if (seq) url += `&seq=${encodeURIComponent(seq)}`;
             return url;
         }

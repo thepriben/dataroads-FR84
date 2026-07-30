@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.7] - 2026-07-30
+
+### Fixed
+
+- **Panoramax sequence now opens on the origin instance viewer.** Targeting the federated meta-catalog viewer (`api.panoramax.xyz`) landed on the coverage map instead of the picture. Each photo's origin instance is now derived from its STAC `via` link (e.g. `panoramax.openstreetmap.fr`), which hosts a real picture viewer and shares the same `pic`/`seq` UUIDs, so "▶ Séquence" opens the focused, playable picture. Falls back to `panoramax.openstreetmap.fr` if `via` is absent.
+
 ## [0.11.6] - 2026-07-30
 
 ### Fixed
