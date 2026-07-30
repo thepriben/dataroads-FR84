@@ -7670,13 +7670,15 @@
         }
 
         function panoramaxPageUrl(id, seq, base) {
-            // Panoramax v4 lit les paramètres dans la query (?), plus le hash (#).
-            // On cible l'instance d'origine (base, issue du lien `via`) car le
-            // viewer du méta-catalogue ne focalise pas une photo fédérée. La
-            // séquence (seq) ouvre la photo focalisée/jouable au lieu de la carte.
+            // On cible l'instance d'origine (base, issue du lien `via`) qui héberge
+            // la photo. IMPORTANT : le viewer détecte le focus photo en testant
+            // `href.includes("&focus=pic")` — il faut donc que `focus=pic` soit
+            // précédé d'un `&` (pas d'un `?`), sinon il retombe sur la carte.
+            // D'où l'ordre : ?pic=…[&seq=…]&focus=pic
             const host = (base || 'https://panoramax.openstreetmap.fr').replace(/\/+$/, '');
-            let url = `${host}/?focus=pic&pic=${encodeURIComponent(id)}`;
+            let url = `${host}/?pic=${encodeURIComponent(id)}`;
             if (seq) url += `&seq=${encodeURIComponent(seq)}`;
+            url += '&focus=pic';
             return url;
         }
 

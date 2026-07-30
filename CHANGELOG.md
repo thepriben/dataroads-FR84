@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.9] - 2026-07-30
+
+### Fixed
+
+- **Panoramax photo link now really opens the picture (not the map).** Root cause found in the Panoramax web viewer: it decides the initial focus with `href.includes("&focus=pic")`, so `focus=pic` must be preceded by `&`. Our URL started with `?focus=pic&…`, so the check failed and it fell back to the map. Reordered to `?pic=…&seq=…&focus=pic`, making Panoramax behave symmetrically to the Mapillary link.
+
 ## [0.11.8] - 2026-07-30
 
 ### Changed
