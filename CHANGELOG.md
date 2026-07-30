@@ -5,6 +5,17 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.13] - 2026-07-30
+
+### Added
+
+- **Clickable legend subtype rows, matching the network hierarchy.** A complete row now hides or shows its subtype independently, dims when disabled, supports keyboard activation, and puts the parent layer eye in a partial state. This applies to roadside areas, bicycle routes, construction/proposed roads, accident severity, traffic levels, current road-event types, stop/give-way signs, and webcam categories.
+
+### Changed
+
+- **Roadside-area filtering is now genuinely cartographic.** Car-pooling areas, rest areas, park-and-ride and laybys are stored in separate Leaflet subgroups, so clicking a legend row hides both the marker and any mapped footprint.
+- **User guides updated** in French and English with the three visibility levels (family, layer, subtype).
+
 ## [0.11.12] - 2026-07-30
 
 ### Fixed

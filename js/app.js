@@ -1231,13 +1231,17 @@
         let wazeLayer = null;
         let trafficMarkers = [];
         let trafficVisible = false;
+        const trafficTypeVisibility = { high: true, medium: true, low: true };
         let accidentMarkers = [];
         let accidentsVisible = false;
+        const accidentTypeVisibility = { mortel: true, grave: true, leger: true };
         let convoiMode = false;
         let constructionPolylines = [];
         let constructionVisible = false;
+        const constructionTypeVisibility = { highway: true, proposed: true };
         let bicyclePolylines = [];
         let bicycleVisible = false;
+        const bicycleTypeVisibility = { EV17: true, EV8: true, V861: true, local: true };
         let bridgeGeometryLayerGroup = null;
         let bridgeGroupMarkerLayerGroup = null;
         let bridgePhotoLayerGroup = null;
@@ -1256,11 +1260,20 @@
         let inaturalistMapClickHandler = null;
         let incubatorMapSyncHandler = null;
         let webcamsLayerGroup = null;
+        let webcamMarkers = [];
         let webcamsVisible = false;
         let webcamsLoaded = false;
+        const webcamTypeVisibility = { traffic: true, mountain: true };
         let roadsideAreasLayerGroup = null;
+        const roadsideAreaLayerGroups = {};
         let roadsideAreasVisible = false;
         let roadsideAreasLoaded = false;
+        const roadsideAreaTypeVisibility = {
+            car_pooling: true,
+            rest_area: true,
+            park_ride: true,
+            layby: true
+        };
         let bridgeGroups = [];
         let bridgePhotoMarkers = [];
         let bridgeGroupById = new Map();
@@ -1293,6 +1306,43 @@
         }
         let bisonFuteMarkers = [];
         let bisonFuteVisible = false;
+        const bisonFuteTypeVisibility = { travaux: true, bouchons: true, accidents: true };
+
+        // Shared behaviour for clickable legend subtype rows. This mirrors the
+        // existing network-hierarchy interaction: the whole row is clickable,
+        // disabled subtypes are dimmed, and the parent layer can remain partially
+        // visible. Single summary rows are intentionally not registered here.
+        function updateSubtypeLegendUi(dataAttribute, visibility, layerVisible) {
+            document.querySelectorAll(`[data-${dataAttribute}]`).forEach(item => {
+                const key = item.dataset[dataAttribute.replace(/-([a-z])/g, (_m, c) => c.toUpperCase())];
+                if (!key || key === 'total') return;
+                const enabled = visibility[key] !== false;
+                item.style.cursor = layerVisible ? 'pointer' : 'default';
+                item.style.pointerEvents = layerVisible ? 'auto' : 'none';
+                item.style.opacity = layerVisible ? (enabled ? '1' : '0.4') : '0.5';
+                item.style.fontWeight = enabled ? '600' : '400';
+                item.style.userSelect = 'none';
+                item.style.transition = 'opacity 0.2s ease';
+                item.tabIndex = layerVisible ? 0 : -1;
+                item.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+            });
+            const iconIds = {
+                bicycle: 'bicycleToggleIcon',
+                construction: 'constructionToggleIcon',
+                'roadside-area': 'roadsideAreasToggleIcon',
+                accident: 'accidentToggleIcon',
+                traffic: 'trafficToggleIcon',
+                'bison-fute': 'bisonFuteToggleIcon',
+                'road-sign': 'roadSignsToggleIcon',
+                webcam: 'webcamsToggleIcon'
+            };
+            const icon = document.getElementById(iconIds[dataAttribute]);
+            if (icon) {
+                const values = Object.values(visibility);
+                const partial = layerVisible && !values.every(Boolean);
+                setToggleIcon(icon, layerVisible, { partial });
+            }
+        }
         let cityMarkers = [];
         let citiesVisible = false;
         const WEATHER_STATIONS = [
@@ -2416,6 +2466,7 @@
         // couverts (comme les panneaux de vitesse).
         const roadSignsLayer = L.layerGroup();
         let roadSignsVisible = false;
+        const roadSignTypeVisibility = { stop: true, yield: true };
         let roadSignsDataLoaded = false;
         let roadSignsFeatures = [];
         let roadSignsZoomHandler = null;
@@ -2533,7 +2584,10 @@
                 if (!coords) continue;
                 const lng = coords[0], lat = coords[1];
                 if (!bounds.contains([lat, lng])) continue;
-                visible.push({ lat, lng, kind: feature.properties && feature.properties.highway });
+                const kind = feature.properties && feature.properties.highway;
+                const visibilityKey = kind === 'give_way' ? 'yield' : kind;
+                if (roadSignTypeVisibility[visibilityKey] === false) continue;
+                visible.push({ lat, lng, kind });
             }
             if (zoom >= ROAD_SIGNS_SIGN_ZOOM) {
                 // Panneaux individuels (vrais pictogrammes) une fois suffisamment zoomé.
@@ -2565,21 +2619,23 @@
             const icon = document.getElementById('roadSignsToggleIcon');
             setToggleIcon(icon, true);
             if (icon) icon.style.opacity = '';
-            document.querySelectorAll('[data-road-sign]').forEach(item => {
-                item.style.opacity = '1';
-                item.style.pointerEvents = 'auto';
-            });
+            updateSubtypeLegendUi('road-sign', roadSignTypeVisibility, true);
         }
 
         function applyRoadSignsHiddenUi() {
             const icon = document.getElementById('roadSignsToggleIcon');
             setToggleIcon(icon, false);
             if (icon) icon.style.opacity = '';
-            document.querySelectorAll('[data-road-sign]').forEach(item => {
-                item.style.opacity = '0.5';
-                item.style.pointerEvents = 'none';
-            });
+            updateSubtypeLegendUi('road-sign', roadSignTypeVisibility, false);
         }
+
+        window.toggleRoadSignType = function(kind) {
+            if (!roadSignsVisible || !Object.prototype.hasOwnProperty.call(roadSignTypeVisibility, kind)) return;
+            roadSignTypeVisibility[kind] = !roadSignTypeVisibility[kind];
+            renderRoadSigns();
+            updateSubtypeLegendUi('road-sign', roadSignTypeVisibility, true);
+            syncLegendChrome();
+        };
 
         function syncRoadSignsOnMap() {
             if (roadSignsVisible) {
@@ -3965,6 +4021,7 @@
             });
             marker.on('popupopen', () => activateWebcamPopupMedia(marker));
             marker.on('popupclose', () => deactivateWebcamPopupMedia(marker));
+            marker.webcamCategory = props.category || 'traffic';
             return marker;
         }
 
@@ -3989,10 +4046,7 @@
             setToggleIcon(icon, true);
             if (icon) icon.style.opacity = '';
             if (title) title.style.fontWeight = '700';
-            legendItems.forEach(item => {
-                item.style.opacity = '1';
-                item.style.pointerEvents = 'auto';
-            });
+            updateSubtypeLegendUi('webcam', webcamTypeVisibility, true);
         }
 
         function applyWebcamsHiddenUi() {
@@ -4001,14 +4055,17 @@
             const legendItems = document.querySelectorAll('[data-webcam]');
             setToggleIcon(icon, false);
             if (title) title.style.fontWeight = '600';
-            legendItems.forEach(item => {
-                item.style.opacity = '0.5';
-                item.style.pointerEvents = 'none';
-            });
+            updateSubtypeLegendUi('webcam', webcamTypeVisibility, false);
         }
 
         function syncWebcamsOnMap() {
             if (!webcamsLayerGroup || !window.map) return;
+            webcamsLayerGroup.clearLayers();
+            webcamMarkers.forEach(marker => {
+                if (webcamTypeVisibility[marker.webcamCategory] !== false) {
+                    webcamsLayerGroup.addLayer(marker);
+                }
+            });
             const onMap = window.map.hasLayer(webcamsLayerGroup);
             if (webcamsVisible && !onMap) webcamsLayerGroup.addTo(window.map);
             if (!webcamsVisible && onMap) window.map.removeLayer(webcamsLayerGroup);
@@ -4038,6 +4095,14 @@
             syncLegendChrome();
         };
 
+        window.toggleWebcamType = function(kind) {
+            if (!webcamsVisible || !Object.prototype.hasOwnProperty.call(webcamTypeVisibility, kind)) return;
+            webcamTypeVisibility[kind] = !webcamTypeVisibility[kind];
+            syncWebcamsOnMap();
+            updateSubtypeLegendUi('webcam', webcamTypeVisibility, true);
+            syncLegendChrome();
+        };
+
         window.loadWebcams = async function(options = {}) {
             const wantVisible = options.show === true || webcamsVisible || appUrlWantsLayer('wcam');
             try {
@@ -4050,9 +4115,10 @@
                 }
 
                 webcamsLayerGroup = L.layerGroup();
+                webcamMarkers = [];
                 features.forEach(feature => {
                     const marker = makeWebcamMarker(feature);
-                    if (marker) webcamsLayerGroup.addLayer(marker);
+                    if (marker) webcamMarkers.push(marker);
                 });
 
                 webcamsLoaded = true;
@@ -4421,10 +4487,7 @@
             setToggleIcon(icon, true);
             if (icon) icon.style.opacity = '';
             if (title) title.style.fontWeight = '700';
-            legendItems.forEach(item => {
-                item.style.opacity = '1';
-                item.style.pointerEvents = 'auto';
-            });
+            updateSubtypeLegendUi('roadside-area', roadsideAreaTypeVisibility, true);
         }
 
         function applyRoadsideAreasHiddenUi() {
@@ -4433,14 +4496,19 @@
             const legendItems = document.querySelectorAll('[data-roadside-area]');
             setToggleIcon(icon, false);
             if (title) title.style.fontWeight = '600';
-            legendItems.forEach(item => {
-                item.style.opacity = '0.5';
-                item.style.pointerEvents = 'none';
-            });
+            updateSubtypeLegendUi('roadside-area', roadsideAreaTypeVisibility, false);
         }
 
         function syncRoadsideAreasOnMap() {
             if (!roadsideAreasLayerGroup || !window.map) return;
+            Object.entries(roadsideAreaLayerGroups).forEach(([kind, group]) => {
+                const included = roadsideAreasLayerGroup.hasLayer(group);
+                if (roadsideAreaTypeVisibility[kind] !== false && !included) {
+                    roadsideAreasLayerGroup.addLayer(group);
+                } else if (roadsideAreaTypeVisibility[kind] === false && included) {
+                    roadsideAreasLayerGroup.removeLayer(group);
+                }
+            });
             const onMap = window.map.hasLayer(roadsideAreasLayerGroup);
             if (roadsideAreasVisible && !onMap) roadsideAreasLayerGroup.addTo(window.map);
             if (!roadsideAreasVisible && onMap) window.map.removeLayer(roadsideAreasLayerGroup);
@@ -4470,6 +4538,14 @@
             syncLegendChrome();
         };
 
+        window.toggleRoadsideAreaType = function(kind) {
+            if (!roadsideAreasVisible || !Object.prototype.hasOwnProperty.call(roadsideAreaTypeVisibility, kind)) return;
+            roadsideAreaTypeVisibility[kind] = !roadsideAreaTypeVisibility[kind];
+            syncRoadsideAreasOnMap();
+            updateSubtypeLegendUi('roadside-area', roadsideAreaTypeVisibility, true);
+            syncLegendChrome();
+        };
+
         window.loadRoadsideAreas = async function(options = {}) {
             const wantVisible = options.show === true || roadsideAreasVisible || appUrlWantsLayer('aires');
             try {
@@ -4487,8 +4563,14 @@
                 }
 
                 roadsideAreasLayerGroup = L.layerGroup();
+                Object.keys(roadsideAreaTypeVisibility).forEach(kind => {
+                    roadsideAreaLayerGroups[kind] = L.layerGroup();
+                });
                 features.forEach(feature => {
-                    makeRoadsideAreaLayers(feature).forEach(layer => roadsideAreasLayerGroup.addLayer(layer));
+                    const kind = feature.properties?.area_kind;
+                    const group = roadsideAreaLayerGroups[kind];
+                    if (!group) return;
+                    makeRoadsideAreaLayers(feature).forEach(layer => group.addLayer(layer));
                 });
 
                 roadsideAreasLoaded = true;
@@ -4525,10 +4607,7 @@
             setToggleIcon(icon, true);
             if (icon) icon.style.opacity = '';
             if (title) title.style.fontWeight = '700';
-            legendItems.forEach(item => {
-                item.style.opacity = '1';
-                item.style.pointerEvents = 'auto';
-            });
+            updateSubtypeLegendUi('construction', constructionTypeVisibility, true);
         }
 
         function applyConstructionHiddenUi() {
@@ -4538,10 +4617,7 @@
             setToggleIcon(icon, false);
             if (icon) icon.style.opacity = '';
             if (title) title.style.fontWeight = '600';
-            legendItems.forEach(item => {
-                item.style.opacity = '0.5';
-                item.style.pointerEvents = 'none';
-            });
+            updateSubtypeLegendUi('construction', constructionTypeVisibility, false);
         }
 
         function clearConstructionPolylines() {
@@ -4554,8 +4630,9 @@
         function syncConstructionPolylinesOnMap() {
             constructionPolylines.forEach(polyline => {
                 const onMap = window.map?.hasLayer(polyline);
-                if (constructionVisible && !onMap) polyline.addTo(window.map);
-                if (!constructionVisible && onMap) window.map.removeLayer(polyline);
+                const typeVisible = constructionTypeVisibility[polyline.constructionType] !== false;
+                if (constructionVisible && typeVisible && !onMap) polyline.addTo(window.map);
+                if ((!constructionVisible || !typeVisible) && onMap) window.map.removeLayer(polyline);
             });
         }
 
@@ -4589,6 +4666,14 @@
             applyConstructionVisibleUi();
             syncLegendChrome();
             console.log(`✓ ${constructionPolylines.length} polyline(s) construction affichée(s)`);
+        };
+
+        window.toggleConstructionType = function(kind) {
+            if (!constructionVisible || !Object.prototype.hasOwnProperty.call(constructionTypeVisibility, kind)) return;
+            constructionTypeVisibility[kind] = !constructionTypeVisibility[kind];
+            syncConstructionPolylinesOnMap();
+            updateSubtypeLegendUi('construction', constructionTypeVisibility, true);
+            syncLegendChrome();
         };
 
         // ========== BIKE ROUTES (OSM route=bicycle relations) ==========
@@ -4763,7 +4848,11 @@
                 weight: style.weight,
                 opacity: style.opacity,
                 dashArray: style.dashArray || null
-            }).addTo(window.map);
+            });
+            polyline.bicycleType = style.structuranteRef || 'local';
+            if (bicycleVisible && bicycleTypeVisibility[polyline.bicycleType] !== false) {
+                polyline.addTo(window.map);
+            }
 
             bicyclePolylines.push(polyline);
 
@@ -4809,10 +4898,7 @@
             setToggleIcon(icon, true);
             if (icon) icon.style.opacity = '';
             if (title) title.style.fontWeight = '700';
-            legendItems.forEach(item => {
-                item.style.opacity = '1';
-                item.style.pointerEvents = 'auto';
-            });
+            updateSubtypeLegendUi('bicycle', bicycleTypeVisibility, true);
         }
 
         function applyBicycleHiddenUi() {
@@ -4822,10 +4908,7 @@
             setToggleIcon(icon, false);
             if (icon) icon.style.opacity = '';
             if (title) title.style.fontWeight = '600';
-            legendItems.forEach(item => {
-                item.style.opacity = '0.5';
-                item.style.pointerEvents = 'none';
-            });
+            updateSubtypeLegendUi('bicycle', bicycleTypeVisibility, false);
         }
 
         window.toggleBicycleRoutes = function() {
@@ -4848,9 +4931,24 @@
             }
 
             bicyclePolylines.forEach(polyline => {
-                if (!window.map.hasLayer(polyline)) polyline.addTo(window.map);
+                if (bicycleTypeVisibility[polyline.bicycleType] !== false && !window.map.hasLayer(polyline)) {
+                    polyline.addTo(window.map);
+                }
             });
             applyBicycleVisibleUi();
+            syncLegendChrome();
+        };
+
+        window.toggleBicycleType = function(kind) {
+            if (!bicycleVisible || !Object.prototype.hasOwnProperty.call(bicycleTypeVisibility, kind)) return;
+            bicycleTypeVisibility[kind] = !bicycleTypeVisibility[kind];
+            bicyclePolylines.forEach(polyline => {
+                const shouldShow = bicycleVisible && bicycleTypeVisibility[polyline.bicycleType] !== false;
+                const onMap = window.map.hasLayer(polyline);
+                if (shouldShow && !onMap) polyline.addTo(window.map);
+                if (!shouldShow && onMap) window.map.removeLayer(polyline);
+            });
+            updateSubtypeLegendUi('bicycle', bicycleTypeVisibility, true);
             syncLegendChrome();
         };
 
@@ -5094,19 +5192,13 @@
                 // Show accidents (respecting the current year filter)
                 setToggleIcon(icon, true);
                 if (title) title.style.fontWeight = '700';
-                legendItems.forEach(item => {
-                    item.style.opacity = '1';
-                    item.style.pointerEvents = 'auto';
-                });
+                updateSubtypeLegendUi('accident', accidentTypeVisibility, true);
                 if (timeline) timeline.style.display = '';
             } else {
                 // Hide accidents
                 setToggleIcon(icon, false);
                 if (title) title.style.fontWeight = '600';
-                legendItems.forEach(item => {
-                    item.style.opacity = '0.5';
-                    item.style.pointerEvents = 'none';
-                });
+                updateSubtypeLegendUi('accident', accidentTypeVisibility, false);
                 if (timeline) timeline.style.display = 'none';
                 console.log('✗ Accidents masqués');
             }
@@ -5115,6 +5207,14 @@
             if (typeof applyAccidentVisibility === 'function') applyAccidentVisibility();
             syncLegendChrome();
         }
+
+        window.toggleAccidentType = function(kind) {
+            if (!accidentsVisible || !Object.prototype.hasOwnProperty.call(accidentTypeVisibility, kind)) return;
+            accidentTypeVisibility[kind] = !accidentTypeVisibility[kind];
+            applyAccidentVisibility();
+            updateSubtypeLegendUi('accident', accidentTypeVisibility, true);
+            syncLegendChrome();
+        };
 
         // ========== TRAFFIC COUNTING STATIONS ==========
 
@@ -5128,8 +5228,9 @@
         function syncTrafficMarkersOnMap() {
             trafficMarkers.forEach(marker => {
                 const onMap = window.map.hasLayer(marker);
-                if (trafficVisible && !onMap) marker.addTo(window.map);
-                if (!trafficVisible && onMap) window.map.removeLayer(marker);
+                const typeVisible = trafficTypeVisibility[marker.trafficCategory] !== false;
+                if (trafficVisible && typeVisible && !onMap) marker.addTo(window.map);
+                if ((!trafficVisible || !typeVisible) && onMap) window.map.removeLayer(marker);
             });
         }
 
@@ -5146,18 +5247,22 @@
             if (trafficVisible) {
                 setToggleIcon(icon, true);
                 if (title) title.style.fontWeight = '700';
-                legendItems.forEach(item => {
-                    item.style.opacity = '1';
-                });
+                updateSubtypeLegendUi('traffic', trafficTypeVisibility, true);
                 console.log(`✓ ${trafficMarkers.length} stations de comptage affichées`);
             } else {
                 setToggleIcon(icon, false);
                 if (title) title.style.fontWeight = '600';
-                legendItems.forEach(item => {
-                    item.style.opacity = '0.5';
-                });
+                updateSubtypeLegendUi('traffic', trafficTypeVisibility, false);
                 console.log('✗ Stations de comptage masquées');
             }
+            syncLegendChrome();
+        };
+
+        window.toggleTrafficType = function(kind) {
+            if (!trafficVisible || !Object.prototype.hasOwnProperty.call(trafficTypeVisibility, kind)) return;
+            trafficTypeVisibility[kind] = !trafficTypeVisibility[kind];
+            syncTrafficMarkersOnMap();
+            updateSubtypeLegendUi('traffic', trafficTypeVisibility, true);
             syncLegendChrome();
         };
 
@@ -5167,25 +5272,23 @@
             const title = document.querySelector('.legend-section:has([id="bisonFuteToggleIcon"]) .legend-title');
             const legendItems = document.querySelectorAll('[data-bison-fute]');
             if (title) title.style.fontWeight = '700';
-            legendItems.forEach(item => {
-                item.style.opacity = '1';
-            });
+            updateSubtypeLegendUi('bison-fute', bisonFuteTypeVisibility, true);
         }
 
         function applyBisonFuteHiddenUi() {
             const title = document.querySelector('.legend-section:has([id="bisonFuteToggleIcon"]) .legend-title');
             const legendItems = document.querySelectorAll('[data-bison-fute]');
             if (title) title.style.fontWeight = '600';
-            legendItems.forEach(item => {
-                item.style.opacity = '0.5';
-            });
+            updateSubtypeLegendUi('bison-fute', bisonFuteTypeVisibility, false);
         }
 
         function syncBisonFuteMarkersOnMap() {
             bisonFuteMarkers.forEach(marker => {
                 const onMap = window.map?.hasLayer(marker);
-                if (bisonFuteVisible && !onMap) marker.addTo(window.map);
-                if (!bisonFuteVisible && onMap) window.map.removeLayer(marker);
+                const typeVisible = marker.bisonFuteCategory === 'autres'
+                    || bisonFuteTypeVisibility[marker.bisonFuteCategory] !== false;
+                if (bisonFuteVisible && typeVisible && !onMap) marker.addTo(window.map);
+                if ((!bisonFuteVisible || !typeVisible) && onMap) window.map.removeLayer(marker);
             });
         }
 
@@ -5211,6 +5314,14 @@
                 applyBisonFuteHiddenUi();
                 console.log('✗ Événements routiers masqués');
             }
+            syncLegendChrome();
+        };
+
+        window.toggleBisonFuteType = function(kind) {
+            if (!bisonFuteVisible || !Object.prototype.hasOwnProperty.call(bisonFuteTypeVisibility, kind)) return;
+            bisonFuteTypeVisibility[kind] = !bisonFuteTypeVisibility[kind];
+            syncBisonFuteMarkersOnMap();
+            updateSubtypeLegendUi('bison-fute', bisonFuteTypeVisibility, true);
             syncLegendChrome();
         };
 
@@ -8785,6 +8896,7 @@
                 });
                 // Keep the numeric AADT on the marker for stats (avoids parsing HTML).
                 marker.trafficMja = Number.isFinite(mja) ? mja : null;
+                marker.trafficCategory = category;
 
                 // Store for visibility toggle
                 trafficMarkers.push(marker);
@@ -9018,7 +9130,8 @@
                     else counts.light++;
                 }
 
-                const shouldShow = accidentsVisible && inRange;
+                const typeVisible = accidentTypeVisibility[marker.accidentGravite] !== false;
+                const shouldShow = accidentsVisible && inRange && typeVisible;
                 if (shouldShow) {
                     if (!window.map.hasLayer(marker)) marker.addTo(window.map);
                 } else if (window.map.hasLayer(marker)) {
@@ -9201,6 +9314,7 @@
                         opacity: 0.9,
                         dashArray: styles.dashArray
                     });
+                    polyline.constructionType = status === 'construction' ? 'highway' : 'proposed';
 
                     constructionPolylines.push(polyline);
 
@@ -9438,6 +9552,7 @@
                             iconAnchor: [15, 15]
                         })
                     });
+                    marker.bisonFuteCategory = category;
 
                     // Store for visibility toggle
                     bisonFuteMarkers.push(marker);
@@ -9587,6 +9702,35 @@
                 if (typeof window.toggleHierarchy === 'function') {
                     window.toggleHierarchy(hierarchy);
                 }
+            });
+        });
+
+        // All multi-type legend rows follow the same interaction as the network
+        // hierarchy: click anywhere on the row to show/hide that subtype.
+        const legendSubtypeToggles = {
+            bicycle: window.toggleBicycleType,
+            construction: window.toggleConstructionType,
+            'roadside-area': window.toggleRoadsideAreaType,
+            accident: window.toggleAccidentType,
+            traffic: window.toggleTrafficType,
+            'bison-fute': window.toggleBisonFuteType,
+            'road-sign': window.toggleRoadSignType,
+            webcam: window.toggleWebcamType
+        };
+        Object.entries(legendSubtypeToggles).forEach(([dataAttribute, toggle]) => {
+            if (typeof toggle !== 'function') return;
+            const datasetKey = dataAttribute.replace(/-([a-z])/g, (_match, char) => char.toUpperCase());
+            document.querySelectorAll(`.legend-item[data-${dataAttribute}]`).forEach(item => {
+                const kind = item.dataset[datasetKey];
+                if (!kind || kind === 'total') return;
+                item.setAttribute('role', 'button');
+                const activate = event => {
+                    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+                    if (event.type === 'keydown') event.preventDefault();
+                    toggle(kind);
+                };
+                item.addEventListener('click', activate);
+                item.addEventListener('keydown', activate);
             });
         });
         
