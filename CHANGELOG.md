@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.3] - 2026-07-30
+
+### Fixed
+
+- **Roadside areas mapped as relations are now included.** Parkings/rest areas/car-pooling tagged on a multipolygon **relation** (e.g. the *Parking de l'Île Piot* P+R in Avignon, `relation/6543907`) were missing: the Overpass query only fetched nodes/ways, and `out tags geom;` did not expand relation members. Switched to `out geom;` and added `relation(...)` for all three area types, assembling outer/inner rings into Polygon/MultiPolygon.
+- **Wikidata link preserved on areas.** The `wikidata` (and `wikimedia_commons`) tag was being dropped by the converter, so the popup wrongly showed "aucun lien" even when present (Île Piot carries `Q113994752`). It is now kept, along with `alt_name`, `maxstay`, `maxheight`, `supervised`.
+
 ## [0.11.2] - 2026-07-25
 
 ### Added

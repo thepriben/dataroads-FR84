@@ -105,12 +105,15 @@ QUERIES = {
         (
           node(area.dept)["amenity"="car_pooling"];
           way(area.dept)["amenity"="car_pooling"];
+          relation(area.dept)["amenity"="car_pooling"];
           node(area.dept)["highway"="rest_area"];
           way(area.dept)["highway"="rest_area"];
+          relation(area.dept)["highway"="rest_area"];
           node(area.dept)["amenity"="parking"]["park_ride"];
           way(area.dept)["amenity"="parking"]["park_ride"];
+          relation(area.dept)["amenity"="parking"]["park_ride"];
         );
-        out tags geom;
+        out geom;
     """,
 }
 
@@ -542,6 +545,7 @@ def guideposts_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
 # Aires connexes : tags conservés pour l'affichage sans alourdir le fichier.
 ROADSIDE_AREA_KEEP = (
     "name",
+    "alt_name",
     "operator",
     "network",
     "capacity",
@@ -549,6 +553,9 @@ ROADSIDE_AREA_KEEP = (
     "access",
     "fee",
     "opening_hours",
+    "maxstay",
+    "maxheight",
+    "supervised",
     "ref",
     "park_ride",
     "surface",
@@ -556,6 +563,8 @@ ROADSIDE_AREA_KEEP = (
     "lit",
     "website",
     "description",
+    "wikidata",
+    "wikimedia_commons",
     "amenity",
     "highway",
 )
@@ -606,13 +615,26 @@ def roadside_areas_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
         properties["osm_id"] = element.get("id")
         properties["@id"] = f"{element.get('type')}/{element.get('id')}"
 
-        if element.get("type") == "node":
+        element_type = element.get("type")
+        if element_type == "node":
             lat = element.get("lat")
             lon = element.get("lon")
             if lat is None or lon is None:
                 continue
             center = [round(lon, 7), round(lat, 7)]
             geometry = {"type": "Point", "coordinates": center}
+        elif element_type == "relation":
+            # Aire cartographiée en relation (multipolygone) : les tags sont portés
+            # par la relation (ex. parking-relais de l'îlot Piot à Avignon).
+            outer_rings = assemble_rings(relation_member_segments(element, "outer"))
+            inner_rings = assemble_rings(relation_member_segments(element, "inner"))
+            if not outer_rings:
+                continue
+            if len(outer_rings) == 1:
+                geometry = {"type": "Polygon", "coordinates": [outer_rings[0], *inner_rings]}
+            else:
+                geometry = {"type": "MultiPolygon", "coordinates": [[ring] for ring in outer_rings]}
+            center = ring_centroid(outer_rings[0])
         else:
             coordinates = element_coordinates(element)
             if len(coordinates) < 2:
