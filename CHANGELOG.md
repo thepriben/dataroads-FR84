@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.5] - 2026-07-30
+
+### Fixed
+
+- **Panoramax "open source" link now reaches the playable sequence instead of the world map.** The viewer URL used the legacy v3 hash format (`#focus=pic&pic=…`); Panoramax v4 reads parameters from the query part (`?focus=pic&pic=…`), so the old link silently fell back to the map. Switched to the `?` format and added the sequence id (`&seq=…`, from the picture's `collection`) so the picture opens focused and playable. Lightbox caption updated to "▶ ouvrir la séquence jouable".
+
 ## [0.11.4] - 2026-07-30
 
 ### Added

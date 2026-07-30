@@ -4148,6 +4148,7 @@
                         const large = best.assets?.sd?.href || panoramaxImageUrl(best.id, 'sd');
                         result = {
                             id: best.id,
+                            seq: best.collection || null,
                             thumb,
                             large,
                             datetime: best.properties?.datetime,
@@ -4179,7 +4180,7 @@
             const cards = [];
             if (photos && photos.panoramax) {
                 const when = roadsidePhotoDate(photos.panoramax.datetime);
-                const src = (typeof panoramaxPageUrl === 'function') ? panoramaxPageUrl(photos.panoramax.id) : '#';
+                const src = (typeof panoramaxPageUrl === 'function') ? panoramaxPageUrl(photos.panoramax.id, photos.panoramax.seq) : '#';
                 const label = `Panoramax${when ? ' · ' + when : ''}`;
                 cards.push(`
                     <a class="area-pop-photo" href="${src}" target="_blank" rel="noopener noreferrer"
@@ -4237,7 +4238,7 @@
             const cap = areaPhotoLightbox.querySelector('.area-lightbox-cap');
             img.src = bigUrl;
             img.alt = label || 'Photo de rue';
-            cap.innerHTML = `${escapeHtml(label || '')}${sourceUrl ? ` · <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">ouvrir la source</a>` : ''}`;
+            cap.innerHTML = `${escapeHtml(label || '')}${sourceUrl ? ` · <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">▶ ouvrir la séquence jouable</a>` : ''}`;
             areaPhotoLightbox.classList.add('is-open');
         }
 
@@ -7699,8 +7700,12 @@
             return `https://api.panoramax.xyz/api/pictures/${encodeURIComponent(id)}/${size}.jpg`;
         }
 
-        function panoramaxPageUrl(id) {
-            return `https://panoramax.openstreetmap.fr/#focus=pic&pic=${encodeURIComponent(id)}`;
+        function panoramaxPageUrl(id, seq) {
+            // Panoramax v4 lit les paramètres dans la query (?), plus dans le hash (#).
+            // Ajouter la séquence (seq) permet d'ouvrir la séquence jouable, pas la carte.
+            let url = `https://panoramax.openstreetmap.fr/?focus=pic&pic=${encodeURIComponent(id)}`;
+            if (seq) url += `&seq=${encodeURIComponent(seq)}`;
+            return url;
         }
 
         function mapillaryPageUrl(id) {
