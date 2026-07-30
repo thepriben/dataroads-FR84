@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.8] - 2026-07-30
+
+### Changed
+
+- **Roadside-area photos open the sequence directly.** Clicking a nearby Mapillary/Panoramax thumbnail now opens the source viewer (playable sequence) in a new tab instead of a lightbox. Removed the intermediate lightbox and the "▶ Séquence" caption link; the thumbnail hover icon is now an external-link arrow (↗).
+
 ## [0.11.7] - 2026-07-30
 
 ### Fixed

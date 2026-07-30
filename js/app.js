@@ -4197,7 +4197,7 @@
                        data-src="${escapeHtml(src)}" data-provider="Panoramax" data-label="${escapeHtml(label)}">
                         <img src="${photos.panoramax.thumb}" alt="Photo Panoramax à proximité" loading="lazy">
                         <span class="area-pop-photo-badge is-panoramax">${label}</span>
-                        <span class="area-pop-photo-zoom" aria-hidden="true">⤢</span>
+                        <span class="area-pop-photo-zoom" aria-hidden="true">↗</span>
                     </a>`);
             }
             if (photos && photos.mapillary && photos.mapillary.thumb_1024_url) {
@@ -4211,7 +4211,7 @@
                        data-src="${escapeHtml(src)}" data-provider="Mapillary" data-label="${escapeHtml(label)}">
                         <img src="${photos.mapillary.thumb_1024_url}" alt="Photo Mapillary à proximité" loading="lazy">
                         <span class="area-pop-photo-badge is-mapillary">${label}</span>
-                        <span class="area-pop-photo-zoom" aria-hidden="true">⤢</span>
+                        <span class="area-pop-photo-zoom" aria-hidden="true">↗</span>
                     </a>`);
             }
 
@@ -4220,46 +4220,6 @@
             }
             return `<div class="area-pop-photos">${cards.join('')}</div>`;
         }
-
-        // Lightbox partagée pour agrandir une photo de rue (Mapillary / Panoramax).
-        let areaPhotoLightbox = null;
-        function openAreaPhotoLightbox(bigUrl, label, sourceUrl) {
-            if (!bigUrl) return;
-            if (!areaPhotoLightbox) {
-                areaPhotoLightbox = document.createElement('div');
-                areaPhotoLightbox.className = 'area-lightbox';
-                areaPhotoLightbox.innerHTML = `
-                    <button class="area-lightbox-close" type="button" aria-label="Fermer">✕</button>
-                    <figure class="area-lightbox-fig">
-                        <img class="area-lightbox-img" src="" alt="">
-                        <figcaption class="area-lightbox-cap"></figcaption>
-                    </figure>`;
-                document.body.appendChild(areaPhotoLightbox);
-                const close = () => areaPhotoLightbox.classList.remove('is-open');
-                areaPhotoLightbox.addEventListener('click', event => {
-                    if (event.target === areaPhotoLightbox || event.target.closest('.area-lightbox-close')) close();
-                });
-                document.addEventListener('keydown', event => {
-                    if (event.key === 'Escape') close();
-                });
-            }
-            const img = areaPhotoLightbox.querySelector('.area-lightbox-img');
-            const cap = areaPhotoLightbox.querySelector('.area-lightbox-cap');
-            img.src = bigUrl;
-            img.alt = label || 'Photo de rue';
-            cap.innerHTML = `${escapeHtml(label || '')}${sourceUrl ? ` · <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">▶ Séquence</a>` : ''}`;
-            areaPhotoLightbox.classList.add('is-open');
-        }
-
-        // Clic sur une vignette d'aire : ouvrir en grand plutôt que d'aller
-        // directement sur le site source (le lien reste dispo via Ctrl/⌘-clic).
-        document.addEventListener('click', event => {
-            const photo = event.target.closest && event.target.closest('.area-pop-photo');
-            if (!photo) return;
-            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
-            event.preventDefault();
-            openAreaPhotoLightbox(photo.dataset.big, photo.dataset.label, photo.dataset.src);
-        });
 
         function buildRoadsideAreaPopup(props, photos, photosState) {
             const style = ROADSIDE_AREA_STYLE[props.area_kind] || { color: '#3949AB', label: 'Aire' };
