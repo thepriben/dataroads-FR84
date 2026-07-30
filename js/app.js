@@ -4221,6 +4221,20 @@
             return `<div class="area-pop-photos">${cards.join('')}</div>`;
         }
 
+        // Clic sur une vignette d'aire : ouvrir la séquence source dans un nouvel
+        // onglet, sans fermer la popup Leaflet (stopPropagation) ni ouvrir deux
+        // fois l'onglet (preventDefault + window.open explicite).
+        document.addEventListener('click', event => {
+            const photo = event.target.closest && event.target.closest('.area-pop-photo');
+            if (!photo) return;
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+            const href = photo.getAttribute('href');
+            if (!href || href === '#') return;
+            event.preventDefault();
+            event.stopPropagation();
+            window.open(href, '_blank', 'noopener,noreferrer');
+        });
+
         function buildRoadsideAreaPopup(props, photos, photosState) {
             const style = ROADSIDE_AREA_STYLE[props.area_kind] || { color: '#3949AB', label: 'Aire' };
             const title = props.name || style.label;

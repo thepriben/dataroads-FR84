@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.11.10] - 2026-07-30
+
+### Fixed
+
+- **Clicking a roadside-area photo no longer closes the popup.** The thumbnail now opens the source viewer in a new tab via an explicit handler that stops event propagation (keeps the Leaflet popup open) and opens exactly one tab.
+
+### Changed
+
+- **Legend label simplified.** "Aires d'arrêt (layby)" is now just "Aires d'arrêt".
+
 ## [0.11.9] - 2026-07-30
 
 ### Fixed
