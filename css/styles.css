@@ -1902,6 +1902,22 @@
         .oedb-swatch--sport { background: #2563EB; }
         .oedb-swatch--other { background: #4B5563; }
 
+        .oedb-add-event {
+            margin: 6px 0 2px;
+            font-size: 0.78rem;
+            color: #6B7280;
+        }
+
+        .oedb-add-event a {
+            color: #4F46E5;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .oedb-add-event a:hover {
+            text-decoration: underline;
+        }
+
         .oedb-event-marker-wrapper {
             background: transparent;
             border: none;
