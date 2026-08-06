@@ -1887,6 +1887,99 @@
             height: 14px;
         }
 
+        /* ===== Événements OEDB (incubateur) ===== */
+        .oedb-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        .oedb-swatch--accident { background: #DC2626; }
+        .oedb-swatch--roadwork { background: #F59E0B; }
+        .oedb-swatch--jam { background: #B91C1C; }
+        .oedb-swatch--culture { background: #059669; }
+        .oedb-swatch--other { background: #4B5563; }
+
+        .oedb-event-marker-wrapper {
+            background: transparent;
+            border: none;
+        }
+
+        .oedb-event-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            font-size: 13px;
+            line-height: 1;
+            background: var(--oedb-color, #4B5563);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+        }
+
+        .oedb-event-popup {
+            min-width: 220px;
+        }
+
+        .oedb-pop-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+            border-bottom: 3px solid var(--oedb-color, #4B5563);
+            font-size: 0.95rem;
+        }
+
+        .oedb-pop-glyph {
+            font-size: 1.1rem;
+        }
+
+        .oedb-pop-what {
+            color: #6B7280;
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+        }
+
+        .oedb-pop-what code {
+            background: #EEF2FF;
+            border-radius: 4px;
+            padding: 1px 5px;
+        }
+
+        .oedb-pop-row {
+            font-size: 0.85rem;
+            margin: 3px 0;
+        }
+
+        .oedb-pop-desc {
+            color: #374151;
+        }
+
+        .oedb-pop-links {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid #E5E7EB;
+            font-size: 0.82rem;
+        }
+
+        .legend-note {
+            font-size: 0.78rem;
+            padding: 4px 0 2px;
+        }
+
+        .legend-note a {
+            color: #4F46E5;
+            text-decoration: none;
+        }
+
+        .legend-note a:hover {
+            text-decoration: underline;
+        }
+
         /* ===== Aires connexes (covoiturage / repos / parkings-relais) ===== */
         .area-swatch {
             display: flex;

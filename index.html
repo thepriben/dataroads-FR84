@@ -25,7 +25,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260730-1">
+    <link rel="stylesheet" href="css/styles.css?v=20260806-1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -492,6 +492,42 @@
                         <div class="legend-count" id="count-webcams-mountain">-</div>
                     </div>
                 </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleOedbEvents && window.toggleOedbEvents();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Événements (OEDB)</span>
+                        <span id="oedbEventsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-oedb-events" data-schedule-key="external"></span>
+                    <div class="legend-item" data-oedb-event="accident" style="opacity: 0.5;">
+                        <div class="legend-color oedb-swatch oedb-swatch--accident"></div>
+                        <div class="legend-label">Accidents</div>
+                        <div class="legend-count" id="count-oedb-accident">-</div>
+                    </div>
+                    <div class="legend-item" data-oedb-event="roadwork" style="opacity: 0.5;">
+                        <div class="legend-color oedb-swatch oedb-swatch--roadwork"></div>
+                        <div class="legend-label">Travaux</div>
+                        <div class="legend-count" id="count-oedb-roadwork">-</div>
+                    </div>
+                    <div class="legend-item" data-oedb-event="jam" style="opacity: 0.5;">
+                        <div class="legend-color oedb-swatch oedb-swatch--jam"></div>
+                        <div class="legend-label">Bouchons</div>
+                        <div class="legend-count" id="count-oedb-jam">-</div>
+                    </div>
+                    <div class="legend-item" data-oedb-event="culture" style="opacity: 0.5;">
+                        <div class="legend-color oedb-swatch oedb-swatch--culture"></div>
+                        <div class="legend-label">Culture</div>
+                        <div class="legend-count" id="count-oedb-culture">-</div>
+                    </div>
+                    <div class="legend-item" data-oedb-event="other" style="opacity: 0.5;">
+                        <div class="legend-color oedb-swatch oedb-swatch--other"></div>
+                        <div class="legend-label">Autres</div>
+                        <div class="legend-count" id="count-oedb-other">-</div>
+                    </div>
+                    <div class="legend-note">
+                        <a href="https://thepriben.github.io/oedb-rs/" target="_blank" rel="noopener noreferrer">Proposer un événement</a>
+                    </div>
+                </div>
                     </div>
                 </section>
 
@@ -782,7 +818,7 @@
 
     </div>
 
-    <script src="js/config.js?v=20260730-2"></script>
+    <script src="js/config.js?v=20260806-1"></script>
     <script>
         (function () {
             var el = document.getElementById('siteVersion');
@@ -793,7 +829,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260607-1"></script>
-    <script src="js/app.js?v=20260730-10"></script>
+    <script src="js/app.js?v=20260806-1"></script>
     <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260620-3"></script>
 </body>

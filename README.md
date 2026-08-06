@@ -17,6 +17,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 - Les aires d'arrêt le long des routes départementales (issue #7) : aires de covoiturage, aires de repos et parkings-relais issues d'OpenStreetMap, avec un indicateur de complétude OSM et les photos de rue à proximité (Mapillary / Panoramax).
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
 - Le trafic Waze communautaire (bouchons et incidents) : couche native (tracés de bouchons + marqueurs d'incidents) si le flux partenaire *Waze for Cities* est configuré, sinon la carte Waze Live Map intégrée en repli.
+- Une couche incubateur « Événements (OEDB) » : accidents, travaux et bouchons Bison Futé, plus des événements culturels curés (ex. Jeudis d'Orange), servis par notre instance [OpenEventDatabase](https://github.com/openeventdatabase/backend) statique [oedb-rs](https://github.com/thepriben/oedb-rs) (Rust + GitHub Pages, régénérée toutes les 3 h), avec un [formulaire public](https://thepriben.github.io/oedb-rs/) de proposition d'événement.
 - Un panneau de qualité OSM pour repérer les tronçons qui ont ou non une relation OSM exploitable.
 
 ## Intérêt pour le CD84
@@ -53,6 +54,7 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 | Accidentologie | BAAC / ONISR (data.gouv.fr) | 2019-2024 | 1 923 accidents corporels géolocalisés (dép. 84), généré par `scripts/build_accidents_vaucluse.py`. |
 | Comptages CD84 | data.gouv.fr | 1996-2025 | 3 098 observations ; la carte affiche la dernière année disponible par station. |
 | Événements routiers | Info Routière | cache toutes les 3 h | |
+| Événements (OEDB) | Bison Futé + curation, via [oedb-rs](https://github.com/thepriben/oedb-rs) | toutes les 3 h | Instance OpenEventDatabase statique (Rust, GitHub Pages), lue en direct par le navigateur. |
 | Météo | Open-Meteo | temps courant | Appel direct, non versionné. |
 
 ## Lancer la démo en local

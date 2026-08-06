@@ -13,7 +13,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.11.13',
+        version: '0.12.0',
         repository,
         mapillary: {
             // Jeton d'accès Mapillary (Graph API) pour rechercher une photo près d'un panneau.
@@ -42,7 +42,10 @@
                 waze: 'data/external/waze.geojson',
                 'sensitive-natural-zones': 'data/external/sensitive-natural-zones.geojson',
                 'inaturalist-sensitive-zones': 'data/external/inaturalist-sensitive-zones.geojson',
-                webcams: 'data/static/webcams-vaucluse.geojson'
+                webcams: 'data/static/webcams-vaucluse.geojson',
+                // Instance OpenEventDatabase statique (repo thepriben/oedb-rs),
+                // régénérée toutes les 3 h — URL absolue, CORS ouvert par Pages.
+                'oedb-events': 'https://thepriben.github.io/oedb-rs/api/event.json'
             }
         },
         live: {

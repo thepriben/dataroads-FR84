@@ -345,7 +345,8 @@
                 ['sensitiveZonesToggleIcon', sensitiveZonesVisible],
                 ['inaturalistSensitivesToggleIcon', inaturalistSensitivesVisible],
                 ['webcamsToggleIcon', webcamsVisible],
-                ['roadsideAreasToggleIcon', roadsideAreasVisible]
+                ['roadsideAreasToggleIcon', roadsideAreasVisible],
+                ['oedbEventsToggleIcon', oedbEventsVisible]
             ];
 
             layerStates.forEach(([id, visible]) => {
@@ -471,6 +472,7 @@
                         ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerToggle(webcamsVisible, window.toggleWebcams);
+                        ensureLayerToggle(oedbEventsVisible, window.toggleOedbEvents);
                     } else {
                         ensureLayerOff(bridgeVisible, window.toggleBridges);
                         ensureLayerOff(roadSignsVisible, window.toggleRoadSigns);
@@ -478,6 +480,7 @@
                         ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerOff(webcamsVisible, window.toggleWebcams);
+                        ensureLayerOff(oedbEventsVisible, window.toggleOedbEvents);
                     }
                     break;
                 default:
@@ -1264,6 +1267,17 @@
         let webcamsVisible = false;
         let webcamsLoaded = false;
         const webcamTypeVisibility = { traffic: true, mountain: true };
+        let oedbEventsLayerGroup = null;
+        let oedbEventMarkers = [];
+        let oedbEventsVisible = false;
+        let oedbEventsLoaded = false;
+        const oedbEventTypeVisibility = {
+            accident: true,
+            roadwork: true,
+            jam: true,
+            culture: true,
+            other: true
+        };
         let roadsideAreasLayerGroup = null;
         const roadsideAreaLayerGroups = {};
         let roadsideAreasVisible = false;
@@ -1334,7 +1348,8 @@
                 traffic: 'trafficToggleIcon',
                 'bison-fute': 'bisonFuteToggleIcon',
                 'road-sign': 'roadSignsToggleIcon',
-                webcam: 'webcamsToggleIcon'
+                webcam: 'webcamsToggleIcon',
+                'oedb-event': 'oedbEventsToggleIcon'
             };
             const icon = document.getElementById(iconIds[dataAttribute]);
             if (icon) {
@@ -1522,6 +1537,7 @@
             if (sensitiveZonesVisible) active.push('ens');
             if (inaturalistSensitivesVisible) active.push('inat');
             if (webcamsVisible) active.push('wcam');
+            if (oedbEventsVisible) active.push('oedb');
             return active;
         }
 
@@ -1662,6 +1678,9 @@
                 case 'wcam':
                     setBooleanLayerIfNeeded(webcamsVisible, desired, window.toggleWebcams);
                     return !desired || webcamsLoaded;
+                case 'oedb':
+                    setBooleanLayerIfNeeded(oedbEventsVisible, desired, window.toggleOedbEvents);
+                    return !desired || oedbEventsLoaded;
                 default:
                     return true;
             }
@@ -1672,7 +1691,7 @@
 
             const pendingKeys = [
                 'construction', 'bicycle', 'cities', 'aires', 'limits', 'accidents', 'traffic', 'waze',
-                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'ens', 'inat', 'wcam'
+                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'ens', 'inat', 'wcam', 'oedb'
             ];
             let allReady = true;
             pendingKeys.forEach(key => {
@@ -1793,13 +1812,14 @@
                 }
                 case 'incubator': {
                     let visible = 0;
-                    const total = 6;
+                    const total = 7;
                     if (bridgeVisible) visible++;
                     if (roadSignsVisible) visible++;
                     if (guidepostsVisible) visible++;
                     if (sensitiveZonesVisible) visible++;
                     if (inaturalistSensitivesVisible) visible++;
                     if (webcamsVisible) visible++;
+                    if (oedbEventsVisible) visible++;
                     return { visible, total };
                 }
                 default:
@@ -1832,6 +1852,8 @@
                     return trafficVisible;
                 case 'freshness-weather-stations':
                     return weatherStationsVisible;
+                case 'freshness-oedb-events':
+                    return oedbEventsVisible;
                 case 'freshness-bison-fute':
                     return bisonFuteVisible;
                 default:
@@ -2077,7 +2099,9 @@
         }
 
         function bridgePhotoCountsForGroups(groups) {
-            return groups.map(group => group.photos.length);
+            return groups.map(group => group.photos.filter(photo => (
+                bridgePhotoProviderVisibility[photo.provider] !== false
+            )).length);
         }
 
         function bridgeSoloMarkerDiameter(photoCount, zoom) {
@@ -2457,6 +2481,9 @@
             bridgePhotoProviderVisibility[provider] = !bridgePhotoProviderVisibility[provider];
             syncBridgeSourceToggleUi();
             updateBridgePhotoLayerVisibility();
+            // Cluster size, label and tooltip depend on the number of visible
+            // photos: rebuild descriptors after a Panoramax/Mapillary filter.
+            updateBridgeGroupMarkerLayer();
             syncLegendChrome();
         };
 
@@ -4141,6 +4168,224 @@
                 console.error('Erreur chargement webcams:', error);
                 if (!wantVisible) applyWebcamsHiddenUi();
                 webcamsVisible = false;
+                syncLegendChrome();
+            }
+        };
+
+        // ========== ÉVÉNEMENTS (OEDB, incubateur) ==========
+        // Couche alimentée par l'instance OpenEventDatabase statique
+        // https://thepriben.github.io/oedb-rs/ (Bison Futé DATEX II filtré FR-84
+        // + curation manuelle type Jeudis d'Orange), régénérée toutes les 3 h.
+
+        const OEDB_EVENT_STYLE = {
+            accident: { color: '#DC2626', glyph: '💥', label: 'Accident' },
+            roadwork: { color: '#F59E0B', glyph: '🚧', label: 'Travaux' },
+            jam: { color: '#B91C1C', glyph: '🚗', label: 'Bouchon' },
+            culture: { color: '#059669', glyph: '🎪', label: 'Culture' },
+            other: { color: '#4B5563', glyph: 'ℹ️', label: 'Autre' }
+        };
+
+        // Taxonomie pointée OEDB (`what`) -> catégorie de légende.
+        function oedbCategoryForWhat(what) {
+            const value = String(what || '');
+            if (value === 'traffic.accident') return 'accident';
+            if (value === 'traffic.roadwork') return 'roadwork';
+            if (value === 'traffic.jam') return 'jam';
+            if (value.startsWith('culture.') || value === 'culture') return 'culture';
+            return 'other';
+        }
+
+        function escapeOedbHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function formatOedbDate(iso) {
+            if (!iso) return '';
+            const date = new Date(iso);
+            if (Number.isNaN(date.getTime())) return escapeOedbHtml(iso);
+            return date.toLocaleString('fr-FR', {
+                day: 'numeric', month: 'short',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
+        function buildOedbEventPopup(props = {}) {
+            const category = oedbCategoryForWhat(props.what);
+            const style = OEDB_EVENT_STYLE[category];
+            const rows = [];
+
+            if (props.start || props.stop) {
+                const period = [
+                    props.start ? `du ${formatOedbDate(props.start)}` : '',
+                    props.stop ? `au ${formatOedbDate(props.stop)}` : ''
+                ].filter(Boolean).join(' ');
+                rows.push(`<div class="oedb-pop-row">📅 ${period}</div>`);
+            }
+            const place = [props.road, props.commune || props.lieu].filter(Boolean).join(' — ');
+            if (place) rows.push(`<div class="oedb-pop-row">📍 ${escapeOedbHtml(place)}</div>`);
+            if (props.description && props.description !== props.label) {
+                rows.push(`<div class="oedb-pop-row oedb-pop-desc">${escapeOedbHtml(props.description)}</div>`);
+            }
+
+            const sourceHtml = /^https?:\/\//.test(String(props.source || ''))
+                ? `<a href="${escapeOedbHtml(props.source)}" target="_blank" rel="noopener noreferrer">source</a>`
+                : escapeOedbHtml(props.source || '');
+            const eventUrl = `https://thepriben.github.io/oedb-rs/api/event/${encodeURIComponent(props.id || '')}.json`;
+
+            return `<div class="route-popup oedb-event-popup">
+                <div class="oedb-pop-head" style="--oedb-color:${style.color};">
+                    <span class="oedb-pop-glyph">${style.glyph}</span>
+                    <strong>${escapeOedbHtml(props.label || style.label)}</strong>
+                </div>
+                <div class="oedb-pop-what"><code>${escapeOedbHtml(props.what || '')}</code> · ${props.type === 'scheduled' ? 'programmé' : 'imprévu'}</div>
+                ${rows.join('')}
+                <div class="oedb-pop-links">${sourceHtml}${sourceHtml ? ' · ' : ''}<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">fiche OEDB</a></div>
+            </div>`;
+        }
+
+        function makeOedbEventMarker(feature) {
+            const coords = feature.geometry?.coordinates;
+            if (!coords || feature.geometry.type !== 'Point') return null;
+            const props = feature.properties || {};
+            const category = oedbCategoryForWhat(props.what);
+            const style = OEDB_EVENT_STYLE[category];
+
+            const marker = L.marker([coords[1], coords[0]], {
+                icon: L.divIcon({
+                    className: 'oedb-event-marker-wrapper',
+                    html: `<div class="oedb-event-marker" style="--oedb-color:${style.color};">${style.glyph}</div>`,
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                }),
+                zIndexOffset: 430
+            });
+            marker.bindTooltip(props.label || style.label, { direction: 'top', offset: [0, -12] });
+            marker.bindPopup(buildOedbEventPopup(props), { maxWidth: 320 });
+            marker.oedbCategory = category;
+            return marker;
+        }
+
+        function setOedbEventsLegendCounts(features = []) {
+            const counts = { accident: 0, roadwork: 0, jam: 0, culture: 0, other: 0 };
+            features.forEach(feature => {
+                counts[oedbCategoryForWhat(feature.properties?.what)] += 1;
+            });
+            Object.entries(counts).forEach(([category, count]) => {
+                const el = document.getElementById(`count-oedb-${category}`);
+                if (el) el.textContent = String(count);
+            });
+        }
+
+        function applyOedbEventsVisibleUi() {
+            const icon = document.getElementById('oedbEventsToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="oedbEventsToggleIcon"]) .legend-title');
+            setToggleIcon(icon, true);
+            if (title) title.style.opacity = '1';
+            updateSubtypeLegendUi('oedb-event', oedbEventTypeVisibility, true);
+        }
+
+        function applyOedbEventsHiddenUi() {
+            const icon = document.getElementById('oedbEventsToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="oedbEventsToggleIcon"]) .legend-title');
+            setToggleIcon(icon, false);
+            if (title) title.style.opacity = '';
+            updateSubtypeLegendUi('oedb-event', oedbEventTypeVisibility, false);
+        }
+
+        function syncOedbEventsOnMap() {
+            if (!oedbEventsLayerGroup || !window.map) return;
+            oedbEventsLayerGroup.clearLayers();
+            oedbEventMarkers.forEach(marker => {
+                if (oedbEventTypeVisibility[marker.oedbCategory] !== false) {
+                    oedbEventsLayerGroup.addLayer(marker);
+                }
+            });
+            const onMap = window.map.hasLayer(oedbEventsLayerGroup);
+            if (oedbEventsVisible && !onMap) oedbEventsLayerGroup.addTo(window.map);
+            if (!oedbEventsVisible && onMap) window.map.removeLayer(oedbEventsLayerGroup);
+        }
+
+        window.toggleOedbEvents = function() {
+            oedbEventsVisible = !oedbEventsVisible;
+
+            if (!oedbEventsVisible) {
+                syncOedbEventsOnMap();
+                applyOedbEventsHiddenUi();
+                syncLegendChrome();
+                return;
+            }
+
+            if (!oedbEventsLoaded) {
+                const icon = document.getElementById('oedbEventsToggleIcon');
+                if (icon) icon.style.opacity = '0.4';
+                if (typeof window.loadOedbEvents === 'function') {
+                    window.loadOedbEvents({ show: true });
+                }
+                return;
+            }
+
+            syncOedbEventsOnMap();
+            applyOedbEventsVisibleUi();
+            syncLegendChrome();
+        };
+
+        window.toggleOedbEventType = function(kind) {
+            if (!oedbEventsVisible || !Object.prototype.hasOwnProperty.call(oedbEventTypeVisibility, kind)) return;
+            oedbEventTypeVisibility[kind] = !oedbEventTypeVisibility[kind];
+            syncOedbEventsOnMap();
+            updateSubtypeLegendUi('oedb-event', oedbEventTypeVisibility, true);
+            syncLegendChrome();
+        };
+
+        window.loadOedbEvents = async function(options = {}) {
+            const wantVisible = options.show === true || oedbEventsVisible || appUrlWantsLayer('oedb');
+            try {
+                const data = await window.InforouteApi.fetchGeoJson('oedb-events');
+                const features = data.features || [];
+
+                renderFreshnessBadge(document.getElementById('freshness-oedb-events'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'external'
+                });
+
+                if (oedbEventsLayerGroup) {
+                    window.map?.removeLayer(oedbEventsLayerGroup);
+                    oedbEventsLayerGroup = null;
+                }
+
+                oedbEventsLayerGroup = L.layerGroup();
+                oedbEventMarkers = [];
+                features.forEach(feature => {
+                    const marker = makeOedbEventMarker(feature);
+                    if (marker) oedbEventMarkers.push(marker);
+                });
+
+                oedbEventsLoaded = true;
+                setOedbEventsLegendCounts(features);
+
+                if (wantVisible) {
+                    oedbEventsVisible = true;
+                    syncOedbEventsOnMap();
+                    applyOedbEventsVisibleUi();
+                } else {
+                    oedbEventsVisible = false;
+                    syncOedbEventsOnMap();
+                    applyOedbEventsHiddenUi();
+                }
+
+                syncLegendChrome();
+                tryApplyAppUrlState();
+                console.log(`✓ ${features.length} événements OEDB chargés`);
+            } catch (error) {
+                console.error('Erreur chargement événements OEDB:', error);
+                renderFreshnessBadge(document.getElementById('freshness-oedb-events'), {
+                    scheduleKey: 'external',
+                    errorMsg: error.message
+                });
+                if (!wantVisible) applyOedbEventsHiddenUi();
+                oedbEventsVisible = false;
                 syncLegendChrome();
             }
         };
@@ -9715,7 +9960,8 @@
             traffic: window.toggleTrafficType,
             'bison-fute': window.toggleBisonFuteType,
             'road-sign': window.toggleRoadSignType,
-            webcam: window.toggleWebcamType
+            webcam: window.toggleWebcamType,
+            'oedb-event': window.toggleOedbEventType
         };
         Object.entries(legendSubtypeToggles).forEach(([dataAttribute, toggle]) => {
             if (typeof toggle !== 'function') return;

@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.0] - 2026-08-06
+
+### Added
+
+- **"Events (OEDB)" incubator layer**, fed by a brand-new companion repository: [oedb-rs](https://github.com/thepriben/oedb-rs), a static [OpenEventDatabase](https://github.com/openeventdatabase/backend)-compatible instance written in Rust and served by GitHub Pages. It ingests the Bison Futé DATEX II feed filtered on Vaucluse (`traffic.accident`, `traffic.roadwork`, `traffic.jam`, …) plus manually curated events (the Jeudis d'Orange night markets, `culture.market.night`), purges expired events, and rebuilds every 3 hours.
+- **Read API compatible with OEDB**: `GET /api/event.json` (GeoJSON FeatureCollection with OEDB properties), `GET /api/event/{id}.json`, `GET /api/stats.json`; sector queries (`bbox`, `what`, `when`) are provided client-side by `oedb-client.js`.
+- **Write path via GitHub issues**: a form on the oedb-rs Pages site (map click to pick the position) pre-fills a GitHub issue form; adding the `approved` label triggers a rebuild that validates, persists and publishes the event. A "Proposer un événement" link sits in the dataroads legend.
+- The dataroads layer follows the standard incubator pattern: per-category legend rows (Accidents, Travaux, Bouchons, Culture, Autres) with clickable subtype filtering, freshness chip (3-hour schedule), URL state (`oedb`), and category-coloured emoji markers with detailed popups (dates, place, source, OEDB record link).
+
+## [0.11.14] - 2026-07-30
+
+### Fixed
+
+- **Clusters are rebuilt after filtering their contents.** Stop/give-way filtering already clears and recomputes its screen-grid clusters; network hierarchy likewise rebuilds route-label clusters. Bridge clusters now also recompute their size, label and tooltip after toggling Panoramax or Mapillary, using only photos from providers that remain visible.
+
 ## [0.11.13] - 2026-07-30
 
 ### Added
