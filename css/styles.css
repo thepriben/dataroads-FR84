@@ -1905,13 +1905,13 @@
         .oedb-add-event {
             margin: 6px 0 2px;
             font-size: 0.78rem;
-            color: #6B7280;
         }
 
         .oedb-add-event a {
-            color: #4F46E5;
+            color: #111827;
             font-weight: 600;
             text-decoration: none;
+            cursor: pointer;
         }
 
         .oedb-add-event a:hover {
@@ -1976,11 +1976,59 @@
             color: #374151;
         }
 
+        /* Événement ponctuel (même jour) : jour en avant, horaires discrets. */
+        .oedb-pop-when {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 4px 8px;
+        }
+
+        .oedb-pop-day {
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .oedb-pop-hours {
+            color: #6B7280;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .oedb-pop-wd a {
+            color: var(--oedb-color, #4F46E5);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .oedb-pop-wd a:hover {
+            text-decoration: underline;
+        }
+
         .oedb-pop-links {
             margin-top: 8px;
             padding-top: 6px;
             border-top: 1px solid #E5E7EB;
             font-size: 0.82rem;
+        }
+
+        /* ===== Grappes d'événements OEDB ===== */
+        .oedb-cluster-wrapper {
+            background: transparent;
+            border: none;
+        }
+
+        .oedb-cluster {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            background: var(--oedb-color, #4B5563);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.32);
         }
 
 

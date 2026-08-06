@@ -4214,17 +4214,44 @@
             });
         }
 
+        // Formate la période d'un événement. Quand début et fin tombent le même
+        // jour (typiquement les événements ponctuels — match, marché nocturne),
+        // on présente « le <date> · <hh:mm> → <hh:mm> » plutôt que « du … au … ».
+        function formatOedbPeriod(startIso, stopIso) {
+            const start = startIso ? new Date(startIso) : null;
+            const stop = stopIso ? new Date(stopIso) : null;
+            const validStart = start && !Number.isNaN(start.getTime());
+            const validStop = stop && !Number.isNaN(stop.getTime());
+
+            if (validStart && validStop && start.toDateString() === stop.toDateString()) {
+                const day = start.toLocaleDateString('fr-FR', {
+                    weekday: 'long', day: 'numeric', month: 'long'
+                });
+                const from = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                const to = stop.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                return `<span class="oedb-pop-day">${escapeOedbHtml(day)}</span><span class="oedb-pop-hours">${from} → ${to}</span>`;
+            }
+
+            return [
+                validStart ? `du ${formatOedbDate(startIso)}` : '',
+                validStop ? `au ${formatOedbDate(stopIso)}` : ''
+            ].filter(Boolean).join(' ');
+        }
+
+        function oedbWikidataLink(qid, label) {
+            const clean = String(qid || '').trim();
+            if (!/^Q[1-9]\d*$/.test(clean)) return '';
+            return `<a href="https://www.wikidata.org/wiki/${clean}" target="_blank" rel="noopener noreferrer">${escapeOedbHtml(label)}</a>`;
+        }
+
         function buildOedbEventPopup(props = {}) {
             const category = oedbCategoryForWhat(props.what);
             const style = OEDB_EVENT_STYLE[category];
             const rows = [];
 
             if (props.start || props.stop) {
-                const period = [
-                    props.start ? `du ${formatOedbDate(props.start)}` : '',
-                    props.stop ? `au ${formatOedbDate(props.stop)}` : ''
-                ].filter(Boolean).join(' ');
-                rows.push(`<div class="oedb-pop-row">📅 ${period}</div>`);
+                const period = formatOedbPeriod(props.start, props.stop);
+                if (period) rows.push(`<div class="oedb-pop-row oedb-pop-when">📅 ${period}</div>`);
             }
             const place = [props.road, props.commune || props.lieu].filter(Boolean).join(' — ');
             if (place) rows.push(`<div class="oedb-pop-row">📍 ${escapeOedbHtml(place)}</div>`);
@@ -4232,11 +4259,20 @@
                 rows.push(`<div class="oedb-pop-row oedb-pop-desc">${escapeOedbHtml(props.description)}</div>`);
             }
 
+            const wdLinks = [
+                oedbWikidataLink(props.type_wikidata, 'type'),
+                oedbWikidataLink(props.place_wikidata, 'lieu'),
+                oedbWikidataLink(props.wikidata, 'événement')
+            ].filter(Boolean);
+            if (wdLinks.length) {
+                rows.push(`<div class="oedb-pop-row oedb-pop-wd">🔗 Wikidata : ${wdLinks.join(' · ')}</div>`);
+            }
+
             const sourceHtml = /^https?:\/\//.test(String(props.source || ''))
                 ? `<a href="${escapeOedbHtml(props.source)}" target="_blank" rel="noopener noreferrer">source</a>`
                 : escapeOedbHtml(props.source || '');
 
-            return `<div class="route-popup oedb-event-popup">
+            return `<div class="route-popup oedb-event-popup" style="--oedb-color:${style.color};">
                 <div class="oedb-pop-head" style="--oedb-color:${style.color};">
                     <span class="oedb-pop-glyph">${style.glyph}</span>
                     <strong>${escapeOedbHtml(props.label || style.label)}</strong>
@@ -4296,14 +4332,51 @@
             updateSubtypeLegendUi('oedb-event', oedbEventTypeVisibility, false);
         }
 
+        // Grappe sobre : pastille ronde teintée de la catégorie dominante des
+        // marqueurs regroupés, avec le compte. Regroupe les événements proches
+        // (ex. les 4 Jeudis d'Orange étalés sur ~25 m) au dézoom.
+        function createOedbClusterIcon(cluster) {
+            const markers = cluster.getAllChildMarkers();
+            const tally = {};
+            markers.forEach(marker => {
+                tally[marker.oedbCategory] = (tally[marker.oedbCategory] || 0) + 1;
+            });
+            const dominant = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0] || 'other';
+            const color = (OEDB_EVENT_STYLE[dominant] || OEDB_EVENT_STYLE.other).color;
+            const count = cluster.getChildCount();
+            const size = count >= 100 ? 40 : count >= 10 ? 34 : 30;
+            return L.divIcon({
+                className: 'oedb-cluster-wrapper',
+                html: `<div class="oedb-cluster" style="--oedb-color:${color};width:${size}px;height:${size}px;">${count}</div>`,
+                iconSize: [size, size]
+            });
+        }
+
+        function makeOedbClusterGroup() {
+            if (typeof L.markerClusterGroup !== 'function') {
+                // Repli si la librairie markercluster n'a pas chargé.
+                return L.layerGroup();
+            }
+            return L.markerClusterGroup({
+                maxClusterRadius: 44,
+                showCoverageOnHover: false,
+                spiderfyOnMaxZoom: true,
+                disableClusteringAtZoom: 16,
+                iconCreateFunction: createOedbClusterIcon
+            });
+        }
+
         function syncOedbEventsOnMap() {
             if (!oedbEventsLayerGroup || !window.map) return;
             oedbEventsLayerGroup.clearLayers();
-            oedbEventMarkers.forEach(marker => {
-                if (oedbEventTypeVisibility[marker.oedbCategory] !== false) {
-                    oedbEventsLayerGroup.addLayer(marker);
-                }
-            });
+            const visibleMarkers = oedbEventMarkers.filter(
+                marker => oedbEventTypeVisibility[marker.oedbCategory] !== false
+            );
+            if (typeof oedbEventsLayerGroup.addLayers === 'function') {
+                oedbEventsLayerGroup.addLayers(visibleMarkers);
+            } else {
+                visibleMarkers.forEach(marker => oedbEventsLayerGroup.addLayer(marker));
+            }
             const onMap = window.map.hasLayer(oedbEventsLayerGroup);
             if (oedbEventsVisible && !onMap) oedbEventsLayerGroup.addTo(window.map);
             if (!oedbEventsVisible && onMap) window.map.removeLayer(oedbEventsLayerGroup);
@@ -4357,7 +4430,7 @@
                     oedbEventsLayerGroup = null;
                 }
 
-                oedbEventsLayerGroup = L.layerGroup();
+                oedbEventsLayerGroup = makeOedbClusterGroup();
                 oedbEventMarkers = [];
                 features.forEach(feature => {
                     const marker = makeOedbEventMarker(feature);

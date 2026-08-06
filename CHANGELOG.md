@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.1] - 2026-08-06
+
+### Added
+
+- **Sport category** in the Events (OEDB) layer, with its own legend row, colour and 🏉 marker — first entries are two Fédérale 2 rugby matches (Avignon Le Pontet, Cavaillon) served by [oedb-rs](https://github.com/thepriben/oedb-rs).
+- **Wikidata links in event popups**: when an event carries `type_wikidata`, `place_wikidata` or `wikidata` QIDs, the popup shows them as links to wikidata.org.
+- **Marker clustering** on the Events layer (Leaflet.markercluster): nearby events (e.g. the four spread-out Jeudis d'Orange evenings) group into a category-coloured count badge that splits apart on zoom.
+- **"Ajouter événement"** shortcut under the Events legend, deep-linking to the submission form on the oedb-rs site.
+
+### Changed
+
+- Single-day events now render a compact "weekday day month · HH:MM → HH:MM" period in their popup instead of the verbose "du … au …" range.
+
 ## [0.12.0] - 2026-08-06
 
 ### Added
