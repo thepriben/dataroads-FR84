@@ -17,7 +17,7 @@ This demonstrator, incubated within the Road Information Bureau (Vaucluse Depart
 - Roadside stopping areas along departmental roads (issue #7): car-pooling areas, rest areas and park-and-ride from OpenStreetMap, with an OSM completeness indicator and nearby street-level photos (Mapillary / Panoramax).
 - Current weather over Avignon, useful as a quick operational signal.
 - Community Waze traffic (jams and incidents): a native layer (coloured jam lines + incident markers) when the *Waze for Cities* partner feed is configured, otherwise the embedded Waze Live Map as a fallback.
-- An "Events (OEDB)" incubator layer: Bison Futé accidents, roadworks and jams, plus curated cultural events (e.g. the Jeudis d'Orange night markets), served by our static [OpenEventDatabase](https://github.com/openeventdatabase/backend) instance [oedb-rs](https://github.com/thepriben/oedb-rs) (Rust + GitHub Pages, rebuilt every 3 hours), with a [public form](https://thepriben.github.io/oedb-rs/) to propose events.
+- An "Events (OEDB)" incubator layer: Bison Futé accidents, roadworks and jams, plus curated cultural events (e.g. the Jeudis d'Orange night markets), served by our static [OpenEventDatabase](https://github.com/openeventdatabase/backend) instance [oedb-rs](https://github.com/thepriben/oedb-rs) (Rust + GitHub Pages, rebuilt every 3 hours).
 - An OSM quality panel to spot road sections that do or do not have a usable OSM relation.
 
 ## Value for CD84

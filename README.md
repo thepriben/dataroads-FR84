@@ -17,7 +17,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 - Les aires d'arrêt le long des routes départementales (issue #7) : aires de covoiturage, aires de repos et parkings-relais issues d'OpenStreetMap, avec un indicateur de complétude OSM et les photos de rue à proximité (Mapillary / Panoramax).
 - Une météo actuelle sur Avignon, utile comme signal opérationnel rapide.
 - Le trafic Waze communautaire (bouchons et incidents) : couche native (tracés de bouchons + marqueurs d'incidents) si le flux partenaire *Waze for Cities* est configuré, sinon la carte Waze Live Map intégrée en repli.
-- Une couche incubateur « Événements (OEDB) » : accidents, travaux et bouchons Bison Futé, plus des événements culturels curés (ex. Jeudis d'Orange), servis par notre instance [OpenEventDatabase](https://github.com/openeventdatabase/backend) statique [oedb-rs](https://github.com/thepriben/oedb-rs) (Rust + GitHub Pages, régénérée toutes les 3 h), avec un [formulaire public](https://thepriben.github.io/oedb-rs/) de proposition d'événement.
+- Une couche incubateur « Événements (OEDB) » : accidents, travaux et bouchons Bison Futé, plus des événements culturels curés (ex. Jeudis d'Orange), servis par notre instance [OpenEventDatabase](https://github.com/openeventdatabase/backend) statique [oedb-rs](https://github.com/thepriben/oedb-rs) (Rust + GitHub Pages, régénérée toutes les 3 h).
 - Un panneau de qualité OSM pour repérer les tronçons qui ont ou non une relation OSM exploitable.
 
 ## Intérêt pour le CD84

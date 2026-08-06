@@ -11,8 +11,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - **"Events (OEDB)" incubator layer**, fed by a brand-new companion repository: [oedb-rs](https://github.com/thepriben/oedb-rs), a static [OpenEventDatabase](https://github.com/openeventdatabase/backend)-compatible instance written in Rust and served by GitHub Pages. It ingests the Bison Futé DATEX II feed filtered on Vaucluse (`traffic.accident`, `traffic.roadwork`, `traffic.jam`, …) plus manually curated events (the Jeudis d'Orange night markets, `culture.market.night`), purges expired events, and rebuilds every 3 hours.
 - **Read API compatible with OEDB**: `GET /api/event.json` (GeoJSON FeatureCollection with OEDB properties), `GET /api/event/{id}.json`, `GET /api/stats.json`; sector queries (`bbox`, `what`, `when`) are provided client-side by `oedb-client.js`.
-- **Write path via GitHub issues**: a form on the oedb-rs Pages site (map click to pick the position) pre-fills a GitHub issue form; adding the `approved` label triggers a rebuild that validates, persists and publishes the event. A "Proposer un événement" link sits in the dataroads legend.
-- The dataroads layer follows the standard incubator pattern: per-category legend rows (Accidents, Travaux, Bouchons, Culture, Autres) with clickable subtype filtering, freshness chip (3-hour schedule), URL state (`oedb`), and category-coloured emoji markers with detailed popups (dates, place, source, OEDB record link).
+- **Write path via GitHub issues** (on the companion repository): a form on the oedb-rs Pages site (map click to pick the position) pre-fills a GitHub issue form; adding the `approved` label triggers a rebuild that validates, persists and publishes the event.
+- The dataroads layer follows the standard incubator pattern: per-category legend rows (Accidents, Travaux, Bouchons, Culture, Autres) with clickable subtype filtering, freshness chip (3-hour schedule), URL state (`oedb`), and category-coloured emoji markers with detailed popups (dates, place, source).
 
 ## [0.11.14] - 2026-07-30
 

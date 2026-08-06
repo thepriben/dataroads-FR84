@@ -4232,7 +4232,6 @@
             const sourceHtml = /^https?:\/\//.test(String(props.source || ''))
                 ? `<a href="${escapeOedbHtml(props.source)}" target="_blank" rel="noopener noreferrer">source</a>`
                 : escapeOedbHtml(props.source || '');
-            const eventUrl = `https://thepriben.github.io/oedb-rs/api/event/${encodeURIComponent(props.id || '')}.json`;
 
             return `<div class="route-popup oedb-event-popup">
                 <div class="oedb-pop-head" style="--oedb-color:${style.color};">
@@ -4241,7 +4240,7 @@
                 </div>
                 <div class="oedb-pop-what"><code>${escapeOedbHtml(props.what || '')}</code> · ${props.type === 'scheduled' ? 'programmé' : 'imprévu'}</div>
                 ${rows.join('')}
-                <div class="oedb-pop-links">${sourceHtml}${sourceHtml ? ' · ' : ''}<a href="${eventUrl}" target="_blank" rel="noopener noreferrer">fiche OEDB</a></div>
+                ${sourceHtml ? `<div class="oedb-pop-links">${sourceHtml}</div>` : ''}
             </div>`;
         }
 

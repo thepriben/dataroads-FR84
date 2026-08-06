@@ -1966,19 +1966,6 @@
             font-size: 0.82rem;
         }
 
-        .legend-note {
-            font-size: 0.78rem;
-            padding: 4px 0 2px;
-        }
-
-        .legend-note a {
-            color: #4F46E5;
-            text-decoration: none;
-        }
-
-        .legend-note a:hover {
-            text-decoration: underline;
-        }
 
         /* ===== Aires connexes (covoiturage / repos / parkings-relais) ===== */
         .area-swatch {
