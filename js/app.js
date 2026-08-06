@@ -1276,6 +1276,7 @@
             roadwork: true,
             jam: true,
             culture: true,
+            sport: true,
             other: true
         };
         let roadsideAreasLayerGroup = null;
@@ -4182,6 +4183,7 @@
             roadwork: { color: '#F59E0B', glyph: '🚧', label: 'Travaux' },
             jam: { color: '#B91C1C', glyph: '🚗', label: 'Bouchon' },
             culture: { color: '#059669', glyph: '🎪', label: 'Culture' },
+            sport: { color: '#2563EB', glyph: '🏉', label: 'Sport' },
             other: { color: '#4B5563', glyph: 'ℹ️', label: 'Autre' }
         };
 
@@ -4192,6 +4194,7 @@
             if (value === 'traffic.roadwork') return 'roadwork';
             if (value === 'traffic.jam') return 'jam';
             if (value.startsWith('culture.') || value === 'culture') return 'culture';
+            if (value.startsWith('sport.') || value === 'sport') return 'sport';
             return 'other';
         }
 
@@ -4267,7 +4270,7 @@
         }
 
         function setOedbEventsLegendCounts(features = []) {
-            const counts = { accident: 0, roadwork: 0, jam: 0, culture: 0, other: 0 };
+            const counts = { accident: 0, roadwork: 0, jam: 0, culture: 0, sport: 0, other: 0 };
             features.forEach(feature => {
                 counts[oedbCategoryForWhat(feature.properties?.what)] += 1;
             });
