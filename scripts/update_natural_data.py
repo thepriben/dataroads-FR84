@@ -548,10 +548,37 @@ def sync_inaturalist_ens_names(ens_features: list[dict[str, Any]]) -> bool:
     return write_json_if_changed(path, data)
 
 
+def load_existing_ens() -> dict[str, Any] | None:
+    """Read the ENS GeoJSON already committed in the repository, if any."""
+    path = DATA_DIR / "sensitive-natural-zones.geojson"
+    if not path.exists():
+        return None
+    try:
+        with path.open(encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if data.get("features") else None
+
+
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    ens_data = build_ens_geojson()
+    # The ENS layer comes from a departmental dataset (CD84 / DataSud relayed by
+    # data.gouv.fr) that is essentially static but whose download URL is
+    # occasionally broken upstream (redirect to a moved DataSud file → 404). It
+    # must not take the whole external-data refresh down with it: on failure we
+    # keep the version already committed so weather/Waze/traffic/road-events
+    # still get published.
+    try:
+        ens_data = build_ens_geojson()
+    except (urllib.error.URLError, ValueError, TimeoutError) as error:
+        fallback = load_existing_ens()
+        if fallback is None:
+            raise
+        print(f"warning: ENS source unavailable ({error}); keeping existing file")
+        ens_data = fallback
+
     ens_changed = write_json_if_changed(DATA_DIR / "sensitive-natural-zones.geojson", ens_data)
     ens_state = "updated" if ens_changed else "unchanged"
     print(
