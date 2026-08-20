@@ -28,12 +28,17 @@ jobs:
           git add data/osm
           git commit -m "Update OSM GeoJSON"
           for attempt in 1 2 3; do
-            git pull --rebase origin main
-            if git push origin main; then
+            # These files are regenerated wholesale, so when the branch has
+            # advanced meanwhile (e.g. the scheduled run and a manual dispatch
+            # overlap) the newest generation must win. Rebase with -X theirs
+            # resolves the inevitable content conflicts in our favour instead
+            # of aborting; clean up any half-finished rebase before retrying.
+            if git pull --rebase -X theirs origin main && git push origin main; then
               echo "Push succeeded on attempt ${attempt}."
               exit 0
             fi
             echo "Push rejected on attempt ${attempt}, retrying..."
+            git rebase --abort 2>/dev/null || true
             sleep $((attempt * 5))
           done
           echo "Push failed after 3 attempts."

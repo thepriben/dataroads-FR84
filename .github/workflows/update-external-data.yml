@@ -36,12 +36,15 @@ jobs:
           git add data/external
           git commit -m "Update external data"
           for attempt in 1 2 3; do
-            git pull --rebase origin main
-            if git push origin main; then
+            # Regenerated data files: if the branch advanced meanwhile (overlapping
+            # runs), let the newest generation win rather than aborting on content
+            # conflicts. Clean up any half-finished rebase before retrying.
+            if git pull --rebase -X theirs origin main && git push origin main; then
               echo "Push succeeded on attempt ${attempt}."
               exit 0
             fi
             echo "Push rejected on attempt ${attempt}, retrying..."
+            git rebase --abort 2>/dev/null || true
             sleep $((attempt * 5))
           done
           echo "Push failed after 3 attempts."
