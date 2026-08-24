@@ -95,6 +95,17 @@ QUERIES = {
         );
         out geom;
     """,
+    # Panneaux d'entrée / sortie d'agglomération (EB10 / EB20) : ils marquent le
+    # basculement du régime de vitesse en traversée de village, donc utiles en
+    # regard des limitations.
+    "city-limits": """
+        [out:json][timeout:90];
+        area["ISO3166-2"="FR-84"]->.dept;
+        (
+          node(area.dept)["traffic_sign"~"city_limit"];
+        );
+        out geom;
+    """,
     # Aires connexes le long des RD (issue #7) : covoiturage, aires de repos et
     # parkings-relais (park&ride). On limite volontairement le stationnement aux
     # parkings-relais pour rester sur les "aires d'arrêt le long des RD" et éviter
@@ -518,7 +529,9 @@ def road_signs_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
 
 
 # Panneaux directionnels (information=guidepost) : on conserve les tags utiles à
-# l'affichage (nom, destination, réseau) sans alourdir le fichier.
+# l'affichage (nom, destination, réseau) sans alourdir le fichier. Les quatre
+# derniers portent une photo du panneau lui-même (plus pertinente que la photo de
+# voirie la plus proche) : ~1450 des mâts du Vaucluse en ont au moins une.
 GUIDEPOST_KEEP = (
     "information",
     "tourism",
@@ -529,6 +542,10 @@ GUIDEPOST_KEEP = (
     "operator",
     "hiking",
     "bicycle",
+    "mapillary",
+    "panoramax",
+    "wikimedia_commons",
+    "image",
 )
 
 
@@ -540,6 +557,39 @@ def guideposts_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
         if (element.get("tags") or {}).get("information") != "guidepost":
             continue
         feature = node_to_point_feature(element, GUIDEPOST_KEEP)
+        if feature:
+            features.append(feature)
+    return collection(features, len(data.get("elements", [])))
+
+
+# Panneaux d'agglomération : le nom porté par le panneau, le sens (entrée/sortie)
+# et l'orientation suffisent à l'affichage.
+CITY_LIMIT_KEEP = (
+    "traffic_sign",
+    "name",
+    "alt_name",
+    "name:oc",
+    "ref",
+    "city_limit",
+    "direction",
+    "traffic_sign:direction",
+    "operator",
+    "description",
+    "mapillary",
+    "panoramax",
+    "wikimedia_commons",
+    "image",
+)
+
+
+def city_limits_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    features: list[dict[str, Any]] = []
+    for element in data.get("elements", []):
+        if element.get("type") != "node":
+            continue
+        if "city_limit" not in ((element.get("tags") or {}).get("traffic_sign") or ""):
+            continue
+        feature = node_to_point_feature(element, CITY_LIMIT_KEEP)
         if feature:
             features.append(feature)
     return collection(features, len(data.get("elements", [])))
@@ -675,6 +725,7 @@ CONVERTERS = {
     "bridges": bridge_features_to_geojson,
     "road-signs": road_signs_to_geojson,
     "guideposts": guideposts_to_geojson,
+    "city-limits": city_limits_to_geojson,
     "roadside-areas": roadside_areas_to_geojson,
 }
 

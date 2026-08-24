@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.13.0] - 2026-08-24
+
+### Added
+
+- **Town-boundary sign layer (`traffic_sign=city_limit`).** A new incubator layer maps the 468 EB10 / EB20 signs of the department (446 named): red clusters when zoomed out, and from zoom 13 the real plate — place name on white with a red border, crossed by a red diagonal for an exit (`city_limit=end`). The popup gives the direction, alternative names (including Occitan), reference, operator and the photos referenced in OSM. New `city-limits` Overpass dataset on the usual twice-weekly schedule; URL layer code `agglo`.
+- **Photos of the signpost itself in guidepost popups.** About 1,450 of the department's 2,170 masts carry a photo in OSM (`panoramax`, `mapillary`, `wikimedia_commons`, `image`); those are now extracted and shown as thumbnails with their provenance, a violet dot on the mast flagging the case. The previous "nearest street-level photo" lookup remains as a fallback and keeps its green dot — it shows the surroundings, not the sign. Mapillary thumbnails are resolved by image id on popup open, and contributor-mangled tag values (viewer fragments, legacy v3 keys) degrade to a plain link instead of a failed request.
+- **Clickable speed bands and gauges in the limitations legend.** The legend now splits into two filter blocks: the six speed bands plus "unknown", and the four gauges (height, weight, length, width). Clicking a cell fades the matching segments to grey and removes their signs, which isolates a speed regime or a type of constraint across the network.
+- **Pictograms on the key-figures tiles**, one per indicator, set as a corner watermark so the number stays dominant.
+
+### Changed
+
+- **Road-number shields now honour their zoom threshold.** The fade ran *from* the threshold, so a level requested at zoom 10 only started appearing at 10.01 and local roads (threshold 14) were never drawn at their own zoom. The fade now runs *up to* the threshold: red is fully readable at zoom 10, orange at 12, and local roads move from 14 to **13**.
+- **Road-number shields follow the visible part of the road.** Each shield was anchored to the midpoint of the route's first way, a fixed point that left the screen as soon as you panned along the road. Anchors are now picked among the geometry points actually in view, so shields stay on screen and travel with the axis.
+- **Fatal crashes are drawn in black.** They leave the recency ramp entirely for a solid black dot ringed in white, readable at a glance against the red-orange cloud whatever the year; hospitalised and slight injuries keep the ramp and their ring/outline distinction.
+
+### Fixed
+
+- **Sign popups no longer close on their own.** Opening a popup makes Leaflet pan the map to fit it, and the resulting `moveend` rebuilt the layer, destroying the very marker carrying the popup. Stop/give-way, guidepost and town-boundary layers now skip the rebuild while one of their popups is open.
+- **The `guide` URL code restores the guidepost layer.** The key was written to the URL but missing from the list of keys replayed on load, so sharing a view with signposts enabled never brought them back.
+
 ## [0.12.2] - 2026-08-24
 
 ### Fixed

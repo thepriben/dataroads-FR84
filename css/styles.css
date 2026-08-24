@@ -3646,6 +3646,7 @@
         }
 
         .dash-tile {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
@@ -3657,6 +3658,27 @@
             border: 1px solid #e8eef3;
             border-radius: 8px;
             text-align: left;
+        }
+
+        /* Picto en filigrane dans le coin : repère visuel sans concurrencer le chiffre. */
+        .dash-tile-icon {
+            position: absolute;
+            top: 6px;
+            right: 7px;
+            font-size: 0.82rem;
+            line-height: 1;
+            opacity: 0.55;
+            pointer-events: none;
+        }
+
+        .dash-tile-value,
+        .dash-tile-label {
+            padding-right: 16px;
+        }
+
+        .dash-tile-full .dash-tile-value,
+        .dash-tile-full .dash-tile-label {
+            padding-right: 22px;
         }
 
         .dash-tile-full {
@@ -4773,6 +4795,143 @@
             transform: scale(1.1);
         }
 
+        /* Pastille violette = photo du panneau lui-même référencée dans OSM */
+        .guidepost-wrapper.has-photo .gp-mly {
+            background: #8B5CF6;
+        }
+
+        /* Vignettes des photos portées par un nœud OSM (mâts directionnels, agglomération) */
+        .node-photos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .node-photo {
+            position: relative;
+            flex: 1 1 96px;
+            min-width: 96px;
+            max-width: 132px;
+            display: block;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #eef1f4;
+            text-decoration: none;
+        }
+        .node-photo img {
+            display: block;
+            width: 100%;
+            height: 84px;
+            object-fit: cover;
+        }
+        .node-photo-pending {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 84px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+        .node-photo-src {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 2px 4px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.55);
+        }
+
+        /* ===== Panneaux d'agglomération (traffic_sign=city_limit) ===== */
+        /* Reprise du panneau réel EB10 : plaque blanche bordée de rouge, nom en noir.
+           EB20 (sortie) = même plaque barrée d'une diagonale rouge. */
+        .city-limit-wrapper {
+            background: transparent;
+            border: none;
+            white-space: nowrap;
+        }
+        .city-limit-plate {
+            position: relative;
+            display: inline-block;
+            padding: 2px 7px;
+            background: #fff;
+            border: 2px solid #C0392B;
+            border-radius: 3px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: #1f2933;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
+        }
+        .city-limit-plate:hover {
+            background: #fff8f7;
+        }
+        .city-limit-plate.is-exit::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(to bottom right, transparent calc(50% - 1.5px), #C0392B calc(50% - 1.5px), #C0392B calc(50% + 1.5px), transparent calc(50% + 1.5px));
+            pointer-events: none;
+        }
+        .city-limit-photo {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin-left: 3px;
+            border-radius: 50%;
+            background: #8B5CF6;
+            border: 1.5px solid #fff;
+            vertical-align: top;
+        }
+        .city-limit-cluster-wrapper {
+            background: transparent;
+            border: none;
+        }
+        .city-limit-cluster {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(192, 57, 43, 0.9);
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 0.72rem;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+            transition: transform 0.12s ease;
+        }
+        .city-limit-cluster:hover {
+            transform: scale(1.1);
+        }
+        .legend-color.city-limit-swatch {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            border: 2px solid #C0392B;
+            border-radius: 2px;
+            font-size: 0.42rem;
+            font-weight: 700;
+            color: #1f2933;
+        }
+        .city-limit-popup .city-limit-sense {
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: #C0392B;
+            margin-top: 2px;
+        }
+        .city-limit-popup .city-limit-details {
+            margin: 6px 0 0;
+            padding-left: 16px;
+            font-size: 0.78rem;
+            color: #34434f;
+        }
+
         /* Liste des destinations dans le popup d'un mât directionnel */
         .guidepost-popup .guidepost-dest {
             margin: 6px 0 0;
@@ -4872,7 +5031,7 @@
         /* Dynamic restrictions legend in sidebar */
         .limitations-legend-scale {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            grid-template-columns: repeat(6, 1fr);
             gap: 2px;
             margin: 6px 0;
             border-radius: 4px;
@@ -4887,6 +5046,100 @@
             padding: 4px 2px;
             color: white;
             text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+            border: none;
+            border-radius: 3px;
+            appearance: none;
+            cursor: pointer;
+            transition: opacity 0.15s ease, filter 0.15s ease;
+        }
+
+        .limitations-legend-step:hover {
+            filter: brightness(1.12);
+        }
+
+        .limitations-legend-step:focus-visible {
+            outline: 2px solid #1d4ed8;
+            outline-offset: 1px;
+        }
+
+        /* Tranche désactivée : grisée, mais toujours cliquable pour revenir en arrière. */
+        .limitations-legend-step.is-off {
+            filter: grayscale(1);
+            opacity: 0.35;
+        }
+
+        .limitations-legend-unknown {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            font-size: 0.7rem;
+            color: #7f8c8d;
+        }
+
+        .limitations-legend-unknown .limitations-legend-step {
+            flex: 0 0 auto;
+            width: 22px;
+            padding: 3px 0;
+        }
+
+        .limitations-legend-group {
+            font-size: 0.78rem;
+            color: #5b6770;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .limitations-legend-scale + .limitations-legend-unknown + .limitations-legend-group {
+            margin-top: 10px;
+        }
+
+        .limitations-legend-gauges {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4px;
+            margin: 6px 0;
+        }
+
+        /* Gabarits : pastilles bordées de la couleur du pictogramme correspondant. */
+        .limitations-legend-gauge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 6px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #34434f;
+            background: #fff;
+            border: 1.5px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.15s ease, background 0.15s ease;
+        }
+
+        .limitations-legend-gauge:hover {
+            background: #f4f7f9;
+        }
+
+        .limitations-legend-gauge:focus-visible {
+            outline: 2px solid #1d4ed8;
+            outline-offset: 1px;
+        }
+
+        .limitations-legend-gauge.is-off {
+            opacity: 0.4;
+            border-color: #ccc !important;
+            background: #f0f2f4;
+        }
+
+        .limitations-legend-gauge-icon {
+            font-size: 0.78rem;
+            line-height: 1;
+        }
+
+        .limitations-legend-hint {
+            font-size: 0.68rem;
+            color: #7f8c8d;
         }
 
         /* === Pied de page === */
@@ -5164,10 +5417,16 @@
             box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.18);
             flex: 0 0 auto;
         }
-        /* Black ring = blessé hospitalisé / mortel (same-size dots, ring is the tell) */
+        /* Black ring = blessé hospitalisé (same-size dots, ring is the tell) */
         .legend-color.acc-dot--ring {
             border: 2px solid #111;
             box-shadow: none;
+        }
+        /* Mortel : pastille noire cerclée de blanc, hors dégradé d'ancienneté */
+        .legend-color.acc-dot--fatal {
+            background: #111;
+            border: 2px solid #fff;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
         }
         .acc-hint {
             color: #999;

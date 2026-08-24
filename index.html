@@ -259,12 +259,12 @@
                     </div>
                     <span class="freshness-badge" id="freshness-accidents" data-schedule-key="static"></span>
                     
-                    <!-- Colour encodes recency (see scale below). Severity is read from
-                         the ring: black ring = hospitalisé/mortel, no ring = léger ;
-                         only the mortel dot is enlarged. -->
+                    <!-- Colour encodes recency (see scale below), except for the fatal
+                         dot which is always black. Severity is otherwise read from the
+                         ring: black ring = hospitalisé, no ring = léger. -->
                     <div class="legend-item" data-accident="mortel" style="opacity: 0.5;">
-                        <div class="legend-color acc-dot acc-dot--ring" style="width: 14px; height: 14px;"></div>
-                        <div class="legend-label">Mortel (tué)</div>
+                        <div class="legend-color acc-dot acc-dot--fatal" style="width: 14px; height: 14px;"></div>
+                        <div class="legend-label">Mortel (tué) <span class="acc-hint">(noir)</span></div>
                         <div class="legend-count" id="count-fatal">-</div>
                     </div>
                     
@@ -452,6 +452,21 @@
                         <div class="legend-count" id="count-guideposts">-</div>
                     </div>
                     <div class="sensitive-zones-hint"><code>information=guidepost</code></div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleCityLimits && window.toggleCityLimits();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Panneaux<small class="legend-title-sub">d'agglomération</small></span>
+                        <span id="cityLimitsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-city-limits" data-schedule-key="incubator"></span>
+
+                    <div class="legend-item" data-city-limit="city_limit" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color city-limit-swatch" aria-hidden="true">EB10</div>
+                        <div class="legend-label">Entrées / sorties de village</div>
+                        <div class="legend-count" id="count-city-limits">-</div>
+                    </div>
+                    <div class="sensitive-zones-hint"><code>traffic_sign=city_limit</code></div>
                 </div>
 
                 <div class="legend-section">

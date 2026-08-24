@@ -342,6 +342,7 @@
                 ['bridgesToggleIcon', bridgeVisible],
                 ['roadSignsToggleIcon', roadSignsVisible],
                 ['guidepostsToggleIcon', guidepostsVisible],
+                ['cityLimitsToggleIcon', cityLimitsVisible],
                 ['sensitiveZonesToggleIcon', sensitiveZonesVisible],
                 ['inaturalistSensitivesToggleIcon', inaturalistSensitivesVisible],
                 ['webcamsToggleIcon', webcamsVisible],
@@ -469,6 +470,7 @@
                         ensureLayerToggle(bridgeVisible, window.toggleBridges);
                         ensureLayerToggle(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerToggle(guidepostsVisible, window.toggleGuideposts);
+                        ensureLayerToggle(cityLimitsVisible, window.toggleCityLimits);
                         ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerToggle(webcamsVisible, window.toggleWebcams);
@@ -477,6 +479,7 @@
                         ensureLayerOff(bridgeVisible, window.toggleBridges);
                         ensureLayerOff(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerOff(guidepostsVisible, window.toggleGuideposts);
+                        ensureLayerOff(cityLimitsVisible, window.toggleCityLimits);
                         ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerOff(webcamsVisible, window.toggleWebcams);
@@ -1540,6 +1543,7 @@
             }
             if (roadSignsVisible) active.push('signs');
             if (guidepostsVisible) active.push('guide');
+            if (cityLimitsVisible) active.push('agglo');
             if (sensitiveZonesVisible) active.push('ens');
             if (inaturalistSensitivesVisible) active.push('inat');
             if (webcamsVisible) active.push('wcam');
@@ -1674,6 +1678,9 @@
                 case 'guide':
                     setBooleanLayerIfNeeded(guidepostsVisible, desired, window.toggleGuideposts);
                     return guidepostsVisible === desired;
+                case 'agglo':
+                    setBooleanLayerIfNeeded(cityLimitsVisible, desired, window.toggleCityLimits);
+                    return cityLimitsVisible === desired;
                 case 'pnx':
                     if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
                     setBridgeProviderIfNeeded('panoramax', desired);
@@ -1707,7 +1714,7 @@
 
             const pendingKeys = [
                 'construction', 'bicycle', 'cities', 'aires', 'limits', 'accidents', 'traffic', 'waze',
-                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'ens', 'inat', 'wcam', 'oedb'
+                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'guide', 'agglo', 'ens', 'inat', 'wcam', 'oedb'
             ];
             let allReady = true;
             pendingKeys.forEach(key => {
@@ -1830,10 +1837,11 @@
                 }
                 case 'incubator': {
                     let visible = 0;
-                    const total = 7;
+                    const total = 8;
                     if (bridgeVisible) visible++;
                     if (roadSignsVisible) visible++;
                     if (guidepostsVisible) visible++;
+                    if (cityLimitsVisible) visible++;
                     if (sensitiveZonesVisible) visible++;
                     if (inaturalistSensitivesVisible) visible++;
                     if (webcamsVisible) visible++;
@@ -1862,6 +1870,8 @@
                     return roadSignsVisible;
                 case 'freshness-guideposts':
                     return guidepostsVisible;
+                case 'freshness-city-limits':
+                    return cityLimitsVisible;
                 case 'freshness-roadside-areas':
                     return roadsideAreasVisible;
                 case 'freshness-accidents':
@@ -2662,6 +2672,14 @@
             if (yieldEl) yieldEl.textContent = yieldCount.toLocaleString('fr-FR');
         }
 
+        // Ouvrir un popup fait recentrer la carte pour le rendre visible ; le
+        // `moveend` qui suit ne doit pas reconstruire la couche, sinon le marqueur
+        // porteur est détruit et le popup se referme dans la foulée.
+        function layerHasOpenPopup(layer) {
+            const popup = window.map && window.map._popup;
+            return !!(popup && popup._source && layer.hasLayer(popup._source));
+        }
+
         function applyRoadSignsVisibleUi() {
             const icon = document.getElementById('roadSignsToggleIcon');
             setToggleIcon(icon, true);
@@ -2688,7 +2706,7 @@
             if (roadSignsVisible) {
                 if (!window.map.hasLayer(roadSignsLayer)) roadSignsLayer.addTo(window.map);
                 if (!roadSignsZoomHandler) {
-                    roadSignsZoomHandler = () => renderRoadSigns();
+                    roadSignsZoomHandler = () => { if (!layerHasOpenPopup(roadSignsLayer)) renderRoadSigns(); };
                     window.map.on('zoomend moveend', roadSignsZoomHandler);
                 }
                 renderRoadSigns();
@@ -2770,14 +2788,20 @@
         const GUIDEPOSTS_CLUSTER_CELL_PX = 58;
         const GUIDEPOSTS_MAX_MARKERS = 1500;
 
-        function guidepostDivIcon(hasMapillary) {
-            const mly = hasMapillary ? `<span class="gp-mly" title="Photo Mapillary à proximité"></span>` : '';
+        // `photoKind` : 'tagged' = photo du panneau référencée dans OSM,
+        // 'nearby' = simple couverture Mapillary alentour, null = aucune.
+        function guidepostDivIcon(photoKind) {
+            const kind = photoKind === true ? 'nearby' : photoKind;
+            const title = kind === 'tagged' ? 'Photo du panneau disponible' : 'Photo Mapillary à proximité';
+            const dot = kind ? `<span class="gp-mly" title="${title}"></span>` : '';
             return L.divIcon({
                 html: `<span class="gp-post"></span>`
                     + `<span class="gp-blade gp-blade--top"></span>`
                     + `<span class="gp-blade gp-blade--bottom"></span>`
-                    + mly,
-                className: 'guidepost-wrapper' + (hasMapillary ? ' has-mapillary' : ''),
+                    + dot,
+                className: 'guidepost-wrapper'
+                    + (kind ? ' has-mapillary' : '')
+                    + (kind === 'tagged' ? ' has-photo' : ''),
                 iconSize: [30, 28],
                 iconAnchor: [9, 27]
             });
@@ -2800,15 +2824,95 @@
             return `<ul class="guidepost-dest">${items}</ul>`;
         }
 
-        function guidepostPopupHtml(props, img, state) {
+        // Photos portées par le nœud OSM lui-même (`panoramax`, `mapillary`,
+        // `wikimedia_commons`, `image`). Elles montrent le panneau, là où la
+        // recherche de proximité ne montre que la voirie autour : on les préfère.
+        // Les valeurs multiples sont séparées par des « ; ».
+        const OSM_NODE_MAX_PHOTOS = 4;
+
+        function osmNodePhotos(props) {
+            const p = props || {};
+            const values = raw => String(raw || '').split(';').map(s => s.trim()).filter(Boolean);
+            const photos = [];
+
+            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            values(p.panoramax).filter(id => UUID_RE.test(id)).forEach(id => photos.push({
+                source: 'Panoramax',
+                thumb: (window.panoramaxImageUrl && window.panoramaxImageUrl(id, 'thumb')) || null,
+                href: (window.panoramaxPageUrl && window.panoramaxPageUrl(id)) || '#'
+            }));
+            values(p.mapillary).forEach(raw => {
+                // Terrain OSM : certains tags traînent un fragment de visionneuse
+                // ("<id>&x=…&zoom=…") et d'autres portent encore une clé v3 non
+                // numérique, que l'API Graph refuse — seul le lien reste utile.
+                const id = raw.split('&')[0].trim();
+                if (!id) return;
+                photos.push({
+                    source: 'Mapillary',
+                    mapillaryId: /^\d+$/.test(id) ? id : null,
+                    thumb: null,
+                    href: (window.mapillaryPageUrl && window.mapillaryPageUrl(id)) || '#'
+                });
+            });
+            values(p.wikimedia_commons).forEach(file => {
+                const name = file.replace(/^File:/i, '');
+                photos.push({
+                    source: 'Wikimedia Commons',
+                    thumb: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=480`,
+                    href: `https://commons.wikimedia.org/wiki/${encodeURIComponent(file)}`
+                });
+            });
+            values(p.image).filter(url => /^https?:\/\//i.test(url)).forEach(url => photos.push({
+                source: 'Photo OSM',
+                thumb: url,
+                href: url
+            }));
+
+            return photos.slice(0, OSM_NODE_MAX_PHOTOS);
+        }
+
+        function osmNodePhotoCardHtml(photo) {
+            const label = escapeHtml(photo.source);
+            const inner = photo.thumb
+                ? `<img src="${escapeHtml(photo.thumb)}" alt="Photo du panneau (${label})" loading="lazy">`
+                : `<span class="node-photo-pending">${label}</span>`;
+            return `<a class="node-photo" href="${escapeHtml(photo.href)}" target="_blank" rel="noopener noreferrer" title="Ouvrir sur ${label}">
+                ${inner}<span class="node-photo-src">${label}</span>
+            </a>`;
+        }
+
+        // Bloc photo commun aux panneaux : vignettes cliquables + provenance.
+        function osmNodePhotosHtml(photos) {
+            return `<div class="node-photos">${photos.map(osmNodePhotoCardHtml).join('')}</div>
+                <div class="speed-sign-photo-meta">Photo${photos.length > 1 ? 's' : ''} du panneau · référencée${photos.length > 1 ? 's' : ''} dans OpenStreetMap</div>`;
+        }
+
+        // Les vignettes Mapillary ne se déduisent pas de l'identifiant : on ne les
+        // résout qu'à l'ouverture du popup, une seule fois, puis on réinjecte le HTML.
+        function resolveMapillaryThumbsOnOpen(marker, photos, rebuild) {
+            const pending = photos.filter(photo => photo.mapillaryId && !photo.thumb);
+            if (!pending.length) return;
+            marker.once('popupopen', () => {
+                const resolve = window.fetchMapillaryImageById || (() => Promise.resolve(null));
+                Promise.all(pending.map(photo => resolve(photo.mapillaryId)
+                    .then(img => { if (img && img.thumb_1024_url) photo.thumb = img.thumb_1024_url; })
+                    .catch(() => {})))
+                    .then(() => marker.setPopupContent(rebuild()));
+            });
+        }
+
+        function guidepostPopupHtml(props, photos, state) {
             const title = escapeHtml(guidepostTitle(props));
             const dests = guidepostDestinationsHtml(props);
             let body;
-            if (state === 'loading') {
+            if (state === 'tagged') {
+                body = osmNodePhotosHtml(photos);
+            } else if (state === 'loading') {
                 body = `<div class="speed-sign-photo-msg">📷 Recherche d'une photo Mapillary…</div>`;
-            } else if (!img || !img.thumb_1024_url) {
+            } else if (!photos || !photos.length) {
                 body = `<div class="speed-sign-photo-msg">Pas encore de photo disponible sur Mapillary à proximité.</div>`;
             } else {
+                const img = photos[0];
                 const when = img.captured_at
                     ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
                     : '';
@@ -2829,19 +2933,27 @@
         }
 
         function makeGuidepostMarker(lat, lng, props) {
+            const tagged = osmNodePhotos(props);
             const marker = L.marker([lat, lng], {
-                icon: guidepostDivIcon(false),
+                icon: guidepostDivIcon(tagged.length ? 'tagged' : null),
                 interactive: true,
                 keyboard: false,
                 riseOnHover: true,
                 zIndexOffset: 340
             });
+
+            if (tagged.length) {
+                marker.bindPopup(guidepostPopupHtml(props, tagged, 'tagged'), { minWidth: 220, maxWidth: 300 });
+                resolveMapillaryThumbsOnOpen(marker, tagged, () => guidepostPopupHtml(props, tagged, 'tagged'));
+                return marker;
+            }
+
             marker.bindPopup(guidepostPopupHtml(props, null, 'loading'), { minWidth: 220, maxWidth: 280 });
             const checkNearby = window.checkMapillaryNearby || (() => Promise.resolve(null));
             checkNearby(lat, lng).then(img => {
                 if (img && img.thumb_1024_url) {
-                    marker.setIcon(guidepostDivIcon(true));
-                    marker.setPopupContent(guidepostPopupHtml(props, img, 'ok'));
+                    marker.setIcon(guidepostDivIcon('nearby'));
+                    marker.setPopupContent(guidepostPopupHtml(props, [img], 'nearby'));
                 }
             }).catch(() => {});
             return marker;
@@ -2937,7 +3049,7 @@
             if (guidepostsVisible) {
                 if (!window.map.hasLayer(guidepostsLayer)) guidepostsLayer.addTo(window.map);
                 if (!guidepostsZoomHandler) {
-                    guidepostsZoomHandler = () => renderGuideposts();
+                    guidepostsZoomHandler = () => { if (!layerHasOpenPopup(guidepostsLayer)) renderGuideposts(); };
                     window.map.on('zoomend moveend', guidepostsZoomHandler);
                 }
                 renderGuideposts();
@@ -3003,6 +3115,224 @@
                 return;
             }
             syncGuidepostsOnMap();
+        };
+
+        // ========== PANNEAUX D'AGGLOMÉRATION (traffic_sign=city_limit) ==========
+        // Entrées / sorties de village (EB10 / EB20, ~470 en 84) : elles marquent le
+        // basculement du régime de vitesse, donc le pendant terrain des limitations.
+        // Même mécanique que les mâts directionnels : grappes au dézoom, panneaux
+        // nominatifs au zoom, photos OSM du panneau dans le popup.
+        const cityLimitsLayer = L.layerGroup();
+        let cityLimitsVisible = false;
+        let cityLimitsDataLoaded = false;
+        let cityLimitsFeatures = [];
+        let cityLimitsZoomHandler = null;
+        let cityLimitsLoadPromise = null;
+        const CITY_LIMITS_SIGN_ZOOM = 13;
+        const CITY_LIMITS_CLUSTER_CELL_PX = 58;
+
+        function cityLimitName(props) {
+            const p = props || {};
+            return p.name || p.alt_name || p.ref || 'Agglomération';
+        }
+
+        // `city_limit=end` (ou une direction de sortie) = panneau barré de rouge.
+        function cityLimitIsExit(props) {
+            const p = props || {};
+            return p.city_limit === 'end' || /(^|;)end($|;)/.test(String(p['traffic_sign:direction'] || ''));
+        }
+
+        function cityLimitDivIcon(props, hasPhoto) {
+            const label = escapeHtml(cityLimitName(props));
+            const exit = cityLimitIsExit(props);
+            const dot = hasPhoto ? `<span class="city-limit-photo" title="Photo du panneau disponible"></span>` : '';
+            return L.divIcon({
+                html: `<span class="city-limit-plate${exit ? ' is-exit' : ''}">${label}</span>${dot}`,
+                className: 'city-limit-wrapper',
+                iconSize: null,
+                iconAnchor: [0, 10]
+            });
+        }
+
+        function cityLimitPopupHtml(props, photos) {
+            const p = props || {};
+            const rows = [];
+            if (p.alt_name && p.alt_name !== p.name) rows.push(['Autre nom', p.alt_name]);
+            if (p['name:oc']) rows.push(['Occitan', p['name:oc']]);
+            if (p.ref) rows.push(['Référence', p.ref]);
+            if (p.description) rows.push(['Description', p.description]);
+            if (p.operator) rows.push(['Gestionnaire', p.operator]);
+            const detailsHtml = rows.length
+                ? `<ul class="city-limit-details">${rows.map(([k, v]) => `<li><strong>${k}</strong> : ${escapeHtml(String(v))}</li>`).join('')}</ul>`
+                : '';
+            const photosHtml = photos && photos.length
+                ? `<div class="speed-sign-photo">${osmNodePhotosHtml(photos)}</div>`
+                : '';
+            const sense = cityLimitIsExit(props) ? 'Sortie d’agglomération' : 'Entrée d’agglomération';
+            return `
+                <div class="route-popup speed-sign-popup city-limit-popup">
+                    <h3>${escapeHtml(cityLimitName(props))}</h3>
+                    <div class="city-limit-sense">${sense}</div>
+                    ${detailsHtml}
+                    ${photosHtml}
+                </div>
+            `;
+        }
+
+        function makeCityLimitMarker(lat, lng, props) {
+            const photos = osmNodePhotos(props);
+            const marker = L.marker([lat, lng], {
+                icon: cityLimitDivIcon(props, photos.length > 0),
+                interactive: true,
+                keyboard: false,
+                riseOnHover: true,
+                zIndexOffset: 330
+            });
+            marker.bindPopup(cityLimitPopupHtml(props, photos), { minWidth: 220, maxWidth: 300 });
+            resolveMapillaryThumbsOnOpen(marker, photos, () => cityLimitPopupHtml(props, photos));
+            return marker;
+        }
+
+        function cityLimitClusterIcon(count) {
+            const size = count >= 100 ? 42 : count >= 20 ? 36 : 30;
+            return L.divIcon({
+                html: `<div class="city-limit-cluster" style="width:${size}px;height:${size}px;">${count}</div>`,
+                className: 'city-limit-cluster-wrapper',
+                iconSize: [size, size],
+                iconAnchor: [size / 2, size / 2]
+            });
+        }
+
+        function renderCityLimitClusters(visible, zoom) {
+            const cell = CITY_LIMITS_CLUSTER_CELL_PX;
+            const buckets = new Map();
+            visible.forEach(sign => {
+                const p = window.map.project([sign.lat, sign.lng], zoom);
+                const key = `${Math.floor(p.x / cell)}|${Math.floor(p.y / cell)}`;
+                let bucket = buckets.get(key);
+                if (!bucket) { bucket = { sx: 0, sy: 0, n: 0 }; buckets.set(key, bucket); }
+                bucket.sx += p.x; bucket.sy += p.y; bucket.n++;
+            });
+            buckets.forEach(bucket => {
+                const center = window.map.unproject([bucket.sx / bucket.n, bucket.sy / bucket.n], zoom);
+                const marker = L.marker(center, {
+                    icon: cityLimitClusterIcon(bucket.n),
+                    interactive: true,
+                    keyboard: false,
+                    zIndexOffset: 310
+                });
+                marker.bindTooltip(`${bucket.n} panneau${bucket.n > 1 ? 'x' : ''} d'agglomération — cliquer pour zoomer`, { direction: 'top' });
+                marker.on('click', () => {
+                    window.map.flyTo(center, Math.min(window.map.getZoom() + 3, CITY_LIMITS_SIGN_ZOOM + 1), { duration: 0.6 });
+                });
+                marker.addTo(cityLimitsLayer);
+            });
+        }
+
+        function renderCityLimits() {
+            cityLimitsLayer.clearLayers();
+            if (!cityLimitsVisible || !cityLimitsDataLoaded || !window.map) return;
+            const zoom = window.map.getZoom();
+            const bounds = window.map.getBounds();
+            const visible = [];
+            for (const feature of cityLimitsFeatures) {
+                const coords = feature.geometry && feature.geometry.coordinates;
+                if (!coords) continue;
+                const lng = coords[0], lat = coords[1];
+                if (!bounds.contains([lat, lng])) continue;
+                visible.push({ lat, lng, props: feature.properties || {} });
+            }
+            if (zoom >= CITY_LIMITS_SIGN_ZOOM) {
+                visible.forEach(sign => makeCityLimitMarker(sign.lat, sign.lng, sign.props).addTo(cityLimitsLayer));
+            } else {
+                renderCityLimitClusters(visible, zoom);
+            }
+        }
+
+        function setCityLimitsLegendCounts(features) {
+            const el = document.getElementById('count-city-limits');
+            if (el) el.textContent = (features || []).length.toLocaleString('fr-FR');
+        }
+
+        function applyCityLimitsUi(visible) {
+            const icon = document.getElementById('cityLimitsToggleIcon');
+            setToggleIcon(icon, visible);
+            if (icon) icon.style.opacity = '';
+            document.querySelectorAll('[data-city-limit]').forEach(item => {
+                item.style.opacity = visible ? '1' : '0.5';
+                item.style.pointerEvents = visible ? 'auto' : 'none';
+            });
+        }
+
+        function syncCityLimitsOnMap() {
+            if (cityLimitsVisible) {
+                if (!window.map.hasLayer(cityLimitsLayer)) cityLimitsLayer.addTo(window.map);
+                if (!cityLimitsZoomHandler) {
+                    cityLimitsZoomHandler = () => { if (!layerHasOpenPopup(cityLimitsLayer)) renderCityLimits(); };
+                    window.map.on('zoomend moveend', cityLimitsZoomHandler);
+                }
+                renderCityLimits();
+            } else {
+                cityLimitsLayer.clearLayers();
+                if (window.map.hasLayer(cityLimitsLayer)) window.map.removeLayer(cityLimitsLayer);
+                if (cityLimitsZoomHandler) {
+                    window.map.off('zoomend moveend', cityLimitsZoomHandler);
+                    cityLimitsZoomHandler = null;
+                }
+            }
+            applyCityLimitsUi(cityLimitsVisible);
+            syncLegendChrome();
+        }
+
+        window.loadCityLimits = function({ show } = {}) {
+            if (cityLimitsDataLoaded) {
+                if (show) cityLimitsVisible = true;
+                syncCityLimitsOnMap();
+                return Promise.resolve(cityLimitsFeatures);
+            }
+            if (cityLimitsLoadPromise) return cityLimitsLoadPromise;
+            cityLimitsLoadPromise = (async () => {
+                try {
+                    const data = await window.InforouteApi.fetchGeoJson('city-limits');
+                    renderFreshnessBadge(document.getElementById('freshness-city-limits'), {
+                        generatedAt: data._cache?.generated_at,
+                        scheduleKey: 'incubator'
+                    });
+                    cityLimitsFeatures = data.features || [];
+                    cityLimitsDataLoaded = true;
+                    setCityLimitsLegendCounts(cityLimitsFeatures);
+                    if (show) cityLimitsVisible = true;
+                    syncCityLimitsOnMap();
+                    tryApplyAppUrlState();
+                    console.log(`✓ ${cityLimitsFeatures.length} panneau(x) d'agglomération chargés`);
+                    return cityLimitsFeatures;
+                } catch (error) {
+                    console.error('Erreur chargement panneaux d\'agglomération:', error);
+                    setCityLimitsLegendCounts([]);
+                    renderFreshnessBadge(document.getElementById('freshness-city-limits'), {
+                        scheduleKey: 'incubator',
+                        errorMsg: error.message
+                    });
+                    applyCityLimitsUi(false);
+                    syncLegendChrome();
+                    return [];
+                } finally {
+                    cityLimitsLoadPromise = null;
+                }
+            })();
+            return cityLimitsLoadPromise;
+        };
+
+        window.toggleCityLimits = function() {
+            cityLimitsVisible = !cityLimitsVisible;
+            if (!cityLimitsVisible) { syncCityLimitsOnMap(); return; }
+            if (!cityLimitsDataLoaded) {
+                const icon = document.getElementById('cityLimitsToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                window.loadCityLimits({ show: true });
+                return;
+            }
+            syncCityLimitsOnMap();
         };
 
         // ========== SENSITIVE NATURAL ZONES & iNATURALIST ==========
@@ -6274,14 +6604,15 @@
         }
 
         // --- RD labels: anti-collision + zoom sync ---
-        // Panonceaux par niveau hiérarchique (seuils + fondu 0.75 niveau de zoom).
+        // Panonceaux par niveau hiérarchique : le seuil est le zoom auquel le niveau
+        // est *pleinement* lisible, le fondu de 0.75 niveau se joue juste avant.
         // Mise à jour pendant zoom/déplacement ; recadrage viewport pour limiter le bruit.
         // Priority: regional (3) > territorial (2) > local (1) — highest keeps ideal position.
-        // Test: Avignon [43.9493, 4.8055] — z10 régional, z12 territorial, z14 local.
+        // Test: Avignon [43.9493, 4.8055] — z10 régional, z12 territorial, z13 local.
         const ROUTE_LABEL_ZOOM_THRESHOLDS = {
             regional: 10,
             territorial: 12,
-            local: 14
+            local: 13
         };
         const ROUTE_LABEL_ZOOM_FADE_SPAN = 0.75;
         const ROUTE_LABEL_VIEWPORT_PADDING = 0.12;
@@ -6295,51 +6626,48 @@
         const ROUTE_LABEL_SPIRAL_STEP_PX = 10;
         const ROUTE_LABEL_MAX_SPIRAL_STEPS = 24;
         const ROUTE_LABEL_CLUSTER_MIN = 4;
+        // Un point sur trois suffit à situer la portion visible d'un itinéraire,
+        // et le balayage reste léger sur les longues RD à chaque déplacement.
+        const ROUTE_LABEL_POINT_STRIDE = 3;
 
-        function getRouteLabelCandidates(route) {
-            const candidates = [];
-            if (!route.ways || route.ways.length === 0) return candidates;
-            const way = route.ways[0];
-            if (!way.geometry || way.geometry.length === 0) return candidates;
+        // Ancres candidates prises sur la portion de l'itinéraire réellement à
+        // l'écran : une étiquette doit suivre la route quand on se déplace le long
+        // d'elle, et non rester accrochée à un point fixe qui sort du cadre.
+        function getRouteLabelCandidates(route, bounds) {
+            const inView = [];
+            if (!route.ways) return inView;
+            for (const way of route.ways) {
+                const geometry = way.geometry;
+                if (!geometry || geometry.length === 0) continue;
+                for (let i = 0; i < geometry.length; i += ROUTE_LABEL_POINT_STRIDE) {
+                    const point = geometry[i];
+                    if (bounds.contains([point.lat, point.lon])) {
+                        inView.push(L.latLng(point.lat, point.lon));
+                    }
+                }
+            }
+            if (inView.length === 0) return inView;
 
-            const len = way.geometry.length;
-            const fractions = len === 1 ? [0] : [0.25, 0.5, 0.75];
-            fractions.forEach(fraction => {
-                const index = Math.min(len - 1, Math.max(0, Math.round((len - 1) * fraction)));
-                const point = way.geometry[index];
-                candidates.push(L.latLng(point.lat, point.lon));
-            });
+            // Le milieu de la portion visible d'abord, puis deux replis écartés
+            // pour laisser de la marge à la résolution des chevauchements.
+            const pick = fraction => inView[Math.min(inView.length - 1, Math.round((inView.length - 1) * fraction))];
+            const candidates = [pick(0.5)];
+            if (inView.length > 2) candidates.push(pick(0.28), pick(0.72));
             return candidates;
         }
 
-        function getRouteLabelAnchor(route) {
-            const candidates = getRouteLabelCandidates(route);
-            return candidates.length > 0 ? candidates[Math.floor(candidates.length / 2)] : null;
-        }
-
+        // The fade runs up to the threshold, not from it: a level asked for at zoom 10
+        // must be fully readable at zoom 10, not start appearing there.
         function getRouteLabelZoomOpacity(hierarchy, zoom) {
             const threshold = ROUTE_LABEL_ZOOM_THRESHOLDS[hierarchy];
-            if (zoom < threshold) return 0;
-            if (zoom >= threshold + ROUTE_LABEL_ZOOM_FADE_SPAN) return 1;
-            return (zoom - threshold) / ROUTE_LABEL_ZOOM_FADE_SPAN;
+            const fadeStart = threshold - ROUTE_LABEL_ZOOM_FADE_SPAN;
+            if (zoom >= threshold) return 1;
+            if (zoom <= fadeStart) return 0;
+            return (zoom - fadeStart) / ROUTE_LABEL_ZOOM_FADE_SPAN;
         }
 
         function getRouteLabelZoomScale(zoom) {
             return Math.min(1.2, Math.max(0.88, 0.72 + zoom * 0.025));
-        }
-
-        function routeIntersectsViewport(route) {
-            const bounds = map.getBounds().pad(ROUTE_LABEL_VIEWPORT_PADDING);
-            if (route.ways) {
-                for (const way of route.ways) {
-                    if (!way.geometry) continue;
-                    for (const point of way.geometry) {
-                        if (bounds.contains([point.lat, point.lon])) return true;
-                    }
-                }
-            }
-            const anchor = getRouteLabelAnchor(route);
-            return !!(anchor && bounds.contains(anchor));
         }
 
         function offsetLatLngByPixels(latlng, dx, dy) {
@@ -6380,22 +6708,22 @@
 
         function collectVisibleRouteLabels(zoom) {
             const entries = [];
+            const bounds = map.getBounds().pad(ROUTE_LABEL_VIEWPORT_PADDING);
             ['regional', 'territorial', 'local'].forEach(hierarchy => {
                 if (!hierarchyVisibility[hierarchy]) return;
                 const opacity = getRouteLabelZoomOpacity(hierarchy, zoom);
                 if (opacity <= 0) return;
                 routesByHierarchy[hierarchy].forEach(route => {
-                    if (!routeIntersectsViewport(route)) return;
-                    const anchor = getRouteLabelAnchor(route);
-                    if (!anchor) return;
+                    const candidates = getRouteLabelCandidates(route, bounds);
+                    if (candidates.length === 0) return;
                     entries.push({
                         route,
                         hierarchy,
                         ref: route.ref,
                         priority: ROUTE_LABEL_PRIORITY[hierarchy],
                         opacity,
-                        anchor,
-                        candidates: getRouteLabelCandidates(route)
+                        anchor: candidates[0],
+                        candidates
                     });
                 });
             });
@@ -9341,6 +9669,9 @@
         // thin white outline (slight). Hospitalised and slight share the same radius
         // on purpose — the ring is the discriminator; only fatal is enlarged.
         const ACCIDENT_SIZE = { mortel: 6.5, grave: 4.5, leger: 4.5 };
+        // Fatal crashes step out of the recency ramp entirely: black reads at a glance
+        // against the red-orange cloud, whatever the year.
+        const ACCIDENT_FATAL_COLOR = '#111111';
 
         // Leaflet stacks every canvas renderer below every SVG one
         // (.leaflet-map-pane canvas → z-index 100, svg → 200), so the road polylines
@@ -9421,16 +9752,19 @@
                         ? '💀 Accident mortel'
                         : (gravite === 'grave' ? '🚑 Blessé(s) hospitalisé(s)' : '⚠️ Blessé(s) léger(s)');
 
-                    // Black ring = hospitalised or fatal ; thin white outline = slight.
-                    const hasRing = (gravite === 'mortel' || gravite === 'grave');
+                    // Fatal crashes are read first, so they leave the recency ramp and
+                    // take a solid black dot ringed in white. The other two keep the
+                    // ramp, with a black ring telling hospitalised from slight.
+                    const isFatal = gravite === 'mortel';
+                    const hasRing = (isFatal || gravite === 'grave');
                     const marker = L.circleMarker([lat, lon], {
                         renderer: accidentCanvasRenderer,
                         radius: size,
-                        fillColor: accidentRecencyColor(year),
-                        color: hasRing ? '#111111' : '#ffffff',
+                        fillColor: isFatal ? ACCIDENT_FATAL_COLOR : accidentRecencyColor(year),
+                        color: isFatal ? '#ffffff' : (hasRing ? '#111111' : '#ffffff'),
                         weight: hasRing ? 1.6 : 0.6,
                         opacity: hasRing ? 0.95 : 0.85,
-                        fillOpacity: 0.85
+                        fillOpacity: isFatal ? 1 : 0.85
                     });
                     marker.accidentYear = Number.isFinite(year) ? year : null;
                     marker.accidentGravite = gravite;
@@ -10140,6 +10474,26 @@
             { max: 130, color: '#C0392B', label: '≥110' }
         ];
         const SPEED_UNKNOWN_COLOR = '#95A5A6';
+        // Couleur des tronçons dont la tranche de vitesse est désactivée dans la légende :
+        // ils restent visibles pour garder le réseau lisible, mais s'effacent au second plan.
+        const SPEED_MUTED_COLOR = '#CBD5E1';
+
+        // Filtrage par tranche depuis la légende : index dans SPEED_COLOR_SCALE, plus
+        // la clé 'unknown' pour les tronçons dépourvus de maxspeed.
+        const speedRangeVisibility = SPEED_COLOR_SCALE.map(() => true);
+        let speedUnknownVisible = true;
+
+        function speedStepFor(kmh) {
+            if (kmh === null || kmh === undefined) return 'unknown';
+            for (let i = 0; i < SPEED_COLOR_SCALE.length; i += 1) {
+                if (kmh <= SPEED_COLOR_SCALE[i].max) return i;
+            }
+            return SPEED_COLOR_SCALE.length - 1;
+        }
+
+        function isSpeedStepVisible(step) {
+            return step === 'unknown' ? speedUnknownVisible : speedRangeVisibility[step] !== false;
+        }
 
         // Convertit la valeur maxspeed OSM en nombre (km/h), ou null si inconnu.
         function parseMaxspeed(raw) {
@@ -10167,15 +10521,17 @@
             return SPEED_COLOR_SCALE[SPEED_COLOR_SCALE.length - 1].color;
         }
 
-        // Repeint toutes les polylines de routes selon leur maxspeed.
+        // Repeint toutes les polylines de routes selon leur maxspeed, en estompant
+        // les tranches désactivées dans la légende.
         function applySpeedGradient() {
             Object.keys(window.routePolylines).forEach(ref => {
                 window.routePolylines[ref].forEach(polyline => {
                     const tags = polyline.options.wayTags || {};
                     const kmh = parseMaxspeed(tags.maxspeed);
+                    const active = isSpeedStepVisible(speedStepFor(kmh));
                     polyline.setStyle({
-                        color: colorForSpeed(kmh),
-                        opacity: kmh === null ? 0.45 : 0.9,
+                        color: active ? colorForSpeed(kmh) : SPEED_MUTED_COLOR,
+                        opacity: active ? (kmh === null ? 0.45 : 0.9) : 0.15,
                         weight: hierarchyWeights[polyline.options.roadHierarchy]
                     });
                 });
@@ -10287,8 +10643,39 @@
             });
         }
 
+        // Résolution d'une image Mapillary désignée par son identifiant (tag OSM
+        // `mapillary=*`) : contrairement à la recherche de proximité, elle montre
+        // l'objet lui-même. Passe par la même file d'attente pour ne pas saturer l'API.
+        const mlyByIdCache = new Map();
+
+        function fetchMapillaryImageById(id) {
+            if (!MAPILLARY_TOKEN || !id) return Promise.resolve(null);
+            const key = String(id);
+            if (mlyByIdCache.has(key)) return Promise.resolve(mlyByIdCache.get(key));
+            return new Promise(resolve => {
+                mlyCheckQueue.push(async () => {
+                    try {
+                        const url = `https://graph.mapillary.com/${encodeURIComponent(key)}`
+                            + `?access_token=${encodeURIComponent(MAPILLARY_TOKEN)}`
+                            + `&fields=id,thumb_1024_url,captured_at`;
+                        const resp = await fetch(url, { credentials: 'omit' });
+                        if (!resp.ok) throw new Error(`Mapillary HTTP ${resp.status}`);
+                        const img = await resp.json();
+                        const value = img && img.thumb_1024_url ? img : null;
+                        mlyByIdCache.set(key, value);
+                        resolve(value);
+                    } catch (error) {
+                        mlyByIdCache.set(key, null);
+                        resolve(null);
+                    }
+                });
+                pumpMlyQueue();
+            });
+        }
+
         // Exposé pour les couches définies hors de ce bloc DOMContentLoaded (ex. panneaux, aires).
         window.checkMapillaryNearby = checkMapillaryNearby;
+        window.fetchMapillaryImageById = fetchMapillaryImageById;
         window.mapillaryPageUrl = mapillaryPageUrl;
         window.panoramaxPageUrl = panoramaxPageUrl;
         window.panoramaxImageUrl = panoramaxImageUrl;
@@ -10444,29 +10831,33 @@
             return `${display}${unit}`;
         }
 
+        // Gabarits : chaque type est filtrable indépendamment depuis la légende,
+        // au même titre que les tranches de vitesse.
+        const RESTRICTION_TYPES = [
+            { key: 'height', icon: '↕️', color: '#C0392B', name: 'Hauteur', unit: 'm', tags: ['maxheight'] },
+            { key: 'weight', icon: '🚛', color: '#8E44AD', name: 'Poids', unit: 't', tags: ['maxweight', 'maxweightrating'] },
+            { key: 'length', icon: '📏', color: '#E67E22', name: 'Longueur', unit: 'm', tags: ['maxlength'] },
+            { key: 'width', icon: '↔️', color: '#16A085', name: 'Largeur', unit: 'm', tags: ['maxwidth'] }
+        ];
+        const RESTRICTION_EMPTY_VALUES = new Set(['no', 'default', 'none']);
+        const restrictionVisibility = Object.fromEntries(RESTRICTION_TYPES.map(type => [type.key, true]));
+
         // Decide which restrictions to render for a given way (height, weight, length, width).
         function restrictionEntriesFromTags(tags) {
             const entries = [];
-            const heightRaw = tags.maxheight;
-            if (heightRaw && heightRaw !== 'no' && heightRaw !== 'default' && heightRaw !== 'none') {
-                const v = compactUnit(heightRaw, 'm');
-                entries.push({ icon: '↕️', value: v, color: '#C0392B', label: `Hauteur max ${v}` });
-            }
-            const weightRaw = tags.maxweight || tags.maxweightrating;
-            if (weightRaw && weightRaw !== 'no' && weightRaw !== 'default' && weightRaw !== 'none') {
-                const v = compactUnit(weightRaw, 't');
-                entries.push({ icon: '🚛', value: v, color: '#8E44AD', label: `Poids max ${v}` });
-            }
-            const lengthRaw = tags.maxlength;
-            if (lengthRaw && lengthRaw !== 'no' && lengthRaw !== 'default') {
-                const v = compactUnit(lengthRaw, 'm');
-                entries.push({ icon: '📏', value: v, color: '#E67E22', label: `Longueur max ${v}` });
-            }
-            const widthRaw = tags.maxwidth;
-            if (widthRaw && widthRaw !== 'no' && widthRaw !== 'default') {
-                const v = compactUnit(widthRaw, 'm');
-                entries.push({ icon: '↔️', value: v, color: '#16A085', label: `Largeur max ${v}` });
-            }
+            RESTRICTION_TYPES.forEach(type => {
+                if (!restrictionVisibility[type.key]) return;
+                const raw = type.tags.map(tag => tags[tag]).find(Boolean);
+                if (!raw || RESTRICTION_EMPTY_VALUES.has(raw)) return;
+                const value = compactUnit(raw, type.unit);
+                entries.push({
+                    type: type.key,
+                    icon: type.icon,
+                    value,
+                    color: type.color,
+                    label: `${type.name} max ${value}`
+                });
+            });
             return entries;
         }
 
@@ -10491,7 +10882,7 @@
 
                     // Vitesse (dédupliquée par ref + valeur + ~1 km).
                     const kmh = parseMaxspeed(tags.maxspeed);
-                    if (kmh !== null) {
+                    if (kmh !== null && isSpeedStepVisible(speedStepFor(kmh))) {
                         const key = `${ref}|${kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
                         if (!speedKeysSeen.has(key)) {
                             speedKeysSeen.add(key);
@@ -10530,15 +10921,77 @@
                 return;
             }
             container.style.display = 'block';
-            const scaleHtml = SPEED_COLOR_SCALE.map(step =>
-                `<div class="limitations-legend-step" style="background:${step.color};">${step.label}</div>`
+
+            const stepButton = (key, color, label, title) => {
+                const active = isSpeedStepVisible(key);
+                return `<button type="button" class="limitations-legend-step${active ? '' : ' is-off'}"
+                    data-speed-step="${key}" aria-pressed="${active ? 'true' : 'false'}"
+                    title="${title} — cliquer pour ${active ? 'masquer' : 'afficher'}"
+                    style="background:${color};">${label}</button>`;
+            };
+
+            const scaleHtml = SPEED_COLOR_SCALE.map((step, index) =>
+                stepButton(String(index), step.color, step.label, `Limite ${step.label} km/h`)
             ).join('');
+
+            const gaugesHtml = RESTRICTION_TYPES.map(type => {
+                const active = restrictionVisibility[type.key];
+                return `<button type="button" class="limitations-legend-gauge${active ? '' : ' is-off'}"
+                    data-restriction-type="${type.key}" aria-pressed="${active ? 'true' : 'false'}"
+                    title="${type.name} maximale — cliquer pour ${active ? 'masquer' : 'afficher'}"
+                    style="border-color:${type.color};">
+                    <span class="limitations-legend-gauge-icon">${type.icon}</span>${type.name}
+                </button>`;
+            }).join('');
+
             container.innerHTML = `
-                <div style="font-size:0.78rem; color:#5b6770; font-weight:600; margin-bottom:4px;">Limites de vitesse (km/h)</div>
+                <div class="limitations-legend-group">Limites de vitesse (km/h)</div>
                 <div class="limitations-legend-scale">${scaleHtml}</div>
-                <div style="font-size:0.7rem; color:#7f8c8d; margin-top:6px;">Inconnue&nbsp;: <span style="display:inline-block;width:14px;height:8px;border-radius:2px;background:${SPEED_UNKNOWN_COLOR};vertical-align:middle;"></span> · <code>maxspeed</code> · <code>maxheight</code> · <code>maxweight</code></div>
+                <div class="limitations-legend-unknown">
+                    ${stepButton('unknown', SPEED_UNKNOWN_COLOR, '?', 'Vitesse inconnue')}
+                    <span>Inconnue (<code>maxspeed</code> absent)</span>
+                </div>
+                <div class="limitations-legend-group">Gabarits</div>
+                <div class="limitations-legend-gauges">${gaugesHtml}</div>
+                <div class="limitations-legend-hint"><code>maxheight</code> · <code>maxweight</code> · <code>maxlength</code> · <code>maxwidth</code> — panneaux au zoom ≥ ${LIMITATIONS_SIGN_ZOOM}</div>
             `;
         }
+
+        // Une tranche de vitesse se filtre depuis sa case de légende : les tronçons
+        // concernés s'estompent et leurs panneaux disparaissent, ce qui permet
+        // d'isoler visuellement un régime de vitesse sur le réseau.
+        function toggleSpeedStep(rawKey) {
+            if (!limitationsMode) return;
+            if (rawKey === 'unknown') {
+                speedUnknownVisible = !speedUnknownVisible;
+            } else {
+                const index = Number.parseInt(rawKey, 10);
+                if (!Number.isInteger(index) || index < 0 || index >= speedRangeVisibility.length) return;
+                speedRangeVisibility[index] = !speedRangeVisibility[index];
+            }
+            applySpeedGradient();
+            renderPictograms();
+            updateLimitationsLegend();
+        }
+
+        // Les gabarits ne touchent que les pictogrammes : le dégradé des tronçons
+        // reste celui de la vitesse, il n'a pas à être recalculé.
+        function toggleRestrictionType(key) {
+            if (!limitationsMode || !(key in restrictionVisibility)) return;
+            restrictionVisibility[key] = !restrictionVisibility[key];
+            renderPictograms();
+            updateLimitationsLegend();
+        }
+
+        document.getElementById('limitationsLegend')?.addEventListener('click', event => {
+            const speedButton = event.target.closest('[data-speed-step]');
+            if (speedButton) {
+                toggleSpeedStep(speedButton.dataset.speedStep);
+                return;
+            }
+            const gaugeButton = event.target.closest('[data-restriction-type]');
+            if (gaugeButton) toggleRestrictionType(gaugeButton.dataset.restrictionType);
+        });
 
         function setLimitationsButtonActive(active) {
             setToolActive('limitsBtn', active);

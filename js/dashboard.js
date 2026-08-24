@@ -23,27 +23,29 @@
         {
             title: 'Réseau',
             items: [
-                { metricsKey: 'network', key: 'refs', label: 'Routes départementales', unit: 'routes' },
-                { metricsKey: 'network', key: 'lengthKm', label: 'Linéaire routier', unit: 'km' },
+                { metricsKey: 'network', key: 'refs', label: 'Routes départementales', unit: 'routes', icon: '🛣️' },
+                { metricsKey: 'network', key: 'lengthKm', label: 'Linéaire routier', unit: 'km', icon: '📏' },
                 {
                     metricsKey: 'network',
                     key: 'hierarchySplit',
                     label: 'Hiérarchie',
+                    icon: '🔀',
                     hint: 'Régionale · Territoriale · Locale',
                     fullWidth: true
                 },
-                { metricsKey: 'network', key: 'bridges', label: 'Ponts', unit: 'ouvrages' },
-                { metricsKey: 'network', key: 'tunnels', label: 'Tunnels', unit: 'ouvrages' }
+                { metricsKey: 'network', key: 'bridges', label: 'Ponts', unit: 'ouvrages', icon: '🌉' },
+                { metricsKey: 'network', key: 'tunnels', label: 'Tunnels', unit: 'ouvrages', icon: '🕳️' }
             ]
         },
         {
             title: 'Trafic',
             items: [
-                { metricsKey: 'traffic', key: 'stations', label: 'Stations de comptage', unit: 'stations' },
+                { metricsKey: 'traffic', key: 'stations', label: 'Stations de comptage', unit: 'stations', icon: '📡' },
                 {
                     metricsKey: 'traffic',
                     key: 'mjaRange',
                     label: 'MJA (min – max)',
+                    icon: '🚗',
                     unit: 'véh/j',
                     fullWidth: true
                 },
@@ -51,6 +53,7 @@
                     metricsKey: 'traffic',
                     key: 'tierSplit',
                     label: 'Répartition du trafic',
+                    icon: '📊',
                     hint: 'Fort · Moyen · Faible',
                     fullWidth: true
                 }
@@ -60,20 +63,20 @@
             title: 'Sécurité',
             vintageKey: 'accidents',
             items: [
-                { metricsKey: 'accidents', key: 'total', label: 'Accidents', unit: 'sinistres' },
-                { metricsKey: 'accidents', key: 'fatal', label: 'Dont mortels', unit: 'victimes' },
-                { metricsKey: 'accidents', key: 'hospitalized', label: 'Hospitalisés', unit: 'victimes' },
-                { metricsKey: 'accidents', key: 'light', label: 'Blessés légers', unit: 'victimes' }
+                { metricsKey: 'accidents', key: 'total', label: 'Accidents', unit: 'sinistres', icon: '💥' },
+                { metricsKey: 'accidents', key: 'fatal', label: 'Dont mortels', unit: 'victimes', icon: '💀' },
+                { metricsKey: 'accidents', key: 'hospitalized', label: 'Hospitalisés', unit: 'victimes', icon: '🚑' },
+                { metricsKey: 'accidents', key: 'light', label: 'Blessés légers', unit: 'victimes', icon: '⚠️' }
             ]
         },
         {
             title: 'Live',
             vintageKey: 'bisonFute',
             items: [
-                { metricsKey: 'bisonFute', key: 'total', label: 'Événements actifs', unit: 'alertes' },
-                { metricsKey: 'bisonFute', key: 'travaux', label: 'Travaux', unit: 'alertes' },
-                { metricsKey: 'bisonFute', key: 'bouchons', label: 'Bouchons', unit: 'alertes' },
-                { metricsKey: 'bisonFute', key: 'accidents', label: 'Accidents', unit: 'alertes' }
+                { metricsKey: 'bisonFute', key: 'total', label: 'Événements actifs', unit: 'alertes', icon: '📣' },
+                { metricsKey: 'bisonFute', key: 'travaux', label: 'Travaux', unit: 'alertes', icon: '🚧' },
+                { metricsKey: 'bisonFute', key: 'bouchons', label: 'Bouchons', unit: 'alertes', icon: '🐌' },
+                { metricsKey: 'bisonFute', key: 'accidents', label: 'Accidents', unit: 'alertes', icon: '💥' }
             ]
         },
         {
@@ -83,6 +86,7 @@
                     metricsKey: 'bicycle',
                     key: 'structurantesKm',
                     label: 'Véloroutes structurantes',
+                    icon: '🚴',
                     unit: 'km',
                     detailKey: 'structurantesSegments',
                     detailSuffix: 'tronçons OSM',
@@ -93,6 +97,7 @@
                     metricsKey: 'bicycle',
                     key: 'localKm',
                     label: 'Véloroutes locales',
+                    icon: '🚲',
                     unit: 'km',
                     detailKey: 'localSegments',
                     detailSuffix: 'tronçons OSM',
@@ -102,6 +107,7 @@
                     metricsKey: 'construction',
                     key: 'constructionSplit',
                     label: 'Chantiers routiers',
+                    icon: '🏗️',
                     hint: 'En cours · Projetés',
                     unit: 'tronçons OSM',
                     fullWidth: true
@@ -112,9 +118,9 @@
             title: 'Qualité',
             vintageKey: 'osm',
             items: [
-                { metricsKey: 'quality', key: 'wikidataPct', label: 'Couverture Wikidata', unit: '%' },
-                { metricsKey: 'quality', key: 'relationPct', label: 'Relations OSM', unit: '%' },
-                { metricsKey: 'quality', key: 'segments', label: 'Segments analysés', unit: 'tronçons' }
+                { metricsKey: 'quality', key: 'wikidataPct', label: 'Couverture Wikidata', unit: '%', icon: '🔗' },
+                { metricsKey: 'quality', key: 'relationPct', label: 'Relations OSM', unit: '%', icon: '🧩' },
+                { metricsKey: 'quality', key: 'segments', label: 'Segments analysés', unit: 'tronçons', icon: '🧮' }
             ]
         }
     ];
@@ -308,9 +314,13 @@
                     ? `<div class="dash-tile-detail">${escapeHtml(detail)}</div>`
                     : '';
                 const titleAttr = item.title ? ` title="${escapeHtml(item.title)}"` : '';
+                const iconHtml = item.icon
+                    ? `<span class="dash-tile-icon" aria-hidden="true">${item.icon}</span>`
+                    : '';
 
                 return `
                     <div class="dash-tile${fullClass}"${titleAttr}>
+                        ${iconHtml}
                         <div class="dash-tile-value">${valueHtml}</div>
                         ${unitBlockHtml}
                         <div class="dash-tile-label">${escapeHtml(item.label)}</div>

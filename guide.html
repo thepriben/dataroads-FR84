@@ -97,7 +97,8 @@
 <li><strong>Orange</strong> — réseau de développement territorial.</li>
 <li><strong>Bleu</strong> — réseau d'intérêt local.</li>
 </ul>
-<p><strong>Comment :</strong> cliquez le titre <em>Hiérarchie du Réseau</em> ou chaque ligne pour activer un niveau. Les panonceaux de numéro de route apparaissent au zoom suffisant. Cliquez un tronçon pour une fiche (nom, surface, liens OSM / Wikidata).</p>
+<p><strong>Comment :</strong> cliquez le titre <em>Hiérarchie du Réseau</em> ou chaque ligne pour activer un niveau. Cliquez un tronçon pour une fiche (nom, surface, liens OSM / Wikidata).</p>
+<p><strong>Panonceaux de numéro.</strong> Chaque niveau devient pleinement lisible à son propre zoom, avec un fondu sur les trois quarts de niveau qui précèdent : <strong>rouge dès le zoom 10</strong>, <strong>orange dès le zoom 12</strong>, <strong>bleu dès le zoom 13</strong>. Les panonceaux se posent sur la <strong>portion de route réellement visible</strong> : ils restent donc affichés et suivent l'axe quand vous vous déplacez sur la carte. Quand plusieurs numéros se chevauchent malgré le repositionnement, ils fusionnent en une <strong>pastille de groupe</strong> cliquable listant les routes concernées.</p>
 </div><div class="guide-layer" id="layer-veloroutes">
 <h4>Véloroutes</h4>
 <p>Itinéraires cyclables OSM (<code>route=bicycle</code>). Totaux en kilomètres : Via Rhôna (EV17), Méditerranée (EV8), Via Venaissia (V861), itinéraires locaux.</p>
@@ -129,7 +130,7 @@
 <p>Données historiques ou agrégées — à charger à la demande pour ne pas surcharger la carte.</p>
 <div class="guide-layer" id="layer-accidents">
 <h4>Accidentologie</h4>
-<p>Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel : * <strong>Couleur = ancienneté</strong> — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre. * <strong>Gravité</strong> — un <strong>anneau noir</strong> entoure les accidents mortels et les blessés hospitalisés (le mortel étant en plus légèrement plus gros) ; les blessés légers n'ont qu'un fin liseré blanc, sans anneau.</p>
+<p>Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel : * <strong>Couleur = ancienneté</strong> — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre. * <strong>Gravité</strong> — les accidents <strong>mortels sortent du dégradé</strong> : pastille <strong>noire</strong> cerclée de blanc, un peu plus grosse, repérable d'un coup d'œil quelle que soit l'année. Les <strong>blessés hospitalisés</strong> gardent la couleur d'ancienneté avec un <strong>anneau noir</strong> ; les <strong>blessés légers</strong> n'ont qu'un fin liseré blanc.</p>
 <p>La légende embarque une <strong>dataviz temporelle</strong> : l'échelle de couleur ancien → récent, un <strong>mini-histogramme</strong> du nombre d'accidents par année, et un '''curseur de plage d'années''' (de / à) pour filtrer le nuage.</p>
 <p><strong>Comment :</strong> activer la couche ; jouez avec le curseur d'années pour voir l'évolution dans le temps ; cliquez un point pour le détail (année, victimes, date, commune, adresse). ''Note : la géolocalisation BAAC des années les plus anciennes est plus lacunaire, d'où un nuage plus dense sur les millésimes récents.''</p>
 </div><div class="guide-layer" id="layer-comptages">
@@ -154,7 +155,7 @@
 </article>
 <article class="guide-family" data-family="incubator" id="incubator">
 <h3>Incubateur</h3>
-<p>Couches expérimentales : ouvrages d'art, environnement, biodiversité, webcams recensées. Seule la <strong>couche ponts</strong> affiche une pastille d'actualisation (bi-hebdo, lun. &amp; jeu.).</p>
+<p>Couches expérimentales : ouvrages d'art, signalisation, environnement, biodiversité, webcams recensées. Seule la <strong>couche ponts</strong> affiche une pastille d'actualisation (bi-hebdo, lun. &amp; jeu.).</p>
 <div class="guide-layer" id="layer-ponts">
 <h4>Couche ponts</h4>
 <p>Ouvrages d'art OSM du département. Affichage adapté au zoom :</p>
@@ -187,7 +188,12 @@
 </div><div class="guide-layer" id="layer-guideposts">
 <h4>Panneaux directionnels</h4>
 <p>Mâts directionnels issus d'OpenStreetMap (nœuds <code>information=guidepost</code>) : les poteaux à lames qui indiquent les destinations de randonnée, de vélo et les points d'intérêt (plusieurs milliers en Vaucluse, dont le réseau CD84).</p>
-<p><strong>Comment :</strong> activer la couche. Au dézoom, les points sont regroupés en <strong>grappes</strong> (cliquer = zoomer) ; au <strong>zoom ≥ 15</strong>, un pictogramme <strong>mât directionnel</strong> (poteau + lames bleue/verte) s'affiche. Le popup liste les destinations. Une <strong>pastille verte</strong> sur le mât indique une photo Mapillary à proximité (cliquer pour l'afficher).</p>
+<p><strong>Comment :</strong> activer la couche. Au dézoom, les points sont regroupés en <strong>grappes</strong> (cliquer = zoomer) ; au <strong>zoom ≥ 15</strong>, un pictogramme <strong>mât directionnel</strong> (poteau + lames bleue/verte) s'affiche. Le popup liste les destinations.</p>
+<p><strong>Photos du panneau.</strong> Beaucoup de mâts portent dans OSM une ou plusieurs photos du panneau lui-même (tags <code>panoramax</code>, <code>mapillary</code>, <code>wikimedia_commons</code>, <code>image</code>) — environ 1 450 des 2 170 mâts du Vaucluse. Elles s'affichent alors en <strong>vignettes dans le popup</strong>, avec leur provenance ; cliquer une vignette ouvre la photo d'origine. Une <strong>pastille violette</strong> sur le mât signale ce cas. À défaut de photo référencée, on retombe sur la recherche d'une <strong>photo Mapillary à proximité</strong> (pastille verte), qui montre l'environnement plutôt que le panneau.</p>
+</div><div class="guide-layer" id="layer-city-limits">
+<h4>Panneaux d&#x27;agglomération</h4>
+<p>Entrées et sorties de village issues d'OpenStreetMap (nœuds <code>traffic_sign=city_limit</code>, 468 en Vaucluse dont 446 nommés) : les panneaux EB10 / EB20 qui marquent le basculement du régime de vitesse en traversée. Complément naturel du mode <em>Limitations</em>.</p>
+<p><strong>Comment :</strong> activer la couche. Au dézoom, les points sont regroupés en <strong>grappes rouges</strong> (cliquer = zoomer) ; à partir du <strong>zoom ≥ 13</strong>, chaque panneau s'affiche sous la forme de la <strong>plaque réelle</strong> — nom de la localité sur fond blanc bordé de rouge. Une plaque '''barrée d'une diagonale rouge<strong> correspond à une </strong>sortie''' d'agglomération (<code>city_limit=end</code>). Le popup donne le sens, les noms alternatifs (dont l'occitan), la référence et le gestionnaire quand ils existent, ainsi que les <strong>photos du panneau</strong> référencées dans OSM.</p>
 </div><div class="guide-layer" id="layer-ens">
 <h4>Espaces naturels sensibles (ENS)</h4>
 <p>Polygones CD84 (DataSud). Superficie, communes, gestionnaire.</p>
@@ -230,7 +236,7 @@
 <ul>
 <li><strong>Maison</strong> — vue initiale du département.</li>
 <li><strong>Comptages</strong> — active la couche stations de comptage (sync avec la légende).</li>
-<li><strong>Limitations</strong> — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 13, panneaux de vitesse et pictogrammes hauteur / largeur / poids. Au dézoom, seul le dégradé de couleur des tronçons subsiste. Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher.</li>
+<li><strong>Limitations</strong> — colore les tronçons selon la vitesse max OSM ; au zoom ≥ 13, panneaux de vitesse et pictogrammes hauteur / largeur / poids. Au dézoom, seul le dégradé de couleur des tronçons subsiste. Un panneau cerclé de vert dispose d'une photo Mapillary à proximité : cliquez-le pour l'afficher. La légende sépare deux blocs <strong>cliquables</strong> : les <strong>tranches de vitesse</strong> (≤30 à ≥110, plus « inconnue ») et les <strong>gabarits</strong> (hauteur, poids, longueur, largeur). Cliquez une case pour retirer la tranche ou le gabarit : les tronçons concernés s'estompent en gris et leurs panneaux disparaissent, ce qui permet d'isoler un régime de vitesse ou un type de contrainte sur le réseau. Recliquez pour les rétablir.</li>
 <li><strong>W</strong> — trafic <strong>Waze</strong> communautaire (bouchons et incidents). Si le flux partenaire <em>Waze for Cities</em> est configuré, une <strong>couche native</strong> s'affiche directement sur la carte : tracés de bouchons colorés selon la sévérité et marqueurs d'incidents (💥 accident, ⚠️ danger, 🚧 travaux, ⛔ route fermée, 👮 contrôle) ; cliquez pour le détail (axe, vitesse, retard). À défaut, le bouton ouvre la <strong>carte Waze Live Map</strong> intégrée, centrée sur la vue courante (fermer par × , clic extérieur ou <span class="guide-kbd">Échap</span>). Bouton placé à gauche du <strong>M</strong>.</li>
 <li><strong>M</strong> — affiche la couverture photo <strong>Mapillary</strong> (zones disposant de prises de vue au sol).</li>
 <li><strong>P</strong> — affiche la couverture photo <strong>Panoramax</strong> (accent violet).</li>
@@ -241,7 +247,7 @@
             <h2>En-tête</h2>
 <ul>
 <li><strong>Logo</strong> — retour à l'accueil de l'application.</li>
-<li><strong>Chiffres clés</strong> — ouvre un panneau plein écran : indicateurs réseau (routes, trafic, véloroutes, qualité OSM, etc.). Fermer par × ou clic à l'extérieur.</li>
+<li><strong>Chiffres clés</strong> — ouvre un panneau plein écran : indicateurs réseau (routes, trafic, véloroutes, qualité OSM, etc.), chaque tuile portant un pictogramme de repérage. Fermer par × ou clic à l'extérieur.</li>
 <li><strong>Météo</strong> — un aperçu d'une station du département (température, conditions). Pour toutes les stations, utiliser la couche <em>Stations météo</em>.</li>
 </ul>
         </section>
@@ -250,7 +256,7 @@
 <p>L'adresse du navigateur se met à jour quand vous déplacez ou zoomez la carte et quand vous changez les couches visibles. Paramètres utiles :</p>
 <ul>
 <li><code>z</code>, <code>lat</code>, <code>lng</code> — zoom et centre.</li>
-<li><code>ly</code> — couches actives (codes courts : <code>hr</code>, <code>ht</code>, <code>hl</code>, <code>ens</code>, <code>inat</code>, <code>wcam</code>, <code>bridges</code>, etc.).</li>
+<li><code>ly</code> — couches actives (codes courts : <code>hr</code>, <code>ht</code>, <code>hl</code>, <code>ens</code>, <code>inat</code>, <code>wcam</code>, <code>bridges</code>, <code>signs</code>, <code>guide</code>, <code>agglo</code>, etc.).</li>
 <li><code>fam</code> — rubriques entièrement ouvertes (optionnel si <code>ly</code> est précis).</li>
 </ul>
 <p>Copiez l'URL pour retrouver la même vue après rechargement.</p>
