@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.14.1] - 2026-08-24
+
+### Changed
+
+- **Gauge restrictions drawn large**, at the same visual weight as a speed sign (30 px box, bigger figure and pictogram). There are few enough of them across the department that being loud is what makes them findable.
+- **Gauge labels pushed off the carriageway and tied to their segment by a leader line** ending in a dot on the road. Through built-up areas, several restrictions carried by neighbouring segments used to stack on the road itself; the position is now picked among candidates around the anchor, skipping anything already placed — speed signs included.
+- **Repeated speed signs no longer overlap.** Deduplication worked on a ~1 km grid, so the same value in two adjacent cells still produced two overlapping discs. Identical overlapping signs collapse to one; two different values are always kept, since a change of limit has to stay visible.
+
 ## [0.14.0] - 2026-08-24
 
 ### Added

@@ -10912,16 +10912,58 @@
             setToolActive('panoramaxBtn', panoramaxCoverageVisible);
         };
 
-        // Pictogramme rectangulaire pour les restrictions (hauteur, poids, longueur, largeur).
-        // Wide enough box (90px) for "🚛 12.5t" without clipping, center-anchored.
-        function makeRestrictionPictoMarker(latlng, icon, value, color) {
+        // Gabarits : l'étiquette est déportée hors de la chaussée et reliée à son
+        // tronçon par un trait, sinon plusieurs restrictions portées par des
+        // tronçons voisins se recouvrent sur la route elle-même.
+        const GAUGE_LABEL_HEIGHT = 30;
+        const GAUGE_LABEL_PAD = 44;        // icône + espacements + bordures
+        const GAUGE_CHAR_WIDTH = 8.2;      // JetBrains Mono à la taille du picto
+        const GAUGE_LEADER_STEPS = [30, 50, 72, 96];
+
+        // Positions candidates, du plus lisible au moins : au-dessus d'abord,
+        // l'étiquette masque alors moins le tracé.
+        const GAUGE_DIRECTIONS = [
+            [0, -1], [0.85, -0.85], [-0.85, -0.85], [1, 0], [-1, 0],
+            [0.85, 0.85], [-0.85, 0.85], [0, 1]
+        ];
+
+        function gaugeLabelWidth(value) {
+            return GAUGE_LABEL_PAD + String(value).length * GAUGE_CHAR_WIDTH;
+        }
+
+        function boxesOverlap(a, b) {
+            return Math.abs(a.x - b.x) * 2 < a.w + b.w + 6
+                && Math.abs(a.y - b.y) * 2 < a.h + b.h + 6;
+        }
+
+        // Cherche la première position libre autour de l'ancre ; à défaut, la plus
+        // éloignée, pour que l'étiquette sorte au moins de la mêlée.
+        function placeGaugeLabel(anchorPoint, size, occupied) {
+            let fallback = null;
+            for (const distance of GAUGE_LEADER_STEPS) {
+                for (const [dx, dy] of GAUGE_DIRECTIONS) {
+                    const candidate = {
+                        x: anchorPoint.x + dx * (distance + size.w / 2),
+                        y: anchorPoint.y + dy * (distance + size.h / 2),
+                        w: size.w,
+                        h: size.h
+                    };
+                    if (!occupied.some(box => boxesOverlap(candidate, box))) return candidate;
+                    fallback = candidate;
+                }
+            }
+            return fallback;
+        }
+
+        function makeRestrictionPictoMarker(latlng, icon, value, color, width) {
             return L.marker(latlng, {
                 icon: L.divIcon({
-                    html: `<div class="restriction-picto" style="border-color:${color};"><span class="restriction-picto-icon">${icon}</span><span>${value}</span></div>`,
+                    html: `<div class="restriction-picto" style="border-color:${color};"><span class="restriction-picto-icon">${icon}</span><span>${escapeHtml(String(value))}</span></div>`,
                     className: 'restriction-picto-wrapper',
-                    iconSize: [90, 22],
-                    iconAnchor: [45, 11]
-                })
+                    iconSize: [width, GAUGE_LABEL_HEIGHT],
+                    iconAnchor: [width / 2, GAUGE_LABEL_HEIGHT / 2]
+                }),
+                zIndexOffset: 380
             });
         }
 
@@ -10986,6 +11028,10 @@
             const bounds = window.map.getBounds();
             const speedKeysSeen = new Set();
             const restrictionKeysSeen = new Set();
+            const pendingGauges = [];
+            // Les panneaux de vitesse sont posés en premier et servent d'obstacles :
+            // c'est de leur empilement avec les gabarits que venait l'illisibilité.
+            const occupied = [];
 
             Object.keys(window.routePolylines).forEach(ref => {
                 window.routePolylines[ref].forEach(polyline => {
@@ -10999,30 +11045,61 @@
                         const key = `${ref}|${speed.kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
                         if (!speedKeysSeen.has(key)) {
                             speedKeysSeen.add(key);
-                            makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), speed).addTo(speedPictoLayer);
+                            const point = window.map.latLngToContainerPoint(mid);
+                            const box = { x: point.x, y: point.y, w: 34, h: 34, kmh: speed.kmh };
+                            // La déduplication au kilomètre laisse passer des doublons
+                            // dans les mailles voisines : deux panneaux identiques qui
+                            // se recouvrent n'apportent rien, on garde le premier.
+                            const repeat = occupied.some(other => other.kmh === speed.kmh && boxesOverlap(box, other));
+                            if (!repeat) {
+                                makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), speed).addTo(speedPictoLayer);
+                                occupied.push(box);
+                            }
                         }
                     }
 
                     // Restrictions (dédupliquées par type + valeur + ~1 km), comme la vitesse,
                     // pour qu'un même panneau porté par plusieurs tronçons ne s'affiche qu'une fois.
-                    const uniqueEntries = [];
-                    restrictionEntriesFromTags(tags).slice(0, 2).forEach(entry => {
-                        const key = `${entry.label}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
-                        if (!restrictionKeysSeen.has(key)) {
-                            restrictionKeysSeen.add(key);
-                            uniqueEntries.push(entry);
-                        }
-                    });
-
                     const isBridge = tags.bridge && tags.bridge !== 'no';
                     const isTunnel = tags.tunnel === 'yes';
-                    uniqueEntries.forEach((entry, i) => {
-                        const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
-                        const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
-                        marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
-                        marker.addTo(restrictionLayer);
+                    restrictionEntriesFromTags(tags).slice(0, 2).forEach(entry => {
+                        const key = `${entry.label}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
+                        if (restrictionKeysSeen.has(key)) return;
+                        restrictionKeysSeen.add(key);
+                        pendingGauges.push({
+                            entry,
+                            anchor: L.latLng(mid.lat, mid.lng),
+                            suffix: isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''
+                        });
                     });
                 });
+            });
+
+            pendingGauges.forEach(({ entry, anchor, suffix }) => {
+                const anchorPoint = window.map.latLngToContainerPoint(anchor);
+                const size = { w: gaugeLabelWidth(entry.value), h: GAUGE_LABEL_HEIGHT };
+                const box = placeGaugeLabel(anchorPoint, size, occupied);
+                occupied.push(box);
+
+                const labelLatLng = window.map.containerPointToLatLng([box.x, box.y]);
+                L.polyline([anchor, labelLatLng], {
+                    color: entry.color,
+                    weight: 1.5,
+                    opacity: 0.8,
+                    interactive: false
+                }).addTo(restrictionLayer);
+                L.circleMarker(anchor, {
+                    radius: 3,
+                    color: entry.color,
+                    weight: 1.5,
+                    fillColor: '#ffffff',
+                    fillOpacity: 1,
+                    interactive: false
+                }).addTo(restrictionLayer);
+
+                const marker = makeRestrictionPictoMarker(labelLatLng, entry.icon, entry.value, entry.color, size.w);
+                marker.bindTooltip(`${entry.label}${suffix}`);
+                marker.addTo(restrictionLayer);
             });
         }
 
