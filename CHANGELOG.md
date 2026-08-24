@@ -5,6 +5,24 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.14.0] - 2026-08-24
+
+### Added
+
+- **Implicit speed limits from the road regime.** Many segments carry no `maxspeed` sign but do state their regime (`maxspeed:type`, `source:maxspeed`, `zone:maxspeed`): `FR:urban` is 50 km/h inside a built-up area, `FR:rural` 80 km/h outside it, plus the 30 km/h zones. Those 120 segments used to fall into "unknown"; they now take their band colour and get a sign drawn as a **dashed circle**, since the limit applies without a physical sign carrying it — the regulatory counterpart of the town-boundary signs, whose popup states the regime. A few segments carrying the regime code inside `maxspeed` itself are resolved along the way.
+- **"None / All" bulk toggle on each limitations block.** Clearing the six speed bands one by one was the only way to look at the gauges alone; a single button now empties a block and flips to restore it.
+- **Carousel for signpost photos.** One mast gathers up to eight photos (one per blade, bearing or year), unreadable as a row of thumbnails. The popup now shows one at a time with arrows and a counter, each view captioned with its provenance and the tag suffix (`panoramax:N` → "facing north", `mapillary:2017` → the year).
+- **Suffixed photo tags are read.** Only the bare `panoramax` / `mapillary` / `wikimedia_commons` / `image` keys were extracted, so directional or dated variants were silently dropped — including on the mast used as the reference example. The dataset keeps every suffixed variant now.
+- **OpenStreetMap links in the signpost and town-boundary popups** — *voir* the node, or *compléter* to open it straight in the iD editor, so a sign can be fixed from the map.
+
+### Changed
+
+- **Key-figures pictograms set in a badge**, large enough to scan the grid at a glance rather than sitting as a faint corner watermark.
+
+### Fixed
+
+- **Carousel photos no longer flash blank when navigating.** Pending slides are `display:none`, where `loading="lazy"` defers the download until the slide is shown; photos are now fetched when the popup opens.
+
 ## [0.13.0] - 2026-08-24
 
 ### Added

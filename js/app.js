@@ -2828,64 +2828,133 @@
         // `wikimedia_commons`, `image`). Elles montrent le panneau, là où la
         // recherche de proximité ne montre que la voirie autour : on les préfère.
         // Les valeurs multiples sont séparées par des « ; ».
-        const OSM_NODE_MAX_PHOTOS = 4;
+        const OSM_NODE_MAX_PHOTOS = 8;
+
+        // Les clés photo se déclinent en variantes suffixées (panoramax:N,
+        // mapillary:2017, panoramax:context…) : le suffixe dit l'orientation,
+        // l'année ou le cadrage, et sert de légende à la vignette.
+        const PHOTO_CARDINALS = {
+            N: 'vers le nord', S: 'vers le sud', E: 'vers l’est', W: 'vers l’ouest',
+            NE: 'vers le nord-est', NW: 'vers le nord-ouest',
+            SE: 'vers le sud-est', SW: 'vers le sud-ouest'
+        };
+
+        function photoSuffixLabel(suffix) {
+            if (!suffix) return '';
+            const key = suffix.toUpperCase();
+            if (PHOTO_CARDINALS[key]) return PHOTO_CARDINALS[key];
+            if (/^\d{4}$/.test(suffix)) return suffix;
+            if (suffix === 'wide') return 'plan large';
+            if (suffix === 'context') return 'contexte';
+            return suffix;
+        }
 
         function osmNodePhotos(props) {
             const p = props || {};
-            const values = raw => String(raw || '').split(';').map(s => s.trim()).filter(Boolean);
+            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             const photos = [];
 
-            const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            values(p.panoramax).filter(id => UUID_RE.test(id)).forEach(id => photos.push({
-                source: 'Panoramax',
-                thumb: (window.panoramaxImageUrl && window.panoramaxImageUrl(id, 'thumb')) || null,
-                href: (window.panoramaxPageUrl && window.panoramaxPageUrl(id)) || '#'
-            }));
-            values(p.mapillary).forEach(raw => {
-                // Terrain OSM : certains tags traînent un fragment de visionneuse
-                // ("<id>&x=…&zoom=…") et d'autres portent encore une clé v3 non
-                // numérique, que l'API Graph refuse — seul le lien reste utile.
-                const id = raw.split('&')[0].trim();
-                if (!id) return;
-                photos.push({
-                    source: 'Mapillary',
-                    mapillaryId: /^\d+$/.test(id) ? id : null,
-                    thumb: null,
-                    href: (window.mapillaryPageUrl && window.mapillaryPageUrl(id)) || '#'
-                });
+            const push = (base, value, note) => {
+                if (base === 'panoramax') {
+                    if (!UUID_RE.test(value)) return;
+                    photos.push({
+                        source: 'Panoramax', note,
+                        thumb: (window.panoramaxImageUrl && window.panoramaxImageUrl(value, 'thumb')) || null,
+                        href: (window.panoramaxPageUrl && window.panoramaxPageUrl(value)) || '#'
+                    });
+                } else if (base === 'mapillary') {
+                    // Terrain OSM : certains tags traînent un fragment de visionneuse
+                    // ("<id>&x=…&zoom=…") et d'autres portent encore une clé v3 non
+                    // numérique, que l'API Graph refuse — seul le lien reste utile.
+                    const id = value.split('&')[0].trim();
+                    if (!id) return;
+                    photos.push({
+                        source: 'Mapillary', note,
+                        mapillaryId: /^\d+$/.test(id) ? id : null,
+                        thumb: null,
+                        href: (window.mapillaryPageUrl && window.mapillaryPageUrl(id)) || '#'
+                    });
+                } else if (base === 'wikimedia_commons') {
+                    const name = value.replace(/^File:/i, '');
+                    photos.push({
+                        source: 'Wikimedia Commons', note,
+                        thumb: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=640`,
+                        href: `https://commons.wikimedia.org/wiki/${encodeURIComponent(value)}`
+                    });
+                } else if (/^https?:\/\//i.test(value)) {
+                    photos.push({ source: 'Photo OSM', note, thumb: value, href: value });
+                }
+            };
+
+            Object.keys(p).forEach(key => {
+                const [base, ...rest] = key.split(':');
+                if (!['panoramax', 'mapillary', 'wikimedia_commons', 'image'].includes(base)) return;
+                const note = photoSuffixLabel(rest.join(':'));
+                String(p[key] || '').split(';').map(s => s.trim()).filter(Boolean)
+                    .forEach(value => push(base, value, note));
             });
-            values(p.wikimedia_commons).forEach(file => {
-                const name = file.replace(/^File:/i, '');
-                photos.push({
-                    source: 'Wikimedia Commons',
-                    thumb: `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}?width=480`,
-                    href: `https://commons.wikimedia.org/wiki/${encodeURIComponent(file)}`
-                });
-            });
-            values(p.image).filter(url => /^https?:\/\//i.test(url)).forEach(url => photos.push({
-                source: 'Photo OSM',
-                thumb: url,
-                href: url
-            }));
 
             return photos.slice(0, OSM_NODE_MAX_PHOTOS);
         }
 
-        function osmNodePhotoCardHtml(photo) {
+        function osmNodeSlideHtml(photo, index, total) {
             const label = escapeHtml(photo.source);
+            const caption = photo.note ? `${label} · ${escapeHtml(photo.note)}` : label;
+            // Pas de `loading="lazy"` : les diapositives en attente sont en
+            // display:none, le navigateur différerait leur chargement jusqu'à
+            // l'affichage et chaque passage à la suivante montrerait un cadre vide.
             const inner = photo.thumb
-                ? `<img src="${escapeHtml(photo.thumb)}" alt="Photo du panneau (${label})" loading="lazy">`
+                ? `<img src="${escapeHtml(photo.thumb)}" alt="Photo du panneau (${caption})">`
                 : `<span class="node-photo-pending">${label}</span>`;
-            return `<a class="node-photo" href="${escapeHtml(photo.href)}" target="_blank" rel="noopener noreferrer" title="Ouvrir sur ${label}">
-                ${inner}<span class="node-photo-src">${label}</span>
+            const counter = total > 1 ? `<span class="node-slide-count">${index + 1} / ${total}</span>` : '';
+            return `<a class="node-slide${index === 0 ? ' is-active' : ''}" href="${escapeHtml(photo.href)}"
+                        target="_blank" rel="noopener noreferrer" title="Ouvrir sur ${label}">
+                ${inner}
+                <span class="node-slide-bar"><span class="node-slide-src">${caption}</span>${counter}</span>
             </a>`;
         }
 
-        // Bloc photo commun aux panneaux : vignettes cliquables + provenance.
+        // Bloc photo commun aux panneaux. Au-delà d'une photo, on passe en
+        // carrousel : un mât cumule jusqu'à huit prises de vue (une par lame,
+        // par orientation ou par millésime), illisibles en vignettes côte à côte.
         function osmNodePhotosHtml(photos) {
-            return `<div class="node-photos">${photos.map(osmNodePhotoCardHtml).join('')}</div>
-                <div class="speed-sign-photo-meta">Photo${photos.length > 1 ? 's' : ''} du panneau · référencée${photos.length > 1 ? 's' : ''} dans OpenStreetMap</div>`;
+            const slides = photos.map((photo, i) => osmNodeSlideHtml(photo, i, photos.length)).join('');
+            const nav = photos.length > 1
+                ? `<button type="button" class="node-carousel-nav is-prev" data-dir="-1" aria-label="Photo précédente">‹</button>
+                   <button type="button" class="node-carousel-nav is-next" data-dir="1" aria-label="Photo suivante">›</button>`
+                : '';
+            const plural = photos.length > 1 ? 's' : '';
+            return `<div class="node-carousel" data-index="0">${slides}${nav}</div>
+                <div class="speed-sign-photo-meta">Photo${plural} du panneau · référencée${plural} dans OpenStreetMap</div>`;
         }
+
+        // Lien de contribution : voir la fiche OSM, ou l'ouvrir directement dans iD
+        // pour corriger le panneau depuis la carte.
+        function osmNodeLinkHtml(props) {
+            const id = (props || {}).osm_id;
+            if (!id) return '';
+            return `<div class="node-osm-link"><span class="node-osm-label">OpenStreetMap</span>
+                <a href="https://www.openstreetmap.org/node/${id}" target="_blank" rel="noopener noreferrer">voir</a>
+                <span class="node-osm-sep">·</span>
+                <a href="https://www.openstreetmap.org/edit?editor=id&node=${id}" target="_blank" rel="noopener noreferrer">compléter</a>
+            </div>`;
+        }
+
+        // Navigation du carrousel : l'état tient dans le DOM du popup, ce qui
+        // survit aux réinjections de contenu et évite un gestionnaire par marqueur.
+        document.addEventListener('click', event => {
+            const nav = event.target.closest && event.target.closest('.node-carousel-nav');
+            if (!nav) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const carousel = nav.closest('.node-carousel');
+            const slides = carousel.querySelectorAll('.node-slide');
+            if (slides.length < 2) return;
+            const step = Number(nav.dataset.dir) || 1;
+            const next = (Number(carousel.dataset.index || 0) + step + slides.length) % slides.length;
+            carousel.dataset.index = String(next);
+            slides.forEach((slide, i) => slide.classList.toggle('is-active', i === next));
+        });
 
         // Les vignettes Mapillary ne se déduisent pas de l'identifiant : on ne les
         // résout qu'à l'ouverture du popup, une seule fois, puis on réinjecte le HTML.
@@ -2928,6 +2997,7 @@
                     <h3>${title}</h3>
                     ${dests}
                     <div class="speed-sign-photo">${body}</div>
+                    ${osmNodeLinkHtml(props)}
                 </div>
             `;
         }
@@ -3175,6 +3245,7 @@
                     <div class="city-limit-sense">${sense}</div>
                     ${detailsHtml}
                     ${photosHtml}
+                    ${osmNodeLinkHtml(props)}
                 </div>
             `;
         }
@@ -6392,7 +6463,12 @@
                                         ` : ''}
                                         
                                         ${way.tags.surface ? `<div class="detail"><strong>Surface&nbsp;:</strong> ${way.tags.surface}</div>` : ''}
-                                        ${way.tags.maxspeed ? `<div class="detail"><strong>Vitesse max&nbsp;:</strong> ${way.tags.maxspeed} km/h</div>` : ''}
+                                        ${(() => {
+                                            const speed = resolveWaySpeed(way.tags);
+                                            if (speed.kmh === null) return '';
+                                            const origin = speed.implicit ? ` <em>(implicite · ${speed.label})</em>` : '';
+                                            return `<div class="detail"><strong>Vitesse max&nbsp;:</strong> ${speed.kmh} km/h${origin}</div>`;
+                                        })()}
                                         ${way.tags.lanes ? `<div class="detail"><strong>Voies&nbsp;:</strong> ${way.tags.lanes}</div>` : ''}
                                         ${way.tags.oneway === 'yes' ? `<div class="detail"><strong>Sens unique&nbsp;:</strong> ➡️ Oui</div>` : ''}
                                         
@@ -10495,22 +10571,50 @@
             return step === 'unknown' ? speedUnknownVisible : speedRangeVisibility[step] !== false;
         }
 
-        // Convertit la valeur maxspeed OSM en nombre (km/h), ou null si inconnu.
+        // Convertit une valeur maxspeed chiffrée en km/h, ou null. Les codes de
+        // régime (FR:urban…) sont traités à part : ce ne sont pas des panneaux.
         function parseMaxspeed(raw) {
             if (raw === null || raw === undefined) return null;
             const trimmed = String(raw).trim();
             if (!trimmed || trimmed === 'none' || trimmed === 'signals') return null;
-            // OSM convention en France : "FR:rural" = 80, "FR:urban" = 50, "FR:motorway" = 130
-            if (trimmed === 'FR:rural') return 80;
-            if (trimmed === 'FR:urban') return 50;
-            if (trimmed === 'FR:motorway') return 130;
-            if (trimmed === 'FR:zone30') return 30;
             const m = trimmed.match(/^(\d+)(?:\s*(mph|kmh|km\/h))?$/i);
             if (!m) return null;
             const value = Number.parseInt(m[1], 10);
             if (!Number.isFinite(value)) return null;
             if (m[2] && m[2].toLowerCase() === 'mph') return Math.round(value * 1.60934);
             return value;
+        }
+
+        // Vitesses implicites : faute de panneau, le régime découle du type de voie
+        // — 50 en agglomération, 80 hors agglomération. C'est le pendant
+        // réglementaire des panneaux d'entrée et de sortie de village.
+        const IMPLICIT_SPEED_CODES = {
+            'FR:urban': { kmh: 50, label: 'agglomération' },
+            'FR:rural': { kmh: 80, label: 'hors agglomération' },
+            'FR:motorway': { kmh: 130, label: 'autoroute' },
+            'FR:zone30': { kmh: 30, label: 'zone 30' },
+            'FR:zone20': { kmh: 20, label: 'zone 20' },
+            'FR:zone50': { kmh: 50, label: 'zone 50' },
+            'FR:living_street': { kmh: 20, label: 'zone de rencontre' },
+            'FR:walk': { kmh: 20, label: 'zone de rencontre' },
+            'FR:30': { kmh: 30, label: 'zone 30' },
+            'FR30': { kmh: 30, label: 'zone 30' }
+        };
+
+        // `maxspeed` figure dans la liste : quelques tronçons y portent le code de
+        // régime au lieu du chiffre, ce qui les rendait « inconnus ».
+        const IMPLICIT_SPEED_KEYS = ['maxspeed', 'maxspeed:type', 'source:maxspeed', 'zone:maxspeed'];
+
+        // Vitesse retenue pour un tronçon : le panneau prime, sinon le régime.
+        function resolveWaySpeed(tags) {
+            const t = tags || {};
+            const explicit = parseMaxspeed(t.maxspeed);
+            if (explicit !== null) return { kmh: explicit, implicit: false, label: null };
+            for (const key of IMPLICIT_SPEED_KEYS) {
+                const code = IMPLICIT_SPEED_CODES[String(t[key] || '').trim()];
+                if (code) return { kmh: code.kmh, implicit: true, label: code.label };
+            }
+            return { kmh: null, implicit: false, label: null };
         }
 
         function colorForSpeed(kmh) {
@@ -10527,7 +10631,7 @@
             Object.keys(window.routePolylines).forEach(ref => {
                 window.routePolylines[ref].forEach(polyline => {
                     const tags = polyline.options.wayTags || {};
-                    const kmh = parseMaxspeed(tags.maxspeed);
+                    const kmh = resolveWaySpeed(tags).kmh;
                     const active = isSpeedStepVisible(speedStepFor(kmh));
                     polyline.setStyle({
                         color: active ? colorForSpeed(kmh) : SPEED_MUTED_COLOR,
@@ -10587,7 +10691,8 @@
         // On régénère le contenu entier (et non un sous-noeud) car Leaflet réinjecte
         // la chaîne d'origine à chaque popup.update(), ce qui écraserait une photo
         // posée via innerHTML.
-        function speedSignPopupHtml(kmh, img, state) {
+        function speedSignPopupHtml(speed, img, state) {
+            const kmh = speed.kmh;
             let body;
             if (state === 'loading') {
                 body = `<div class="speed-sign-photo-msg">📷 Recherche d'une photo Mapillary…</div>`;
@@ -10604,9 +10709,13 @@
                     <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
                 `;
             }
+            const origin = speed.implicit
+                ? `<div class="speed-sign-origin">Vitesse implicite · ${escapeHtml(speed.label)}<span>Aucun panneau <code>maxspeed</code> : le régime découle du type de voie.</span></div>`
+                : '';
             return `
                 <div class="route-popup speed-sign-popup">
                     <h3>Limitation ${kmh} km/h</h3>
+                    ${origin}
                     <div class="speed-sign-photo">${body}</div>
                 </div>
             `;
@@ -10680,9 +10789,13 @@
         window.panoramaxPageUrl = panoramaxPageUrl;
         window.panoramaxImageUrl = panoramaxImageUrl;
 
-        function speedDivIcon(kmh, hasMapillary) {
+        // Le cercle est pointillé quand la vitesse n'est pas signalée mais déduite
+        // du régime : sur le terrain, il n'y a pas de panneau à cet endroit.
+        function speedDivIcon(speed, hasMapillary) {
+            const implicitClass = speed.implicit ? ' is-implicit' : '';
             return L.divIcon({
-                html: `<div class="speed-picto" style="border-color:${colorForSpeed(kmh)};">${kmh}</div>`,
+                html: `<div class="speed-picto${implicitClass}" style="border-color:${colorForSpeed(speed.kmh)};"
+                            title="${speed.implicit ? `Vitesse implicite — ${speed.label}` : 'Limitation signalée'}">${speed.kmh}</div>`,
                 className: 'speed-picto-wrapper' + (hasMapillary ? ' has-mapillary' : ''),
                 iconSize: [34, 34],
                 iconAnchor: [17, 17]
@@ -10691,23 +10804,23 @@
 
         // Round pictogram in French speed-limit sign style. Cliquable uniquement si une
         // photo Mapillary existe à proximité immédiate (liseret vert + popup photo).
-        function makeSpeedPictoMarker(latlng, kmh) {
+        function makeSpeedPictoMarker(latlng, speed) {
             const marker = L.marker(latlng, {
-                icon: speedDivIcon(kmh, false),
+                icon: speedDivIcon(speed, false),
                 interactive: true,      // l'écoute clic est gérée par CSS pointer-events (gate)
                 keyboard: false,
                 riseOnHover: true,
                 zIndexOffset: 400
             });
-            marker.bindPopup(speedSignPopupHtml(kmh, null, 'loading'), { minWidth: 220, maxWidth: 260 });
+            marker.bindPopup(speedSignPopupHtml(speed, null, 'loading'), { minWidth: 220, maxWidth: 260 });
 
             // Gate de proximité : on n'active le panneau que si Mapillary couvre la zone.
             // Le contenu final (photo) est posé via setPopupContent pour survivre aux
             // popup.update() internes de Leaflet.
             checkMapillaryNearby(latlng.lat, latlng.lng).then(img => {
                 if (img && img.thumb_1024_url) {
-                    marker.setIcon(speedDivIcon(kmh, true)); // liseret vert + clic activé (CSS)
-                    marker.setPopupContent(speedSignPopupHtml(kmh, img, 'ok'));
+                    marker.setIcon(speedDivIcon(speed, true)); // liseret vert + clic activé (CSS)
+                    marker.setPopupContent(speedSignPopupHtml(speed, img, 'ok'));
                 }
             });
             return marker;
@@ -10881,12 +10994,12 @@
                     if (!mid || !bounds.contains(mid)) return;
 
                     // Vitesse (dédupliquée par ref + valeur + ~1 km).
-                    const kmh = parseMaxspeed(tags.maxspeed);
-                    if (kmh !== null && isSpeedStepVisible(speedStepFor(kmh))) {
-                        const key = `${ref}|${kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
+                    const speed = resolveWaySpeed(tags);
+                    if (speed.kmh !== null && isSpeedStepVisible(speedStepFor(speed.kmh))) {
+                        const key = `${ref}|${speed.kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
                         if (!speedKeysSeen.has(key)) {
                             speedKeysSeen.add(key);
-                            makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), kmh).addTo(speedPictoLayer);
+                            makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), speed).addTo(speedPictoLayer);
                         }
                     }
 
@@ -10944,17 +11057,46 @@
                 </button>`;
             }).join('');
 
+            // Bascule globale du bloc : décocher les vitesses d'un geste est le
+            // seul moyen praticable de se concentrer sur les seuls gabarits.
+            const bulkButton = (scope, anyOn) => `<button type="button" class="limitations-legend-bulk"
+                data-bulk-scope="${scope}" title="${anyOn ? 'Tout décocher' : 'Tout cocher'}">${anyOn ? 'Aucun' : 'Tous'}</button>`;
+
+            const anySpeedOn = speedRangeVisibility.some(Boolean) || speedUnknownVisible;
+            const anyGaugeOn = RESTRICTION_TYPES.some(type => restrictionVisibility[type.key]);
+
             container.innerHTML = `
-                <div class="limitations-legend-group">Limites de vitesse (km/h)</div>
+                <div class="limitations-legend-group">Limites de vitesse (km/h)${bulkButton('speed', anySpeedOn)}</div>
                 <div class="limitations-legend-scale">${scaleHtml}</div>
                 <div class="limitations-legend-unknown">
                     ${stepButton('unknown', SPEED_UNKNOWN_COLOR, '?', 'Vitesse inconnue')}
                     <span>Inconnue (<code>maxspeed</code> absent)</span>
                 </div>
-                <div class="limitations-legend-group">Gabarits</div>
+                <div class="limitations-legend-implicit">
+                    <span class="limitations-legend-implicit-icon">50</span>
+                    <span>Cercle pointillé : vitesse <strong>implicite</strong> (<code>maxspeed:type</code>) — 50 en agglomération, 80 hors agglomération</span>
+                </div>
+                <div class="limitations-legend-group">Gabarits${bulkButton('gauge', anyGaugeOn)}</div>
                 <div class="limitations-legend-gauges">${gaugesHtml}</div>
                 <div class="limitations-legend-hint"><code>maxheight</code> · <code>maxweight</code> · <code>maxlength</code> · <code>maxwidth</code> — panneaux au zoom ≥ ${LIMITATIONS_SIGN_ZOOM}</div>
             `;
+        }
+
+        // « Aucun » tant qu'il reste une case cochée, « Tous » ensuite : un même
+        // bouton sert à vider le bloc puis à le remplir de nouveau.
+        function toggleSpeedBulk(scope) {
+            if (!limitationsMode) return;
+            if (scope === 'speed') {
+                const next = !(speedRangeVisibility.some(Boolean) || speedUnknownVisible);
+                speedRangeVisibility.fill(next);
+                speedUnknownVisible = next;
+                applySpeedGradient();
+            } else {
+                const next = !RESTRICTION_TYPES.some(type => restrictionVisibility[type.key]);
+                RESTRICTION_TYPES.forEach(type => { restrictionVisibility[type.key] = next; });
+            }
+            renderPictograms();
+            updateLimitationsLegend();
         }
 
         // Une tranche de vitesse se filtre depuis sa case de légende : les tronçons
@@ -10984,6 +11126,11 @@
         }
 
         document.getElementById('limitationsLegend')?.addEventListener('click', event => {
+            const bulkButton = event.target.closest('[data-bulk-scope]');
+            if (bulkButton) {
+                toggleSpeedBulk(bulkButton.dataset.bulkScope);
+                return;
+            }
             const speedButton = event.target.closest('[data-speed-step]');
             if (speedButton) {
                 toggleSpeedStep(speedButton.dataset.speedStep);

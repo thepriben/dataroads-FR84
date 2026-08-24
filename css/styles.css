@@ -3660,25 +3660,53 @@
             text-align: left;
         }
 
-        /* Picto en filigrane dans le coin : repère visuel sans concurrencer le chiffre. */
+        /* Picto posé en pastille dans le coin de la tuile : assez grand pour se
+           repérer d'un coup d'œil dans la grille, assez pâle pour laisser le
+           chiffre dominer. */
         .dash-tile-icon {
             position: absolute;
-            top: 6px;
-            right: 7px;
-            font-size: 0.82rem;
+            top: 5px;
+            right: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 7px;
+            background: #eef3f7;
+            font-size: 1rem;
             line-height: 1;
-            opacity: 0.55;
+            opacity: 0.9;
             pointer-events: none;
         }
 
         .dash-tile-value,
         .dash-tile-label {
-            padding-right: 16px;
+            padding-right: 30px;
+        }
+
+        .dash-tile-full .dash-tile-icon {
+            width: 30px;
+            height: 30px;
+            font-size: 1.15rem;
         }
 
         .dash-tile-full .dash-tile-value,
         .dash-tile-full .dash-tile-label {
-            padding-right: 22px;
+            padding-right: 36px;
+        }
+
+        @media (max-width: 520px) {
+            .dash-tile-icon {
+                width: 22px;
+                height: 22px;
+                font-size: 0.86rem;
+            }
+
+            .dash-tile-value,
+            .dash-tile-label {
+                padding-right: 26px;
+            }
         }
 
         .dash-tile-full {
@@ -4564,6 +4592,15 @@
             transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
 
+        /* Vitesse déduite du régime (agglomération / rase campagne) et non d'un
+           panneau : cercle pointillé, pour ne pas laisser croire qu'un panneau
+           existe à cet endroit. */
+        .speed-picto.is-implicit {
+            border-style: dashed;
+            background: #fdfdfd;
+            color: #34434f;
+        }
+
         /* Gate clic : seuls les panneaux couverts par Mapillary sont cliquables. */
         .speed-picto-wrapper {
             pointer-events: none;
@@ -4801,47 +4838,116 @@
         }
 
         /* Vignettes des photos portées par un nœud OSM (mâts directionnels, agglomération) */
-        .node-photos {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-        }
-        .node-photo {
+        /* Carrousel photo des panneaux : une seule prise de vue à l'écran, les
+           autres empilées dessous. Un mât cumule jusqu'à huit photos (une par
+           lame, par orientation ou par millésime) : les aligner en vignettes les
+           rendrait toutes illisibles. */
+        .node-carousel {
             position: relative;
-            flex: 1 1 96px;
-            min-width: 96px;
-            max-width: 132px;
-            display: block;
-            border-radius: 5px;
+            border-radius: 6px;
             overflow: hidden;
             background: #eef1f4;
+        }
+        .node-slide {
+            display: none;
+            position: relative;
             text-decoration: none;
         }
-        .node-photo img {
+        .node-slide.is-active {
+            display: block;
+        }
+        .node-slide img {
             display: block;
             width: 100%;
-            height: 84px;
+            height: 168px;
             object-fit: cover;
         }
         .node-photo-pending {
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 84px;
-            font-size: 0.68rem;
+            height: 168px;
+            font-size: 0.72rem;
             font-weight: 600;
             color: #7f8c8d;
         }
-        .node-photo-src {
+        .node-slide-bar {
             position: absolute;
             left: 0;
             right: 0;
             bottom: 0;
-            padding: 2px 4px;
-            font-size: 0.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            padding: 3px 6px;
+            font-size: 0.62rem;
             font-weight: 600;
             color: #fff;
-            background: rgba(0, 0, 0, 0.55);
+            background: rgba(0, 0, 0, 0.58);
+        }
+        .node-slide-count {
+            font-family: 'JetBrains Mono', monospace;
+            flex-shrink: 0;
+            opacity: 0.85;
+        }
+        .node-carousel-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 26px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: none;
+            background: rgba(0, 0, 0, 0.42);
+            color: #fff;
+            font-size: 1.25rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+        .node-carousel-nav:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        .node-carousel-nav.is-prev {
+            left: 0;
+            border-radius: 0 4px 4px 0;
+        }
+        .node-carousel-nav.is-next {
+            right: 0;
+            border-radius: 4px 0 0 4px;
+        }
+
+        /* Lien de contribution en pied de popup (voir / compléter sur OSM). */
+        .node-osm-link {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 7px;
+            padding-top: 6px;
+            border-top: 1px solid #e8eef3;
+            font-size: 0.7rem;
+        }
+        .node-osm-label {
+            font-weight: 700;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            font-size: 0.62rem;
+        }
+        .node-osm-link a {
+            color: #3498DB;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .node-osm-link a:hover {
+            text-decoration: underline;
+        }
+        .node-osm-sep {
+            color: #b8c4ce;
         }
 
         /* ===== Panneaux d'agglomération (traffic_sign=city_limit) ===== */
@@ -4919,6 +5025,21 @@
             font-weight: 700;
             color: #1f2933;
         }
+        .speed-sign-popup .speed-sign-origin {
+            margin: 2px 0 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #5DADE2;
+        }
+
+        .speed-sign-popup .speed-sign-origin span {
+            display: block;
+            margin-top: 1px;
+            font-size: 0.66rem;
+            font-weight: 500;
+            color: #7f8c8d;
+        }
+
         .city-limit-popup .city-limit-sense {
             font-size: 0.74rem;
             font-weight: 600;
@@ -5084,14 +5205,67 @@
         }
 
         .limitations-legend-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
             font-size: 0.78rem;
             color: #5b6770;
             font-weight: 600;
             margin-bottom: 4px;
         }
 
+        /* Bascule globale du bloc, discrète tant qu'on ne la survole pas. */
+        .limitations-legend-bulk {
+            flex-shrink: 0;
+            padding: 1px 7px;
+            border: 1px solid #d5dee5;
+            border-radius: 10px;
+            background: #fff;
+            color: #7f8c8d;
+            font-family: inherit;
+            font-size: 0.62rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            cursor: pointer;
+            transition: color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .limitations-legend-bulk:hover {
+            color: #2C3E50;
+            border-color: #9fb0bd;
+        }
+
         .limitations-legend-scale + .limitations-legend-unknown + .limitations-legend-group {
             margin-top: 10px;
+        }
+
+        /* Rappel du cercle pointillé des vitesses implicites. */
+        .limitations-legend-implicit {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            font-size: 0.66rem;
+            line-height: 1.3;
+            color: #7f8c8d;
+        }
+
+        .limitations-legend-implicit-icon {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 22px;
+            height: 22px;
+            border: 2px dashed #5DADE2;
+            border-radius: 50%;
+            background: #fdfdfd;
+            font-family: 'Oswald', 'DM Sans', sans-serif;
+            font-size: 0.64rem;
+            font-weight: 600;
+            color: #34434f;
         }
 
         .limitations-legend-gauges {

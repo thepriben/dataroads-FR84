@@ -498,13 +498,30 @@ def bridge_features_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
 ROAD_SIGN_KEEP = ("highway", "direction", "traffic_sign", "name")
 
 
+# Les clés photo se déclinent en variantes suffixées qui portent le sens de la
+# prise de vue (panoramax:N, mapillary:2017, panoramax:context…) : un même mât en
+# aligne ainsi plusieurs, qu'on veut toutes conserver.
+PHOTO_KEY_PREFIXES = ("mapillary", "panoramax", "wikimedia_commons", "image")
+
+
+def keep_tag(key: str, keep: tuple[str, ...]) -> bool:
+    if key in keep:
+        return True
+    base, sep, _suffix = key.partition(":")
+    return bool(sep) and base in PHOTO_KEY_PREFIXES and base in keep
+
+
 def node_to_point_feature(element: dict[str, Any], keep: tuple[str, ...] | None = None) -> dict[str, Any] | None:
     lat = element.get("lat")
     lon = element.get("lon")
     if lat is None or lon is None:
         return None
     tags = element.get("tags") or {}
-    properties = {key: tags[key] for key in keep if key in tags} if keep is not None else dict(tags)
+    properties = (
+        {key: value for key, value in tags.items() if keep_tag(key, keep)}
+        if keep is not None
+        else dict(tags)
+    )
     properties["osm_id"] = element.get("id")
     properties["@id"] = f"node/{element.get('id')}"
     return {
