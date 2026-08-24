@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.14.2] - 2026-08-24
+
+### Changed
+
+- **Speed signs slide along their own segment to avoid each other.** 0.14.1 only removed identical overlapping signs, leaving two different limits stacked on top of one another where the information mattered most. A sign cannot be pushed off the carriageway without being read against the neighbouring road, so it now slides along its own polyline until it finds room. Where nothing is free, the limit is still drawn at least once per road in view and the further overlapping occurrences are dropped. Overlaps fall from 6 to 2 around Orange at zoom 14, 8 to 0 at Cavaillon, and 22 to 10 across L'Isle-sur-la-Sorgue at zoom 13, while showing more signs than the previous pass did.
+
 ## [0.14.1] - 2026-08-24
 
 ### Changed

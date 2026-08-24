@@ -10663,6 +10663,27 @@
             return latlngs[Math.floor(latlngs.length / 2)];
         }
 
+        // Points de repli le long d'un même tronçon, du milieu vers les extrémités.
+        // Un panneau de vitesse ne peut pas être déporté hors de la chaussée sans
+        // risquer d'être lu sur la route voisine : quand deux valeurs se gênent, on
+        // fait glisser l'une le long de sa propre polyline.
+        const SPEED_SLIDE_FRACTIONS = [0.5, 0.38, 0.62, 0.26, 0.74, 0.15, 0.85];
+
+        function polylineSlidePositions(polyline) {
+            const latlngs = polyline.getLatLngs();
+            if (!latlngs.length) return [];
+            const last = latlngs.length - 1;
+            const seen = new Set();
+            const positions = [];
+            SPEED_SLIDE_FRACTIONS.forEach(fraction => {
+                const index = Math.round(last * fraction);
+                if (seen.has(index)) return;
+                seen.add(index);
+                positions.push(latlngs[index]);
+            });
+            return positions;
+        }
+
         // ---- Mapillary : recherche d'une photo proche d'un panneau de vitesse ----
         const MAPILLARY_CFG = (window.APP_CONFIG && window.APP_CONFIG.mapillary) || {};
         const MAPILLARY_TOKEN = MAPILLARY_CFG.accessToken || '';
@@ -11028,6 +11049,7 @@
             const bounds = window.map.getBounds();
             const speedKeysSeen = new Set();
             const restrictionKeysSeen = new Set();
+            const speedItems = [];
             const pendingGauges = [];
             // Les panneaux de vitesse sont posés en premier et servent d'obstacles :
             // c'est de leur empilement avec les gabarits que venait l'illisibilité.
@@ -11045,16 +11067,7 @@
                         const key = `${ref}|${speed.kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
                         if (!speedKeysSeen.has(key)) {
                             speedKeysSeen.add(key);
-                            const point = window.map.latLngToContainerPoint(mid);
-                            const box = { x: point.x, y: point.y, w: 34, h: 34, kmh: speed.kmh };
-                            // La déduplication au kilomètre laisse passer des doublons
-                            // dans les mailles voisines : deux panneaux identiques qui
-                            // se recouvrent n'apportent rien, on garde le premier.
-                            const repeat = occupied.some(other => other.kmh === speed.kmh && boxesOverlap(box, other));
-                            if (!repeat) {
-                                makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), speed).addTo(speedPictoLayer);
-                                occupied.push(box);
-                            }
+                            speedItems.push({ ref, speed, polyline, mid });
                         }
                     }
 
@@ -11073,6 +11086,43 @@
                         });
                     });
                 });
+            });
+
+            const speedBoxAt = (latlng, kmh) => {
+                const point = window.map.latLngToContainerPoint(latlng);
+                return { x: point.x, y: point.y, w: 34, h: 34, kmh };
+            };
+            const placeSpeed = (item, at) => {
+                makeSpeedPictoMarker(L.latLng(at.lat, at.lng), item.speed).addTo(speedPictoLayer);
+                occupied.push(speedBoxAt(at, item.speed.kmh));
+            };
+
+            // Premier temps : chaque panneau cherche une place libre en glissant le
+            // long de son propre tronçon. Les tronçons trop courts pour la vue en
+            // ressortent sans emplacement.
+            const shownSpeeds = new Set();
+            const homeless = new Map();
+            speedItems.forEach(item => {
+                const shownKey = `${item.ref}|${item.speed.kmh}`;
+                for (const candidate of polylineSlidePositions(item.polyline)) {
+                    if (!bounds.contains(candidate)) continue;
+                    if (occupied.some(other => boxesOverlap(speedBoxAt(candidate, item.speed.kmh), other))) continue;
+                    placeSpeed(item, candidate);
+                    shownSpeeds.add(shownKey);
+                    return;
+                }
+                if (!homeless.has(shownKey)) homeless.set(shownKey, item);
+            });
+
+            // Second temps : une limite qui n'a trouvé aucune place nulle part est
+            // tout de même posée une fois, quitte à chevaucher — sauf si un panneau
+            // identique occupe déjà l'endroit, auquel cas ce serait une répétition.
+            homeless.forEach((item, shownKey) => {
+                if (shownSpeeds.has(shownKey)) return;
+                const box = speedBoxAt(item.mid, item.speed.kmh);
+                if (occupied.some(other => other.kmh === item.speed.kmh && boxesOverlap(box, other))) return;
+                placeSpeed(item, item.mid);
+                shownSpeeds.add(shownKey);
             });
 
             pendingGauges.forEach(({ entry, anchor, suffix }) => {
