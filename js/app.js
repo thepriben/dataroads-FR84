@@ -1502,11 +1502,16 @@
         let appUrlLayersApplied = false;
         let appUrlLayersPending = null;
         let appUrlFamiliesPending = null;
+        // Keys already forced from the URL. Layer data lands over several seconds and
+        // each loader retries the pending state, so without this a layer the user just
+        // turned off would be switched back on by the next loader that completes.
+        const appUrlAppliedKeys = new Set();
 
         function initAppUrlStateFromLocation() {
             const state = parseAppUrlState();
             appUrlLayersPending = null;
             appUrlFamiliesPending = null;
+            appUrlAppliedKeys.clear();
             if (!state) return;
             if (state.layersExplicit) appUrlLayersPending = new Set(state.layers);
             else if (state.families.length) appUrlFamiliesPending = state.families.slice();
@@ -1618,6 +1623,9 @@
             }
         }
 
+        // Applies one URL key and reports whether the layer now sits in the requested
+        // state. A key that is already there needs no further pass, so it will not be
+        // forced again later — leaving the user free to toggle it.
         function applyAppUrlLayerKey(key, wanted) {
             const desired = wanted.has(key);
             switch (key) {
@@ -1627,68 +1635,75 @@
                     return true;
                 case 'construction':
                     setBooleanLayerIfNeeded(constructionVisible, desired, window.toggleConstruction);
-                    return !desired || constructionPolylines.length > 0;
+                    return constructionVisible === desired;
                 case 'bicycle':
                     setBooleanLayerIfNeeded(bicycleVisible, desired, window.toggleBicycleRoutes);
-                    return !desired || bicyclePolylines.length > 0;
+                    return bicycleVisible === desired;
                 case 'cities':
                     setBooleanLayerIfNeeded(citiesVisible, desired, window.toggleCities);
-                    return true;
+                    return citiesVisible === desired;
                 case 'aires':
                     setBooleanLayerIfNeeded(roadsideAreasVisible, desired, window.toggleRoadsideAreas);
-                    return !desired || roadsideAreasLoaded;
+                    return roadsideAreasVisible === desired;
                 case 'limits':
                     setBooleanLayerIfNeeded(limitationsMode, desired, window.toggleLimitationsMode);
-                    return true;
+                    return limitationsMode === desired;
                 case 'accidents':
                     setBooleanLayerIfNeeded(accidentsVisible, desired, window.toggleAccidents);
-                    return !desired || accidentMarkers.length > 0;
+                    return accidentsVisible === desired;
                 case 'traffic':
-                case 'waze':
-                    setBooleanLayerIfNeeded(trafficVisible, desired, window.toggleTraffic);
-                    return !desired || trafficMarkers.length > 0;
+                case 'waze': {
+                    // Two aliases for the same layer: only their union is meaningful,
+                    // otherwise the second key would undo the first.
+                    const wantsTraffic = wanted.has('traffic') || wanted.has('waze');
+                    setBooleanLayerIfNeeded(trafficVisible, wantsTraffic, window.toggleTraffic);
+                    return trafficVisible === wantsTraffic;
+                }
                 case 'weather':
                     setBooleanLayerIfNeeded(weatherStationsVisible, desired, window.toggleWeatherStations);
-                    return true;
+                    return weatherStationsVisible === desired;
                 case 'bison':
                     setBooleanLayerIfNeeded(bisonFuteVisible, desired, window.toggleBisonFute);
-                    return !desired || bisonFuteMarkers.length > 0;
+                    return bisonFuteVisible === desired;
                 case 'bridges':
                     setBooleanLayerIfNeeded(bridgeVisible, desired, window.toggleBridges);
-                    return !desired || bridgeDataLoaded;
+                    return bridgeVisible === desired;
                 case 'signs':
                     setBooleanLayerIfNeeded(roadSignsVisible, desired, window.toggleRoadSigns);
-                    return !desired || roadSignsDataLoaded;
+                    return roadSignsVisible === desired;
                 case 'guide':
                     setBooleanLayerIfNeeded(guidepostsVisible, desired, window.toggleGuideposts);
-                    return !desired || guidepostsDataLoaded;
+                    return guidepostsVisible === desired;
                 case 'pnx':
                     if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
                     setBridgeProviderIfNeeded('panoramax', desired);
-                    return !desired || bridgeDataLoaded;
+                    return bridgePhotoProviderVisibility.panoramax === desired && (!desired || bridgeVisible);
                 case 'mly':
                     if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
                     setBridgeProviderIfNeeded('mapillary', desired);
-                    return !desired || bridgeDataLoaded;
+                    return bridgePhotoProviderVisibility.mapillary === desired && (!desired || bridgeVisible);
                 case 'ens':
                     setBooleanLayerIfNeeded(sensitiveZonesVisible, desired, window.toggleSensitiveZones);
-                    return !desired || sensitiveZonesLoaded;
+                    return sensitiveZonesVisible === desired;
                 case 'inat':
                     setBooleanLayerIfNeeded(inaturalistSensitivesVisible, desired, window.toggleInaturalistSensitives);
-                    return !desired || inaturalistSensitivesLoaded;
+                    return inaturalistSensitivesVisible === desired;
                 case 'wcam':
                     setBooleanLayerIfNeeded(webcamsVisible, desired, window.toggleWebcams);
-                    return !desired || webcamsLoaded;
+                    return webcamsVisible === desired;
                 case 'oedb':
                     setBooleanLayerIfNeeded(oedbEventsVisible, desired, window.toggleOedbEvents);
-                    return !desired || oedbEventsLoaded;
+                    return oedbEventsVisible === desired;
                 default:
                     return true;
             }
         }
 
         function applyAppUrlLayersFromSet(wanted) {
-            applyAppUrlHierarchyFromSet(wanted);
+            if (!appUrlAppliedKeys.has('hierarchy')) {
+                applyAppUrlHierarchyFromSet(wanted);
+                appUrlAppliedKeys.add('hierarchy');
+            }
 
             const pendingKeys = [
                 'construction', 'bicycle', 'cities', 'aires', 'limits', 'accidents', 'traffic', 'waze',
@@ -1696,7 +1711,9 @@
             ];
             let allReady = true;
             pendingKeys.forEach(key => {
-                if (!applyAppUrlLayerKey(key, wanted)) allReady = false;
+                if (appUrlAppliedKeys.has(key)) return;
+                if (applyAppUrlLayerKey(key, wanted)) appUrlAppliedKeys.add(key);
+                else allReady = false;
             });
             return allReady;
         }
@@ -1994,9 +2011,11 @@
 
             const bounds = window.map.getBounds().pad(0.15);
             let visiblePhotoCount = 0;
+            if (typeof window.bridgePhotoMarkerLatLng !== 'function') return;
+
             bridgePhotoMarkers.forEach(entry => {
                 if (bridgePhotoProviderVisibility[entry.photo.provider] === false) return;
-                const latlng = bridgePhotoMarkerLatLng(entry.photo, entry.group);
+                const latlng = window.bridgePhotoMarkerLatLng(entry.photo, entry.group);
                 entry.marker.setLatLng(latlng);
                 if (!bounds.contains(latlng) && !bounds.intersects(entry.group.bounds)) return;
                 entry.marker.addTo(bridgePhotoLayerGroup);
@@ -5491,8 +5510,8 @@
                 if (title) title.style.fontWeight = '700';
             }
 
-            if (typeof updateRouteLabels === 'function') {
-                updateRouteLabels();
+            if (typeof window.updateRouteLabels === 'function') {
+                window.updateRouteLabels();
             }
             syncLegendChrome();
         };
@@ -5524,14 +5543,15 @@
             }
 
             // Single source of truth for what is actually painted on the map.
-            if (typeof applyAccidentVisibility === 'function') applyAccidentVisibility();
+            // The painter lives inside the DOMContentLoaded scope, hence window.
+            if (typeof window.applyAccidentVisibility === 'function') window.applyAccidentVisibility();
             syncLegendChrome();
         }
 
         window.toggleAccidentType = function(kind) {
             if (!accidentsVisible || !Object.prototype.hasOwnProperty.call(accidentTypeVisibility, kind)) return;
             accidentTypeVisibility[kind] = !accidentTypeVisibility[kind];
-            applyAccidentVisibility();
+            if (typeof window.applyAccidentVisibility === 'function') window.applyAccidentVisibility();
             updateSubtypeLegendUi('accident', accidentTypeVisibility, true);
             syncLegendChrome();
         };
@@ -6604,6 +6624,8 @@
                 });
             });
         }
+        // Reachable from the hierarchy toggles, which live outside DOMContentLoaded.
+        window.updateRouteLabels = updateRouteLabels;
 
         let routeLabelRefreshPending = false;
         function scheduleRouteLabelRefresh() {
@@ -8191,6 +8213,8 @@
                 perpY * layout.side * offset
             );
         }
+        // Reachable from the bridge photo layer sync, which lives outside DOMContentLoaded.
+        window.bridgePhotoMarkerLatLng = bridgePhotoMarkerLatLng;
 
         function buildBridgePhotoPopup(photo, group) {
             const preview = photo.provider === 'panoramax'
@@ -9317,7 +9341,19 @@
         // thin white outline (slight). Hospitalised and slight share the same radius
         // on purpose — the ring is the discriminator; only fatal is enlarged.
         const ACCIDENT_SIZE = { mortel: 6.5, grave: 4.5, leger: 4.5 };
-        const accidentCanvasRenderer = L.canvas({ padding: 0.4 });
+
+        // Leaflet stacks every canvas renderer below every SVG one
+        // (.leaflet-map-pane canvas → z-index 100, svg → 200), so the road polylines
+        // covered the crash dots and swallowed their clicks — and crashes sit on roads
+        // by definition. A dedicated pane above the overlay pane puts the cloud back on
+        // top. See accidentPaneHitTesting below for how road clicks keep working.
+        const ACCIDENT_PANE = 'accidentsCloud';
+        if (!window.map.getPane(ACCIDENT_PANE)) {
+            const pane = window.map.createPane(ACCIDENT_PANE);
+            pane.style.zIndex = 450;
+            pane.style.pointerEvents = 'none';
+        }
+        const accidentCanvasRenderer = L.canvas({ pane: ACCIDENT_PANE, padding: 0.4 });
         let accidentYearBounds = { min: null, max: null };   // full data range
         let accidentYearFilter = { min: null, max: null };   // current slider range
         let accidentPerYear = {};                            // {year: count}
@@ -9483,6 +9519,37 @@
                 });
             }
         }
+        // Reachable from the legend toggles, which live outside DOMContentLoaded.
+        window.applyAccidentVisibility = applyAccidentVisibility;
+
+        // The cloud pane spans the whole viewport, so leaving it clickable would steal
+        // every click meant for a road. It is therefore opened only while the cursor
+        // actually rests on a crash dot.
+        function accidentAtLayerPoint(layerPoint) {
+            if (!accidentsVisible || !window.map) return null;
+            for (let i = accidentMarkers.length - 1; i >= 0; i--) {
+                const marker = accidentMarkers[i];
+                if (typeof marker._containsPoint !== 'function') continue;
+                if (!window.map.hasLayer(marker)) continue;
+                if (marker._containsPoint(layerPoint)) return marker;
+            }
+            return null;
+        }
+
+        window.map.on('mousemove', event => {
+            const pane = window.map.getPane(ACCIDENT_PANE);
+            if (!pane) return;
+            const hit = Boolean(accidentAtLayerPoint(event.layerPoint));
+            pane.style.pointerEvents = hit ? 'auto' : 'none';
+            pane.style.cursor = hit ? 'pointer' : '';
+        });
+
+        // Touch input never sends the hover that opens the pane, so a tap landing next
+        // to a road is resolved here instead.
+        window.map.on('click', event => {
+            const marker = accidentAtLayerPoint(event.layerPoint);
+            if (marker && !marker.isPopupOpen()) marker.openPopup();
+        });
 
         // Draw the per-year histogram in the legend, colour-coded by recency, and
         // dim the bars outside the current filter range.
@@ -10060,8 +10127,7 @@
         const speedPictoLayer = L.layerGroup();
         const restrictionLayer = L.layerGroup();
         let limitationsZoomHandler = null;
-        const LIMITATIONS_SIGN_ZOOM = 13;        // >= : pictogrammes individuels ; en dessous : grappes
-        const LIMITATIONS_CLUSTER_CELL_PX = 54;  // taille de cellule de grappe (px écran)
+        const LIMITATIONS_SIGN_ZOOM = 13;        // >= : pictogrammes individuels ; en dessous : dégradé seul
 
         // Hot/cold color scale for speed limits (km/h).
         // Convention: cold (blue) = slow / safe, hot (red) = fast.
@@ -10404,61 +10470,16 @@
             return entries;
         }
 
-        // Bulle de grappe pour les limitations (au dézoom).
-        function speedClusterIcon(count) {
-            const size = count >= 500 ? 46 : count >= 100 ? 40 : count >= 20 ? 34 : 28;
-            const label = count >= 1000 ? `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k` : String(count);
-            return L.divIcon({
-                html: `<div class="limitations-cluster" style="width:${size}px;height:${size}px;">${label}</div>`,
-                className: 'limitations-cluster-wrapper',
-                iconSize: [size, size],
-                iconAnchor: [size / 2, size / 2]
-            });
-        }
-
-        // Agrège les pictos vitesse en grappes par grille d'écran (px) au zoom courant.
-        function renderSpeedClusters(points, zoom) {
-            const cell = LIMITATIONS_CLUSTER_CELL_PX;
-            const buckets = new Map();
-            points.forEach(pt => {
-                const p = window.map.project([pt.lat, pt.lng], zoom);
-                const key = `${Math.floor(p.x / cell)}|${Math.floor(p.y / cell)}`;
-                let bucket = buckets.get(key);
-                if (!bucket) { bucket = { sx: 0, sy: 0, n: 0 }; buckets.set(key, bucket); }
-                bucket.sx += p.x; bucket.sy += p.y; bucket.n++;
-            });
-            buckets.forEach(bucket => {
-                const center = window.map.unproject([bucket.sx / bucket.n, bucket.sy / bucket.n], zoom);
-                const marker = L.marker(center, {
-                    icon: speedClusterIcon(bucket.n),
-                    interactive: true,
-                    keyboard: false,
-                    zIndexOffset: 380
-                });
-                marker.bindTooltip(`${bucket.n} limitation${bucket.n > 1 ? 's' : ''} — cliquer pour zoomer`, { direction: 'top' });
-                marker.on('click', () => {
-                    window.map.flyTo(center, Math.min(window.map.getZoom() + 3, LIMITATIONS_SIGN_ZOOM + 1), { duration: 0.6 });
-                });
-                marker.addTo(speedPictoLayer);
-            });
-        }
-
         // Affiche les pictos vitesse / restrictions visibles dans la vue actuelle.
-        // Zoom strategy :
-        //   - zoom <  LIMITATIONS_SIGN_ZOOM : grappes regroupant vitesse ET restrictions
-        //     (hauteur, poids, longueur, largeur) de façon équivalente
-        //   - zoom ≥ LIMITATIONS_SIGN_ZOOM : pictos vitesse + restrictions individuels
+        // En dessous de LIMITATIONS_SIGN_ZOOM, seul le dégradé de vitesse porté par
+        // les tronçons reste affiché : aucun pictogramme n'est posé.
         function renderPictograms() {
             speedPictoLayer.clearLayers();
             restrictionLayer.clearLayers();
             if (!limitationsMode) return;
+            if (window.map.getZoom() < LIMITATIONS_SIGN_ZOOM) return;
 
-            const zoom = window.map.getZoom();
             const bounds = window.map.getBounds();
-            const individual = zoom >= LIMITATIONS_SIGN_ZOOM;
-
-            // Au dézoom, on agrège tous les points (vitesse + restrictions) en grappes.
-            const clusterPts = [];
             const speedKeysSeen = new Set();
             const restrictionKeysSeen = new Set();
 
@@ -10468,23 +10489,20 @@
                     const mid = polylineMidLatLng(polyline);
                     if (!mid || !bounds.contains(mid)) return;
 
-                    const kmh = parseMaxspeed(tags.maxspeed);
-                    const entries = restrictionEntriesFromTags(tags);
-
                     // Vitesse (dédupliquée par ref + valeur + ~1 km).
-                    let speedCounted = false;
+                    const kmh = parseMaxspeed(tags.maxspeed);
                     if (kmh !== null) {
                         const key = `${ref}|${kmh}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
                         if (!speedKeysSeen.has(key)) {
                             speedKeysSeen.add(key);
-                            speedCounted = true;
+                            makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), kmh).addTo(speedPictoLayer);
                         }
                     }
 
                     // Restrictions (dédupliquées par type + valeur + ~1 km), comme la vitesse,
-                    // pour qu'un même panneau porté par plusieurs segments ne s'échappe pas des grappes.
+                    // pour qu'un même panneau porté par plusieurs tronçons ne s'affiche qu'une fois.
                     const uniqueEntries = [];
-                    entries.slice(0, 2).forEach(entry => {
+                    restrictionEntriesFromTags(tags).slice(0, 2).forEach(entry => {
                         const key = `${entry.label}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
                         if (!restrictionKeysSeen.has(key)) {
                             restrictionKeysSeen.add(key);
@@ -10492,28 +10510,16 @@
                         }
                     });
 
-                    if (individual) {
-                        if (speedCounted) {
-                            makeSpeedPictoMarker(L.latLng(mid.lat, mid.lng), kmh).addTo(speedPictoLayer);
-                        }
-                        if (uniqueEntries.length > 0) {
-                            const isBridge = tags.bridge && tags.bridge !== 'no';
-                            const isTunnel = tags.tunnel === 'yes';
-                            uniqueEntries.forEach((entry, i) => {
-                                const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
-                                const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
-                                marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
-                                marker.addTo(restrictionLayer);
-                            });
-                        }
-                    } else {
-                        if (speedCounted) clusterPts.push({ lat: mid.lat, lng: mid.lng });
-                        uniqueEntries.forEach(() => clusterPts.push({ lat: mid.lat, lng: mid.lng }));
-                    }
+                    const isBridge = tags.bridge && tags.bridge !== 'no';
+                    const isTunnel = tags.tunnel === 'yes';
+                    uniqueEntries.forEach((entry, i) => {
+                        const offsetLatLng = L.latLng(mid.lat, mid.lng + i * 0.0006);
+                        const marker = makeRestrictionPictoMarker(offsetLatLng, entry.icon, entry.value, entry.color);
+                        marker.bindTooltip(`${entry.label}${isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''}`);
+                        marker.addTo(restrictionLayer);
+                    });
                 });
             });
-
-            if (!individual) renderSpeedClusters(clusterPts, zoom);
         }
 
         function updateLimitationsLegend() {

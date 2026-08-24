@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.12.2] - 2026-08-24
+
+### Fixed
+
+- **The accidentology layer can be shown and hidden again.** `toggleAccidents()` and the severity legend rows live outside the `DOMContentLoaded` scope where the painter `applyAccidentVisibility()` is declared, so the eye only ever repainted the legend: the crash cloud appeared or vanished at the mercy of the year slider, and could no longer be switched off without reloading the page. Clicking a severity row even threw a `ReferenceError`. Two neighbours suffered from the same scope leak and are fixed alongside: route labels were not refreshed when toggling the network hierarchy, and bridge photo markers crashed while being positioned at zoom ≥ 16.
+- **Crash popups open again when clicking a dot.** Leaflet always stacks canvas renderers under SVG ones, so the road polylines covered the crash cloud and swallowed its clicks — and crashes sit on roads by definition. The cloud now lives in a dedicated pane above the overlay pane; the pane only becomes clickable while the cursor rests on a dot, leaving road clicks untouched.
+- **A layer switched off no longer comes back on its own.** Layer data lands over several seconds and every loader replays the pending URL state, which re-forced layers the user had toggled in the meantime. Each key is now applied at most once, and the `traffic` / `waze` aliases no longer cancel each other out.
+
+### Removed
+
+- **Speed-limit clusters.** Below zoom 13 the limitations mode now shows only the speed gradient carried by the segments, instead of grouping speed and size restrictions into count bubbles.
+
 ## [0.12.1] - 2026-08-06
 
 ### Added

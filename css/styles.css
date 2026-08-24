@@ -4845,31 +4845,6 @@
         }
 
         /* Pictogrammes de restriction (hauteur/poids/longueur/largeur) */
-        /* Grappes de limitations (au dézoom) */
-        .limitations-cluster-wrapper {
-            background: transparent;
-            border: none;
-        }
-        .limitations-cluster {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            background: rgba(44, 62, 80, 0.95);
-            color: #fff;
-            font-family: 'Oswald', 'DM Sans', sans-serif;
-            font-weight: 700;
-            font-size: 12px;
-            line-height: 1;
-            border: 2px solid #fff;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-            cursor: pointer;
-            transition: transform 0.12s ease;
-        }
-        .limitations-cluster:hover {
-            transform: scale(1.1);
-        }
-
         .restriction-picto {
             background: white;
             border: 2px solid #2C3E50;
