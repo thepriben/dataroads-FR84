@@ -1269,6 +1269,7 @@
         let webcamMarkers = [];
         let webcamsVisible = false;
         let webcamsLoaded = false;
+        let webcamsZoomHandler = null;
         const webcamTypeVisibility = { traffic: true, mountain: true };
         let oedbEventsLayerGroup = null;
         let oedbEventMarkers = [];
@@ -2790,20 +2791,51 @@
 
         // `photoKind` : 'tagged' = photo du panneau référencée dans OSM,
         // 'nearby' = simple couverture Mapillary alentour, null = aucune.
-        function guidepostDivIcon(photoKind) {
+        // Usages d'un mât : un panneau de randonnée et un panneau de véloroute ne
+        // servent pas la même lecture de la carte, on peut donc n'afficher que
+        // l'un ou l'autre. « Autres » couvre les mâts sans usage déclaré.
+        const GUIDEPOST_USAGES = [
+            { key: 'hiking', icon: '🚶', name: 'Randonnée', tag: 'hiking' },
+            { key: 'bicycle', icon: '🚲', name: 'Vélo', tag: 'bicycle' },
+            { key: 'mtb', icon: '🚵', name: 'VTT', tag: 'mtb' },
+            { key: 'horse', icon: '🐴', name: 'Équestre', tag: 'horse' }
+        ];
+        const GUIDEPOST_USAGE_OTHER = { key: 'other', icon: '', name: 'Autres', tag: null };
+        const GUIDEPOST_USAGE_OFF = new Set(['no', 'none']);
+        const guidepostUsageVisibility = Object.fromEntries(
+            GUIDEPOST_USAGES.concat(GUIDEPOST_USAGE_OTHER).map(usage => [usage.key, true])
+        );
+
+        function guidepostUsages(props) {
+            const p = props || {};
+            const found = GUIDEPOST_USAGES.filter(usage => {
+                const value = p[usage.tag];
+                return value && !GUIDEPOST_USAGE_OFF.has(String(value));
+            });
+            return found.length ? found : [GUIDEPOST_USAGE_OTHER];
+        }
+
+        function guidepostUsageVisible(props) {
+            return guidepostUsages(props).some(usage => guidepostUsageVisibility[usage.key]);
+        }
+
+        function guidepostDivIcon(photoKind, props) {
             const kind = photoKind === true ? 'nearby' : photoKind;
             const title = kind === 'tagged' ? 'Photo du panneau disponible' : 'Photo Mapillary à proximité';
             const dot = kind ? `<span class="gp-mly" title="${title}"></span>` : '';
+            const badges = guidepostUsages(props).filter(usage => usage.icon).slice(0, 2)
+                .map(usage => `<span class="gp-use" title="${usage.name}">${usage.icon}</span>`).join('');
             return L.divIcon({
                 html: `<span class="gp-post"></span>`
                     + `<span class="gp-blade gp-blade--top"></span>`
                     + `<span class="gp-blade gp-blade--bottom"></span>`
-                    + dot,
+                    + dot
+                    + (badges ? `<span class="gp-uses">${badges}</span>` : ''),
                 className: 'guidepost-wrapper'
                     + (kind ? ' has-mapillary' : '')
                     + (kind === 'tagged' ? ' has-photo' : ''),
-                iconSize: [30, 28],
-                iconAnchor: [9, 27]
+                iconSize: [40, 30],
+                iconAnchor: [9, 29]
             });
         }
 
@@ -2992,9 +3024,12 @@
                     <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>
                 `;
             }
+            const usages = guidepostUsages(props).filter(usage => usage.icon)
+                .map(usage => `<span class="guidepost-usage-chip">${usage.icon} ${escapeHtml(usage.name)}</span>`).join('');
             return `
                 <div class="route-popup speed-sign-popup guidepost-popup">
                     <h3>${title}</h3>
+                    ${usages ? `<div class="guidepost-usage-chips">${usages}</div>` : ''}
                     ${dests}
                     <div class="speed-sign-photo">${body}</div>
                     ${osmNodeLinkHtml(props)}
@@ -3005,7 +3040,7 @@
         function makeGuidepostMarker(lat, lng, props) {
             const tagged = osmNodePhotos(props);
             const marker = L.marker([lat, lng], {
-                icon: guidepostDivIcon(tagged.length ? 'tagged' : null),
+                icon: guidepostDivIcon(tagged.length ? 'tagged' : null, props),
                 interactive: true,
                 keyboard: false,
                 riseOnHover: true,
@@ -3022,7 +3057,7 @@
             const checkNearby = window.checkMapillaryNearby || (() => Promise.resolve(null));
             checkNearby(lat, lng).then(img => {
                 if (img && img.thumb_1024_url) {
-                    marker.setIcon(guidepostDivIcon('nearby'));
+                    marker.setIcon(guidepostDivIcon('nearby', props));
                     marker.setPopupContent(guidepostPopupHtml(props, [img], 'nearby'));
                 }
             }).catch(() => {});
@@ -3077,7 +3112,9 @@
                 if (!coords) continue;
                 const lng = coords[0], lat = coords[1];
                 if (!bounds.contains([lat, lng])) continue;
-                visible.push({ lat, lng, props: feature.properties || {} });
+                const props = feature.properties || {};
+                if (!guidepostUsageVisible(props)) continue;
+                visible.push({ lat, lng, props });
             }
             if (zoom >= GUIDEPOSTS_SIGN_ZOOM) {
                 let count = 0;
@@ -3093,7 +3130,41 @@
         function setGuidepostsLegendCounts(features) {
             const el = document.getElementById('count-guideposts');
             if (el) el.textContent = (features || []).length.toLocaleString('fr-FR');
+            updateGuidepostUsageLegend();
         }
+
+        // Filtres d'usage : seuls les usages réellement présents dans la donnée
+        // sont proposés, un bouton mort n'apprenant rien.
+        function updateGuidepostUsageLegend() {
+            const container = document.getElementById('guidepostUsages');
+            if (!container) return;
+            const counts = new Map();
+            guidepostsFeatures.forEach(feature => {
+                guidepostUsages(feature.properties || {}).forEach(usage => {
+                    counts.set(usage.key, (counts.get(usage.key) || 0) + 1);
+                });
+            });
+            container.innerHTML = GUIDEPOST_USAGES.concat(GUIDEPOST_USAGE_OTHER)
+                .filter(usage => counts.get(usage.key))
+                .map(usage => {
+                    const on = guidepostUsageVisibility[usage.key];
+                    return `<button type="button" class="guidepost-usage${on ? ' is-on' : ''}" data-usage="${usage.key}" aria-pressed="${on}" title="${usage.name} : ${on ? 'masquer' : 'afficher'}">
+                        <span class="guidepost-usage-icon">${usage.icon || '📍'}</span>
+                        <span class="guidepost-usage-name">${usage.name}</span>
+                        <span class="guidepost-usage-count">${counts.get(usage.key).toLocaleString('fr-FR')}</span>
+                    </button>`;
+                }).join('');
+        }
+
+        document.addEventListener('click', event => {
+            const button = event.target.closest && event.target.closest('.guidepost-usage');
+            if (!button) return;
+            const key = button.dataset.usage;
+            if (!(key in guidepostUsageVisibility)) return;
+            guidepostUsageVisibility[key] = !guidepostUsageVisibility[key];
+            updateGuidepostUsageLegend();
+            renderGuideposts();
+        });
 
         function applyGuidepostsVisibleUi() {
             const icon = document.getElementById('guidepostsToggleIcon');
@@ -4470,7 +4541,114 @@
             marker.on('popupopen', () => activateWebcamPopupMedia(marker));
             marker.on('popupclose', () => deactivateWebcamPopupMedia(marker));
             marker.webcamCategory = props.category || 'traffic';
+            marker.webcamProps = props;
             return marker;
+        }
+
+        // Deux caméras d'un même giratoire ne sont séparées que par quelques mètres :
+        // elles resteraient superposées jusqu'au zoom maximal, la seconde étant alors
+        // inatteignable. On les regroupe et le popup sert de sélecteur.
+        const WEBCAM_CLUSTER_CELL_PX = 34;
+
+        function webcamClusterIcon(count) {
+            return L.divIcon({
+                className: 'webcam-marker-wrapper',
+                html: `<div class="webcam-marker is-cluster"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg><span class="webcam-cluster-count">${count}</span></div>`,
+                iconSize: [26, 26],
+                iconAnchor: [13, 13]
+            });
+        }
+
+        function webcamClusterListHtml(markers) {
+            const items = markers.map((marker, i) => `
+                <button type="button" class="webcam-cluster-item" data-index="${i}">
+                    <span class="webcam-cluster-dot" style="--webcam-color:${WEBCAM_CATEGORY_COLORS[marker.webcamCategory] || '#0E7490'};"></span>
+                    ${escapeWebcamHtml(marker.webcamProps.name || 'Webcam')}
+                </button>`).join('');
+            return `<div class="route-popup webcam-popup webcam-cluster-popup">
+                <div class="webcam-cluster-title">${markers.length} caméras à cet endroit</div>
+                <div class="webcam-cluster-list">${items}</div>
+            </div>`;
+        }
+
+        function showWebcamFromCluster(cluster, index) {
+            const marker = cluster.webcamMembers[index];
+            if (!marker) return;
+            deactivateWebcamPopupMedia(cluster);
+            cluster.setPopupContent(`<div class="route-popup webcam-popup">
+                <button type="button" class="webcam-cluster-back">‹ ${cluster.webcamMembers.length} caméras</button>
+                <div class="webcam-cluster-title">${escapeWebcamHtml(marker.webcamProps.name || 'Webcam')}</div>
+                ${buildWebcamEmbedMarkup(marker.webcamProps)}
+            </div>`);
+            activateWebcamPopupMedia(cluster);
+        }
+
+        function makeWebcamClusterMarker(latlng, markers) {
+            const cluster = L.marker(latlng, { icon: webcamClusterIcon(markers.length), zIndexOffset: 430 });
+            cluster.webcamMembers = markers;
+            cluster.bindTooltip(`${markers.length} caméras — cliquer pour choisir`, { direction: 'top', offset: [0, -10] });
+            cluster.bindPopup(webcamClusterListHtml(markers), {
+                maxWidth: 440,
+                minWidth: 320,
+                className: 'webcam-leaflet-popup'
+            });
+            cluster.on('popupopen', () => {
+                const element = cluster.getPopup()?.getElement();
+                if (!element || element._webcamClusterBound) return;
+                // Délégation : le contenu est remplacé à chaque choix, le conteneur non.
+                element._webcamClusterBound = true;
+                element.addEventListener('click', event => {
+                    const item = event.target.closest('.webcam-cluster-item');
+                    const back = event.target.closest('.webcam-cluster-back');
+                    if (!item && !back) return;
+                    // Remplacer le contenu détache le bouton cliqué : Leaflet ne
+                    // retrouve alors plus le popup en remontant le DOM et prend le
+                    // clic pour un clic carte, qui referme la fiche.
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (item) {
+                        showWebcamFromCluster(cluster, Number(item.dataset.index));
+                        return;
+                    }
+                    deactivateWebcamPopupMedia(cluster);
+                    cluster.setPopupContent(webcamClusterListHtml(cluster.webcamMembers));
+                });
+            });
+            cluster.on('popupclose', () => {
+                deactivateWebcamPopupMedia(cluster);
+                cluster.setPopupContent(webcamClusterListHtml(cluster.webcamMembers));
+            });
+            return cluster;
+        }
+
+        function renderWebcams() {
+            if (!webcamsLayerGroup || !window.map) return;
+            webcamsLayerGroup.clearLayers();
+            const zoom = window.map.getZoom();
+            const clusters = [];
+            webcamMarkers.forEach(marker => {
+                if (webcamTypeVisibility[marker.webcamCategory] === false) return;
+                const point = window.map.project(marker.getLatLng(), zoom);
+                const near = clusters.find(cluster =>
+                    Math.hypot(cluster.x - point.x, cluster.y - point.y) < WEBCAM_CLUSTER_CELL_PX);
+                if (near) {
+                    near.markers.push(marker);
+                    near.sx += point.x;
+                    near.sy += point.y;
+                    near.x = near.sx / near.markers.length;
+                    near.y = near.sy / near.markers.length;
+                } else {
+                    clusters.push({ x: point.x, y: point.y, sx: point.x, sy: point.y, markers: [marker] });
+                }
+            });
+            clusters.forEach(cluster => {
+                if (cluster.markers.length === 1) {
+                    webcamsLayerGroup.addLayer(cluster.markers[0]);
+                    return;
+                }
+                const center = window.map.unproject([cluster.x, cluster.y], zoom);
+                makeWebcamClusterMarker(center, cluster.markers).addTo(webcamsLayerGroup);
+            });
         }
 
         function setWebcamLegendCounts(features = []) {
@@ -4508,15 +4686,22 @@
 
         function syncWebcamsOnMap() {
             if (!webcamsLayerGroup || !window.map) return;
-            webcamsLayerGroup.clearLayers();
-            webcamMarkers.forEach(marker => {
-                if (webcamTypeVisibility[marker.webcamCategory] !== false) {
-                    webcamsLayerGroup.addLayer(marker);
-                }
-            });
+            renderWebcams();
             const onMap = window.map.hasLayer(webcamsLayerGroup);
             if (webcamsVisible && !onMap) webcamsLayerGroup.addTo(window.map);
             if (!webcamsVisible && onMap) window.map.removeLayer(webcamsLayerGroup);
+
+            if (webcamsVisible && !webcamsZoomHandler) {
+                // Un flux vidéo ouvert ne doit pas être détruit par un simple
+                // recentrage : on rattrape la vue à la fermeture du popup.
+                webcamsZoomHandler = () => {
+                    if (!layerHasOpenPopup(webcamsLayerGroup)) renderWebcams();
+                };
+                window.map.on('zoomend moveend popupclose', webcamsZoomHandler);
+            } else if (!webcamsVisible && webcamsZoomHandler) {
+                window.map.off('zoomend moveend popupclose', webcamsZoomHandler);
+                webcamsZoomHandler = null;
+            }
         }
 
         window.toggleWebcams = function() {
@@ -10537,6 +10722,7 @@
         const speedPictoLayer = L.layerGroup();
         const restrictionLayer = L.layerGroup();
         let limitationsZoomHandler = null;
+        let limitationsPopupHandler = null;
         const LIMITATIONS_SIGN_ZOOM = 13;        // >= : pictogrammes individuels ; en dessous : dégradé seul
 
         // Hot/cold color scale for speed limits (km/h).
@@ -10976,16 +11162,27 @@
             return fallback;
         }
 
-        function makeRestrictionPictoMarker(latlng, icon, value, color, width) {
-            return L.marker(latlng, {
+        function makeRestrictionPictoMarker(latlng, entry, width, ctx) {
+            const marker = L.marker(latlng, {
                 icon: L.divIcon({
-                    html: `<div class="restriction-picto" style="border-color:${color};"><span class="restriction-picto-icon">${icon}</span><span>${escapeHtml(String(value))}</span></div>`,
+                    html: `<div class="restriction-picto" style="border-color:${entry.color};"><span class="restriction-picto-icon">${entry.icon}</span><span>${escapeHtml(String(entry.value))}</span></div>`,
                     className: 'restriction-picto-wrapper',
                     iconSize: [width, GAUGE_LABEL_HEIGHT],
                     iconAnchor: [width / 2, GAUGE_LABEL_HEIGHT / 2]
                 }),
+                riseOnHover: true,
                 zIndexOffset: 380
             });
+            marker.bindPopup(restrictionPopupHtml(entry, ctx, null, 'loading'), { minWidth: 230, maxWidth: 280 });
+            // Comme pour les panneaux de vitesse, la photo n'arrive qu'après coup :
+            // setPopupContent survit aux popup.update() internes de Leaflet.
+            marker.on('popupopen', function onOpen() {
+                marker.off('popupopen', onOpen);
+                checkMapillaryNearby(ctx.anchor.lat, ctx.anchor.lng).then(img => {
+                    marker.setPopupContent(restrictionPopupHtml(entry, ctx, img, 'done'));
+                });
+            });
+            return marker;
         }
 
         // Normalize OSM value like "3.5", "4.0", "3.5 m" or "12 t" to compact string
@@ -11019,22 +11216,75 @@
         const restrictionVisibility = Object.fromEntries(RESTRICTION_TYPES.map(type => [type.key, true]));
 
         // Decide which restrictions to render for a given way (height, weight, length, width).
-        function restrictionEntriesFromTags(tags) {
+        // `includeHidden` sert au popup : la fiche récapitule tout le gabarit du
+        // tronçon, y compris les types décochés dans la légende.
+        function restrictionEntriesFromTags(tags, includeHidden) {
             const entries = [];
             RESTRICTION_TYPES.forEach(type => {
-                if (!restrictionVisibility[type.key]) return;
-                const raw = type.tags.map(tag => tags[tag]).find(Boolean);
-                if (!raw || RESTRICTION_EMPTY_VALUES.has(raw)) return;
+                if (!includeHidden && !restrictionVisibility[type.key]) return;
+                const tag = type.tags.find(name => tags[name]);
+                if (!tag) return;
+                const raw = tags[tag];
+                if (RESTRICTION_EMPTY_VALUES.has(raw)) return;
                 const value = compactUnit(raw, type.unit);
                 entries.push({
                     type: type.key,
                     icon: type.icon,
                     value,
                     color: type.color,
+                    tag,
+                    raw,
                     label: `${type.name} max ${value}`
                 });
             });
             return entries;
+        }
+
+        // Fiche d'un gabarit : le tronçon porteur, l'ensemble de ses restrictions,
+        // une photo Mapillary si la zone est couverte, et de quoi corriger dans OSM.
+        function restrictionPopupHtml(entry, ctx, img, state) {
+            const road = [ctx.ref, ctx.name].filter(Boolean).map(escapeHtml).join(' · ');
+            const rows = (ctx.entries || []).map(other => `
+                <div class="restriction-popup-row${other.type === entry.type ? ' is-current' : ''}">
+                    <span class="restriction-popup-icon">${other.icon}</span>
+                    <span class="restriction-popup-label">${escapeHtml(other.label)}</span>
+                    <code class="restriction-popup-tag">${escapeHtml(other.tag)}=${escapeHtml(String(other.raw))}</code>
+                </div>`).join('');
+
+            let photo = '';
+            if (state === 'loading') {
+                photo = `<div class="speed-sign-photo-msg">📷 Recherche d'une photo Mapillary…</div>`;
+            } else if (img && img.thumb_1024_url) {
+                const when = img.captured_at
+                    ? new Date(img.captured_at).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short' })
+                    : '';
+                photo = `
+                    <a href="${(window.mapillaryPageUrl && window.mapillaryPageUrl(img.id)) || '#'}" target="_blank" rel="noopener noreferrer" class="speed-sign-photo-link">
+                        <img class="speed-sign-photo-img" src="${img.thumb_1024_url}" alt="Photo Mapillary à proximité de la restriction">
+                    </a>
+                    <div class="speed-sign-photo-meta">Mapillary${when ? ' · ' + when : ''} · environnement proche</div>`;
+            } else {
+                photo = `<div class="speed-sign-photo-msg">Pas encore de photo disponible sur Mapillary à proximité.</div>`;
+            }
+
+            return `
+                <div class="route-popup restriction-popup">
+                    <h3>${entry.icon} ${escapeHtml(entry.label)}</h3>
+                    ${road ? `<div class="restriction-popup-road">${road}</div>` : ''}
+                    ${ctx.suffix ? `<div class="restriction-popup-note">Ouvrage${escapeHtml(ctx.suffix)}</div>` : ''}
+                    <div class="restriction-popup-rows">${rows}</div>
+                    <div class="speed-sign-photo">${photo}</div>
+                    ${osmWayLinkHtml(ctx.wayId)}
+                </div>`;
+        }
+
+        function osmWayLinkHtml(id) {
+            if (!id) return '';
+            return `<div class="node-osm-link"><span class="node-osm-label">OpenStreetMap</span>
+                <a href="https://www.openstreetmap.org/way/${id}" target="_blank" rel="noopener noreferrer">voir</a>
+                <span class="node-osm-sep">·</span>
+                <a href="https://www.openstreetmap.org/edit?editor=id&way=${id}" target="_blank" rel="noopener noreferrer">compléter</a>
+            </div>`;
         }
 
         // Affiche les pictos vitesse / restrictions visibles dans la vue actuelle.
@@ -11075,16 +11325,24 @@
                     // pour qu'un même panneau porté par plusieurs tronçons ne s'affiche qu'une fois.
                     const isBridge = tags.bridge && tags.bridge !== 'no';
                     const isTunnel = tags.tunnel === 'yes';
-                    restrictionEntriesFromTags(tags).slice(0, 2).forEach(entry => {
-                        const key = `${entry.label}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
-                        if (restrictionKeysSeen.has(key)) return;
-                        restrictionKeysSeen.add(key);
-                        pendingGauges.push({
-                            entry,
-                            anchor: L.latLng(mid.lat, mid.lng),
-                            suffix: isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : ''
+                    const visible = restrictionEntriesFromTags(tags);
+                    if (visible.length) {
+                        const anchor = L.latLng(mid.lat, mid.lng);
+                        const ctx = {
+                            ref,
+                            name: tags.name || '',
+                            wayId: polyline.options.wayId,
+                            suffix: isBridge ? ' (pont)' : isTunnel ? ' (tunnel)' : '',
+                            entries: restrictionEntriesFromTags(tags, true),
+                            anchor
+                        };
+                        visible.slice(0, 2).forEach(entry => {
+                            const key = `${entry.label}|${mid.lat.toFixed(2)}|${mid.lng.toFixed(2)}`;
+                            if (restrictionKeysSeen.has(key)) return;
+                            restrictionKeysSeen.add(key);
+                            pendingGauges.push({ entry, anchor, ctx });
                         });
-                    });
+                    }
                 });
             });
 
@@ -11125,7 +11383,7 @@
                 shownSpeeds.add(shownKey);
             });
 
-            pendingGauges.forEach(({ entry, anchor, suffix }) => {
+            pendingGauges.forEach(({ entry, anchor, ctx }) => {
                 const anchorPoint = window.map.latLngToContainerPoint(anchor);
                 const size = { w: gaugeLabelWidth(entry.value), h: GAUGE_LABEL_HEIGHT };
                 const box = placeGaugeLabel(anchorPoint, size, occupied);
@@ -11147,8 +11405,8 @@
                     interactive: false
                 }).addTo(restrictionLayer);
 
-                const marker = makeRestrictionPictoMarker(labelLatLng, entry.icon, entry.value, entry.color, size.w);
-                marker.bindTooltip(`${entry.label}${suffix}`);
+                const marker = makeRestrictionPictoMarker(labelLatLng, entry, size.w, ctx);
+                marker.bindTooltip(`${entry.label}${ctx.suffix}`);
                 marker.addTo(restrictionLayer);
             });
         }
@@ -11281,8 +11539,16 @@
                 restrictionLayer.addTo(window.map);
                 renderPictograms();
                 if (!limitationsZoomHandler) {
-                    limitationsZoomHandler = () => renderPictograms();
+                    // Ouvrir une fiche recentre la carte : le `moveend` qui suit
+                    // détruirait le marqueur porteur et refermerait le popup dans
+                    // la foulée. On rattrape la vue à la fermeture.
+                    limitationsZoomHandler = () => {
+                        if (layerHasOpenPopup(restrictionLayer) || layerHasOpenPopup(speedPictoLayer)) return;
+                        renderPictograms();
+                    };
                     window.map.on('zoomend moveend', limitationsZoomHandler);
+                    limitationsPopupHandler = () => renderPictograms();
+                    window.map.on('popupclose', limitationsPopupHandler);
                 }
                 setLimitationsButtonActive(true);
             } else {
@@ -11294,6 +11560,10 @@
                 if (limitationsZoomHandler) {
                     window.map.off('zoomend moveend', limitationsZoomHandler);
                     limitationsZoomHandler = null;
+                }
+                if (limitationsPopupHandler) {
+                    window.map.off('popupclose', limitationsPopupHandler);
+                    limitationsPopupHandler = null;
                 }
                 setLimitationsButtonActive(false);
             }

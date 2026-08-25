@@ -1887,6 +1887,89 @@
             height: 14px;
         }
 
+        /* Grappe de caméras : le compteur annonce qu'il y a un choix derrière. */
+        .webcam-marker.is-cluster {
+            position: relative;
+            background: #0E7490;
+        }
+
+        .webcam-cluster-count {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            min-width: 15px;
+            height: 15px;
+            padding: 0 3px;
+            border-radius: 999px;
+            background: #fff;
+            color: #0E7490;
+            border: 1.5px solid #0E7490;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            line-height: 12px;
+            text-align: center;
+        }
+
+        .webcam-cluster-popup .webcam-cluster-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 6px;
+        }
+
+        .webcam-cluster-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #22536f;
+        }
+
+        .webcam-cluster-item {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 8px;
+            border: 1px solid #d4dae0;
+            border-radius: 6px;
+            background: #f4f6f8;
+            color: #34434f;
+            font-family: inherit;
+            font-size: 0.78rem;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.12s ease, border-color 0.12s ease;
+        }
+
+        .webcam-cluster-item:hover {
+            background: #eaf4fb;
+            border-color: #9ecbe8;
+        }
+
+        .webcam-cluster-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: var(--webcam-color, #0E7490);
+            flex: none;
+        }
+
+        .webcam-cluster-back {
+            margin-bottom: 4px;
+            padding: 2px 6px;
+            border: 1px solid #d4dae0;
+            border-radius: 5px;
+            background: #f4f6f8;
+            color: #22536f;
+            font-family: inherit;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .webcam-cluster-back:hover {
+            background: #eaf4fb;
+        }
+
         /* ===== Événements OEDB (incubateur) ===== */
         .oedb-swatch {
             width: 12px;
@@ -4767,6 +4850,26 @@
         .guidepost-wrapper.has-mapillary:hover .gp-blade {
             transform: scaleX(1.12);
         }
+        /* Usage du mât (randonnée, vélo…), au pied du poteau pour ne pas masquer les lames */
+        .gp-uses {
+            position: absolute;
+            left: 12px;
+            bottom: -1px;
+            display: flex;
+            gap: 2px;
+        }
+        .gp-use {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1.5px solid #5b6770;
+            font-size: 8.5px;
+            line-height: 11px;
+            text-align: center;
+            box-shadow: 0 1px 1.5px rgba(0, 0, 0, 0.25);
+        }
+
         /* Pastille verte = couverture photo Mapillary à proximité */
         .gp-mly {
             position: absolute;
@@ -5040,6 +5143,54 @@
             color: #7f8c8d;
         }
 
+        /* Fiche d'un gabarit : le tronçon porteur puis toutes ses restrictions. */
+        .restriction-popup .restriction-popup-road {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #34434f;
+            margin-top: 2px;
+        }
+
+        .restriction-popup .restriction-popup-note {
+            font-size: 0.72rem;
+            color: #7f8c8d;
+            margin-top: 1px;
+        }
+
+        .restriction-popup .restriction-popup-rows {
+            margin: 8px 0 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .restriction-popup .restriction-popup-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 6px;
+            border-radius: 5px;
+            background: #f4f6f8;
+            font-size: 0.75rem;
+            color: #34434f;
+        }
+
+        .restriction-popup .restriction-popup-row.is-current {
+            background: #eaf4fb;
+            font-weight: 600;
+        }
+
+        .restriction-popup .restriction-popup-label {
+            flex: 1;
+        }
+
+        .restriction-popup .restriction-popup-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.66rem;
+            color: #7f8c8d;
+            white-space: nowrap;
+        }
+
         .city-limit-popup .city-limit-sense {
             font-size: 0.74rem;
             font-weight: 600;
@@ -5051,6 +5202,64 @@
             padding-left: 16px;
             font-size: 0.78rem;
             color: #34434f;
+        }
+
+        /* Filtres d'usage des mâts directionnels, dans la légende */
+        .guidepost-usages {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 6px 0 4px;
+        }
+
+        .guidepost-usage {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 6px;
+            border: 1px solid #d4dae0;
+            border-radius: 999px;
+            background: #f4f6f8;
+            color: #7f8c8d;
+            font-family: inherit;
+            font-size: 0.68rem;
+            cursor: pointer;
+            transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+        }
+
+        .guidepost-usage.is-on {
+            background: #eaf4fb;
+            border-color: #9ecbe8;
+            color: #22536f;
+            font-weight: 600;
+        }
+
+        .guidepost-usage:not(.is-on) .guidepost-usage-icon {
+            filter: grayscale(1);
+            opacity: 0.6;
+        }
+
+        .guidepost-usage-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.62rem;
+            opacity: 0.75;
+        }
+
+        /* Usages rappelés en tête du popup d'un mât */
+        .guidepost-usage-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 3px 0 2px;
+        }
+
+        .guidepost-usage-chip {
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: #eaf4fb;
+            color: #22536f;
+            font-size: 0.68rem;
+            font-weight: 600;
         }
 
         /* Liste des destinations dans le popup d'un mât directionnel */

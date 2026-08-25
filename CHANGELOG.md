@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.15.0] - 2026-08-25
+
+### Added
+
+- **Gauge labels are clickable.** Height, weight, length and width restrictions only ever had a tooltip, so there was no way to check them or fix them at source. Clicking one now opens a card with the carrying segment, every restriction it carries with the originating OSM tag, a nearby Mapillary photo where the area is covered, and the usual *voir* / *compléter* OpenStreetMap links.
+- **Signposts can be sorted by use.** Each mast now carries a use badge at the foot of its post (hiking, cycling, mountain bike, riding) and the legend offers a filter per use with counts — 1 575 hiking, 120 cycling, 509 with no declared use. Switching hiking off leaves only the rest on screen. A mast carrying two uses stays visible as long as one of them is active. `mtb` and `horse` were added to the extraction keep-list for future refreshes.
+- **Webcams too close together are grouped.** The two cameras on the Bonpas roundabout sit twelve metres apart, so they overlapped up to the maximum zoom and the second one could never be clicked. Close markers are now merged into a single badged marker whose popup acts as a picker, with a back button to the list. The group breaks apart on its own once the zoom separates the points.
+
+### Fixed
+
+- **Popups no longer close themselves when the map recentres.** Opening a card autopans the map, and the `moveend` that follows used to rebuild the pictogram and webcam layers, destroying the marker holding the popup. Both layers now skip the rebuild while one of their popups is open and catch up when it closes — the same guard already used by the sign layers.
+- **Selecting a camera inside a grouped popup no longer dismisses it.** Replacing the popup content detaches the clicked button, and Leaflet, unable to walk back up to the popup, treated the click as a map click and closed the card.
+
 ## [0.14.2] - 2026-08-24
 
 ### Changed

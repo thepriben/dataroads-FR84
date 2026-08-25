@@ -559,6 +559,8 @@ GUIDEPOST_KEEP = (
     "operator",
     "hiking",
     "bicycle",
+    "mtb",
+    "horse",
     "mapillary",
     "panoramax",
     "wikimedia_commons",
