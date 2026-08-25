@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.16.0] - 2026-08-25
+
+### Added
+
+- **New incubator layer: latest OSM changes on the road network.** Three rolling days of contributions across the Vaucluse, coloured by what happened — green created, orange modified, red deleted — with the previous alignment drawn as a dashed ghost whenever an edit moved the geometry, which is the quickest way to spot a bend being straightened. A filter per axis class (main, secondary, local, paths, works) with counts leaves only the structuring network on screen once paths and local access are switched off. Each card names the author and date, lists the tag diff with old values struck through in red and new ones in green, and links out to the object, the changeset and OSM Deep History.
+- **Hourly refresh workflow for that layer.** An augmented diff rebuilds the whole extent at two dates and compares them, so filtering on `highway` trims what comes back but not the work: roughly thirty seconds for three days over the department, and an out-of-memory failure without the filter. It therefore runs in GitHub Actions every hour and the browser only reads a 230 kB GeoJSON, keeping Overpass out of the page as every other layer does. Augmented diffs need a bounding box rather than an administrative area, so the extraction clips the roughly one quarter of raw changes that fall in the Gard, the Drôme or the Bouches-du-Rhône.
+
 ## [0.15.0] - 2026-08-25
 
 ### Added

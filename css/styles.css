@@ -5204,6 +5204,172 @@
             color: #34434f;
         }
 
+        /* ===== Derniers changements OSM ===== */
+        .latest-change-swatch {
+            position: relative;
+            height: 12px;
+            background: linear-gradient(90deg, #1E8449 0 34%, #B9770E 34% 67%, #922B21 67% 100%);
+            border-radius: 2px;
+        }
+
+        .latest-change-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 10px;
+            margin: 6px 0 2px;
+            font-size: 0.66rem;
+            color: #5b6770;
+        }
+
+        .latest-change-key {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .latest-change-key i {
+            width: 14px;
+            height: 3px;
+            border-radius: 2px;
+        }
+
+        .latest-change-key i.is-ghost {
+            height: 0;
+            border-top: 2px dashed #7f8c8d;
+        }
+
+        .latest-change-axes {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            margin: 6px 0 4px;
+        }
+
+        .latest-change-axis-chip {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 3px 7px;
+            border: 1px solid #d4dae0;
+            border-radius: 6px;
+            background: #f4f6f8;
+            color: #7f8c8d;
+            font-family: inherit;
+            font-size: 0.7rem;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+        }
+
+        .latest-change-axis-chip.is-on {
+            background: #eaf4fb;
+            border-color: #9ecbe8;
+            color: #22536f;
+            font-weight: 600;
+        }
+
+        /* La barre reprend l'épaisseur du tracé sur la carte : le filtre se lit
+           alors comme la carte elle-même. */
+        .latest-change-axis-bar {
+            width: 16px;
+            background: currentColor;
+            border-radius: 2px;
+            flex: none;
+            opacity: 0.85;
+        }
+
+        .latest-change-axis-name {
+            flex: 1;
+        }
+
+        .latest-change-axis-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.62rem;
+            opacity: 0.75;
+        }
+
+        .latest-change-popup .latest-change-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 5px;
+            margin: 3px 0 4px;
+        }
+
+        .latest-change-badge {
+            padding: 1px 7px;
+            border-radius: 999px;
+            color: #fff;
+            font-size: 0.68rem;
+            font-weight: 700;
+        }
+
+        .latest-change-popup .latest-change-axis {
+            font-size: 0.7rem;
+            color: #34434f;
+        }
+
+        .latest-change-popup .latest-change-hw {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.64rem;
+            color: #7f8c8d;
+        }
+
+        .latest-change-popup .latest-change-author {
+            font-size: 0.72rem;
+            color: #5b6770;
+            margin-bottom: 6px;
+        }
+
+        .latest-change-tags {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+            margin-bottom: 6px;
+        }
+
+        .latest-change-tags th,
+        .latest-change-tags td {
+            padding: 2px 5px;
+            border-bottom: 1px solid #eef1f4;
+            text-align: left;
+            vertical-align: top;
+            word-break: break-word;
+        }
+
+        .latest-change-tags th {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: #34434f;
+            width: 34%;
+        }
+
+        .latest-change-before {
+            background: #fdecea;
+            color: #922B21;
+            padding: 0 3px;
+            border-radius: 3px;
+            text-decoration: line-through;
+        }
+
+        .latest-change-after {
+            background: #e8f6ee;
+            color: #1E8449;
+            padding: 0 3px;
+            border-radius: 3px;
+        }
+
+        .latest-change-void {
+            color: #b0b8bf;
+            font-style: italic;
+        }
+
+        .latest-change-empty {
+            font-size: 0.7rem;
+            color: #7f8c8d;
+            margin-bottom: 6px;
+        }
+
         /* Filtres d'usage des mâts directionnels, dans la légende */
         .guidepost-usages {
             display: flex;

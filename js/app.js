@@ -84,6 +84,12 @@
                 cron: '17 3 * * 1,4',
                 intervalMs: 3.5 * 24 * 60 * 60 * 1000
             },
+            hourly: {
+                label: 'Toutes les heures — à xx:41 UTC',
+                source: 'Augmented diff OpenStreetMap via Overpass',
+                cron: '41 * * * *',
+                intervalMs: 60 * 60 * 1000
+            },
             static: {
                 label: 'Figé dans le dépôt — mise à jour manuelle',
                 source: 'Snapshot versionné (BAAC / OSM)'
@@ -343,6 +349,7 @@
                 ['roadSignsToggleIcon', roadSignsVisible],
                 ['guidepostsToggleIcon', guidepostsVisible],
                 ['cityLimitsToggleIcon', cityLimitsVisible],
+                ['latestChangesToggleIcon', latestChangesVisible],
                 ['sensitiveZonesToggleIcon', sensitiveZonesVisible],
                 ['inaturalistSensitivesToggleIcon', inaturalistSensitivesVisible],
                 ['webcamsToggleIcon', webcamsVisible],
@@ -471,6 +478,7 @@
                         ensureLayerToggle(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerToggle(guidepostsVisible, window.toggleGuideposts);
                         ensureLayerToggle(cityLimitsVisible, window.toggleCityLimits);
+                        ensureLayerToggle(latestChangesVisible, window.toggleLatestChanges);
                         ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerToggle(webcamsVisible, window.toggleWebcams);
@@ -480,6 +488,7 @@
                         ensureLayerOff(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerOff(guidepostsVisible, window.toggleGuideposts);
                         ensureLayerOff(cityLimitsVisible, window.toggleCityLimits);
+                        ensureLayerOff(latestChangesVisible, window.toggleLatestChanges);
                         ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                         ensureLayerOff(webcamsVisible, window.toggleWebcams);
@@ -1545,6 +1554,7 @@
             if (roadSignsVisible) active.push('signs');
             if (guidepostsVisible) active.push('guide');
             if (cityLimitsVisible) active.push('agglo');
+            if (latestChangesVisible) active.push('osmdiff');
             if (sensitiveZonesVisible) active.push('ens');
             if (inaturalistSensitivesVisible) active.push('inat');
             if (webcamsVisible) active.push('wcam');
@@ -1682,6 +1692,9 @@
                 case 'agglo':
                     setBooleanLayerIfNeeded(cityLimitsVisible, desired, window.toggleCityLimits);
                     return cityLimitsVisible === desired;
+                case 'osmdiff':
+                    setBooleanLayerIfNeeded(latestChangesVisible, desired, window.toggleLatestChanges);
+                    return latestChangesVisible === desired;
                 case 'pnx':
                     if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
                     setBridgeProviderIfNeeded('panoramax', desired);
@@ -1715,7 +1728,7 @@
 
             const pendingKeys = [
                 'construction', 'bicycle', 'cities', 'aires', 'limits', 'accidents', 'traffic', 'waze',
-                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'guide', 'agglo', 'ens', 'inat', 'wcam', 'oedb'
+                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'guide', 'agglo', 'osmdiff', 'ens', 'inat', 'wcam', 'oedb'
             ];
             let allReady = true;
             pendingKeys.forEach(key => {
@@ -1838,11 +1851,12 @@
                 }
                 case 'incubator': {
                     let visible = 0;
-                    const total = 8;
+                    const total = 9;
                     if (bridgeVisible) visible++;
                     if (roadSignsVisible) visible++;
                     if (guidepostsVisible) visible++;
                     if (cityLimitsVisible) visible++;
+                    if (latestChangesVisible) visible++;
                     if (sensitiveZonesVisible) visible++;
                     if (inaturalistSensitivesVisible) visible++;
                     if (webcamsVisible) visible++;
@@ -1871,6 +1885,8 @@
                     return roadSignsVisible;
                 case 'freshness-guideposts':
                     return guidepostsVisible;
+                case 'freshness-latest-changes':
+                    return latestChangesVisible;
                 case 'freshness-city-limits':
                     return cityLimitsVisible;
                 case 'freshness-roadside-areas':
@@ -3475,6 +3491,268 @@
                 return;
             }
             syncCityLimitsOnMap();
+        };
+
+        // ========== DERNIERS CHANGEMENTS OSM (augmented diff) ==========
+        // Trois jours glissants de contributions sur la voirie du Vaucluse,
+        // rafraîchis toutes les heures par le workflow. L'augmented diff coûte
+        // une trentaine de secondes à Overpass : il tourne en CI, et le
+        // navigateur ne lit qu'un GeoJSON, comme pour toutes les autres couches.
+        const latestChangesLayer = L.layerGroup();
+        let latestChangesVisible = false;
+        let latestChangesDataLoaded = false;
+        let latestChangesFeatures = [];
+        let latestChangesLoadPromise = null;
+        let latestChangesWindowDays = 3;
+
+        const LATEST_CHANGE_ACTIONS = {
+            create: { label: 'Créé', color: '#1E8449' },
+            modify: { label: 'Modifié', color: '#B9770E' },
+            delete: { label: 'Supprimé', color: '#922B21' }
+        };
+
+        // Classement repris du script d'extraction : c'est lui qui pose la
+        // propriété `axis`, la légende ne fait que la nommer.
+        const LATEST_CHANGE_AXES = [
+            { key: 'main', name: 'Axes principaux', weight: 5, hint: 'motorway, trunk, primary' },
+            { key: 'secondary', name: 'Axes secondaires', weight: 4, hint: 'secondary, tertiary' },
+            { key: 'local', name: 'Desserte locale', weight: 3, hint: 'residential, unclassified, service' },
+            { key: 'path', name: 'Chemins et modes doux', weight: 2, hint: 'track, path, footway, cycleway' },
+            { key: 'works', name: 'Travaux', weight: 3, hint: 'construction, proposed' },
+            { key: 'other', name: 'Autres', weight: 2, hint: 'autres valeurs de highway' }
+        ];
+        const latestChangeAxisVisibility = Object.fromEntries(
+            LATEST_CHANGE_AXES.map(axis => [axis.key, true])
+        );
+
+        function latestChangeAxis(key) {
+            return LATEST_CHANGE_AXES.find(axis => axis.key === key) || LATEST_CHANGE_AXES[LATEST_CHANGE_AXES.length - 1];
+        }
+
+        function latestChangeTitle(props) {
+            const name = props.name || '';
+            const ref = props.ref || '';
+            if (ref && name) return `${ref} · ${name}`;
+            return ref || name || `${props.osm_type} ${props.osm_id}`;
+        }
+
+        function latestChangeAgeLabel(timestamp) {
+            const when = new Date(timestamp);
+            if (Number.isNaN(when.getTime())) return '';
+            const hours = Math.round((Date.now() - when.getTime()) / 3600000);
+            if (hours < 1) return "à l'instant";
+            if (hours < 24) return `il y a ${hours} h`;
+            const days = Math.round(hours / 24);
+            return `il y a ${days} j`;
+        }
+
+        function latestChangeTagsHtml(changes) {
+            if (!changes || !changes.length) {
+                return `<div class="latest-change-empty">Tracé retouché, aucun attribut modifié.</div>`;
+            }
+            const rows = changes.map(change => {
+                const before = change.old === null || change.old === undefined
+                    ? '<span class="latest-change-void">absent</span>'
+                    : `<span class="latest-change-before">${escapeHtml(change.old)}</span>`;
+                const after = change.new === null || change.new === undefined
+                    ? '<span class="latest-change-void">retiré</span>'
+                    : `<span class="latest-change-after">${escapeHtml(change.new)}</span>`;
+                return `<tr><th>${escapeHtml(change.k)}</th><td>${before}</td><td>${after}</td></tr>`;
+            }).join('');
+            return `<table class="latest-change-tags"><tbody>${rows}</tbody></table>`;
+        }
+
+        function latestChangePopupHtml(props) {
+            const action = LATEST_CHANGE_ACTIONS[props.action] || LATEST_CHANGE_ACTIONS.modify;
+            const axis = latestChangeAxis(props.axis);
+            const when = new Date(props.timestamp);
+            const date = Number.isNaN(when.getTime())
+                ? ''
+                : when.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+            const user = props.user ? escapeHtml(props.user) : 'contributeur inconnu';
+            return `
+                <div class="route-popup latest-change-popup">
+                    <h3>${escapeHtml(latestChangeTitle(props))}</h3>
+                    <div class="latest-change-head">
+                        <span class="latest-change-badge" style="background:${action.color};">${action.label}</span>
+                        <span class="latest-change-axis">${escapeHtml(axis.name)}</span>
+                        ${props.highway ? `<code class="latest-change-hw">highway=${escapeHtml(props.highway)}</code>` : ''}
+                    </div>
+                    <div class="latest-change-author">
+                        Par <a href="https://www.openstreetmap.org/user/${encodeURIComponent(props.user || '')}" target="_blank" rel="noopener noreferrer">${user}</a>
+                        ${date ? ` · ${date} (${latestChangeAgeLabel(props.timestamp)})` : ''}
+                        ${props.version ? ` · v${escapeHtml(props.version)}` : ''}
+                    </div>
+                    ${latestChangeTagsHtml(props.changes)}
+                    <div class="node-osm-link"><span class="node-osm-label">OpenStreetMap</span>
+                        <a href="https://www.openstreetmap.org/way/${props.osm_id}" target="_blank" rel="noopener noreferrer">objet</a>
+                        <span class="node-osm-sep">·</span>
+                        <a href="https://www.openstreetmap.org/changeset/${props.changeset}" target="_blank" rel="noopener noreferrer">changeset</a>
+                        <span class="node-osm-sep">·</span>
+                        <a href="https://osmlab.github.io/osm-deep-history/#/way/${props.osm_id}" target="_blank" rel="noopener noreferrer">historique</a>
+                    </div>
+                </div>`;
+        }
+
+        function renderLatestChanges() {
+            latestChangesLayer.clearLayers();
+            if (!latestChangesVisible || !latestChangesDataLoaded || !window.map) return;
+
+            latestChangesFeatures.forEach(feature => {
+                const props = feature.properties || {};
+                if (!latestChangeAxisVisibility[props.axis]) return;
+                const geometry = feature.geometry;
+                if (!geometry) return;
+
+                const action = LATEST_CHANGE_ACTIONS[props.action] || LATEST_CHANGE_ACTIONS.modify;
+                const axis = latestChangeAxis(props.axis);
+                const isGhost = props.state === 'old';
+
+                // Le tracé d'avant n'est là que pour montrer le déplacement : en
+                // pointillé et effacé, pour ne pas se disputer la lecture avec
+                // le tracé actuel qui, lui, porte l'information.
+                const style = {
+                    color: isGhost ? '#7f8c8d' : action.color,
+                    weight: isGhost ? 2 : axis.weight,
+                    opacity: isGhost ? 0.55 : 0.9,
+                    dashArray: isGhost ? '4 5' : null,
+                    interactive: !isGhost
+                };
+
+                const rings = geometry.type === 'Polygon' ? geometry.coordinates : [geometry.coordinates];
+                rings.forEach(ring => {
+                    const points = ring.map(coord => [coord[1], coord[0]]);
+                    const line = geometry.type === 'Polygon'
+                        ? L.polygon(points, { ...style, fill: false })
+                        : L.polyline(points, style);
+                    if (!isGhost) {
+                        line.bindPopup(latestChangePopupHtml(props), { minWidth: 250, maxWidth: 330 });
+                        line.bindTooltip(`${action.label} — ${latestChangeTitle(props)}`, { sticky: true });
+                    }
+                    line.addTo(latestChangesLayer);
+                });
+            });
+        }
+
+        function setLatestChangesLegendCounts() {
+            const el = document.getElementById('count-latest-changes');
+            const changes = latestChangesFeatures.filter(feature => (feature.properties || {}).state !== 'old');
+            if (el) el.textContent = changes.length.toLocaleString('fr-FR');
+            updateLatestChangesLegend();
+        }
+
+        // Seules les classes présentes dans la fenêtre sont proposées : un
+        // bouton qui ne filtre rien n'apprend rien.
+        function updateLatestChangesLegend() {
+            const container = document.getElementById('latestChangesAxes');
+            if (!container) return;
+            const counts = new Map();
+            latestChangesFeatures.forEach(feature => {
+                const props = feature.properties || {};
+                if (props.state === 'old') return;
+                counts.set(props.axis, (counts.get(props.axis) || 0) + 1);
+            });
+            container.innerHTML = LATEST_CHANGE_AXES
+                .filter(axis => counts.get(axis.key))
+                .map(axis => {
+                    const on = latestChangeAxisVisibility[axis.key];
+                    return `<button type="button" class="latest-change-axis-chip${on ? ' is-on' : ''}"
+                        data-axis="${axis.key}" aria-pressed="${on}" title="${axis.hint}">
+                        <span class="latest-change-axis-bar" style="height:${axis.weight}px;"></span>
+                        <span class="latest-change-axis-name">${axis.name}</span>
+                        <span class="latest-change-axis-count">${counts.get(axis.key).toLocaleString('fr-FR')}</span>
+                    </button>`;
+                }).join('');
+        }
+
+        document.addEventListener('click', event => {
+            const button = event.target.closest && event.target.closest('.latest-change-axis-chip');
+            if (!button) return;
+            const key = button.dataset.axis;
+            if (!(key in latestChangeAxisVisibility)) return;
+            latestChangeAxisVisibility[key] = !latestChangeAxisVisibility[key];
+            updateLatestChangesLegend();
+            renderLatestChanges();
+        });
+
+        function applyLatestChangesUi() {
+            const icon = document.getElementById('latestChangesToggleIcon');
+            setToggleIcon(icon, latestChangesVisible);
+            if (icon) icon.style.opacity = '';
+            document.querySelectorAll('[data-latest-change]').forEach(item => {
+                item.style.opacity = latestChangesVisible ? '1' : '0.5';
+                item.style.pointerEvents = latestChangesVisible ? 'auto' : 'none';
+            });
+        }
+
+        function syncLatestChangesOnMap() {
+            if (latestChangesVisible) {
+                if (!window.map.hasLayer(latestChangesLayer)) latestChangesLayer.addTo(window.map);
+                renderLatestChanges();
+            } else {
+                latestChangesLayer.clearLayers();
+                if (window.map.hasLayer(latestChangesLayer)) window.map.removeLayer(latestChangesLayer);
+            }
+            applyLatestChangesUi();
+            syncLegendChrome();
+        }
+
+        window.loadLatestChanges = function({ show } = {}) {
+            if (latestChangesDataLoaded) {
+                if (show) latestChangesVisible = true;
+                syncLatestChangesOnMap();
+                return Promise.resolve(latestChangesFeatures);
+            }
+            if (latestChangesLoadPromise) return latestChangesLoadPromise;
+            latestChangesLoadPromise = (async () => {
+                try {
+                    const data = await window.InforouteApi.fetchGeoJson('latest-changes');
+                    renderFreshnessBadge(document.getElementById('freshness-latest-changes'), {
+                        generatedAt: data._cache?.generated_at,
+                        scheduleKey: 'hourly'
+                    });
+                    latestChangesFeatures = data.features || [];
+                    latestChangesWindowDays = data._cache?.window_days || latestChangesWindowDays;
+                    latestChangesDataLoaded = true;
+                    setLatestChangesLegendCounts();
+                    setLatestChangesWindowHint();
+                    if (show) latestChangesVisible = true;
+                    syncLatestChangesOnMap();
+                    tryApplyAppUrlState();
+                    console.log(`✓ ${latestChangesFeatures.length} changement(s) OSM récent(s) chargés`);
+                    return latestChangesFeatures;
+                } catch (error) {
+                    console.error('Erreur chargement des derniers changements OSM:', error);
+                    setLatestChangesLegendCounts();
+                    renderFreshnessBadge(document.getElementById('freshness-latest-changes'), {
+                        scheduleKey: 'hourly',
+                        errorMsg: error.message
+                    });
+                    applyLatestChangesUi();
+                    syncLegendChrome();
+                    return [];
+                } finally {
+                    latestChangesLoadPromise = null;
+                }
+            })();
+            return latestChangesLoadPromise;
+        };
+
+        function setLatestChangesWindowHint() {
+            const el = document.getElementById('latest-changes-window');
+            if (el) el.textContent = `${latestChangesWindowDays} derniers jours`;
+        }
+
+        window.toggleLatestChanges = function() {
+            latestChangesVisible = !latestChangesVisible;
+            if (!latestChangesVisible) { syncLatestChangesOnMap(); return; }
+            if (!latestChangesDataLoaded) {
+                const icon = document.getElementById('latestChangesToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                window.loadLatestChanges({ show: true });
+                return;
+            }
+            syncLatestChangesOnMap();
         };
 
         // ========== SENSITIVE NATURAL ZONES & iNATURALIST ==========

@@ -33,6 +33,7 @@
                 'road-signs': 'data/osm/road-signs.geojson',
                 guideposts: 'data/osm/guideposts.geojson',
                 'city-limits': 'data/osm/city-limits.geojson',
+                'latest-changes': 'data/osm/latest-changes.geojson',
                 'roadside-areas': 'data/osm/roadside-areas.geojson',
                 'vaucluse-boundary': 'data/static/vaucluse-boundary.geojson',
                 communes: 'data/osm/communes-vaucluse.geojson',

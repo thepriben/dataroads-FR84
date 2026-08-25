@@ -456,6 +456,28 @@
                 </div>
 
                 <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleLatestChanges && window.toggleLatestChanges();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Derniers<small class="legend-title-sub">changements OSM</small></span>
+                        <span id="latestChangesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-latest-changes" data-schedule-key="hourly"></span>
+
+                    <div class="legend-item" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color latest-change-swatch"></div>
+                        <div class="legend-label">Voirie modifiée · <span id="latest-changes-window">3 derniers jours</span></div>
+                        <div class="legend-count" id="count-latest-changes">-</div>
+                    </div>
+                    <div class="latest-change-actions" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;">
+                        <span class="latest-change-key"><i style="background:#1E8449;"></i>Créé</span>
+                        <span class="latest-change-key"><i style="background:#B9770E;"></i>Modifié</span>
+                        <span class="latest-change-key"><i style="background:#922B21;"></i>Supprimé</span>
+                        <span class="latest-change-key"><i class="is-ghost"></i>Tracé précédent</span>
+                    </div>
+                    <div class="latest-change-axes" id="latestChangesAxes" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;"></div>
+                    <div class="sensitive-zones-hint"><code>adiff</code> Overpass · <code>way[highway]</code></div>
+                </div>
+
+                <div class="legend-section">
                     <div class="legend-title" onclick="window.toggleCityLimits && window.toggleCityLimits();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
                         <span class="legend-title-stacked">Panneaux<small class="legend-title-sub">d'agglomération</small></span>
                         <span id="cityLimitsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
@@ -669,6 +691,16 @@
                             </div>
                             <div class="refresh-formula-meta" id="refreshMetaIncubator">
                                 Tous les 5 jours<br>—
+                            </div>
+                        </div>
+
+                        <div class="refresh-formula-row" data-schedule-key="hourly">
+                            <div>
+                                <div class="refresh-formula-label">Derniers changements OSM</div>
+                                <div style="font-size:0.7rem;color:#7f8c8d;">Augmented diff Overpass → workflow GitHub Actions</div>
+                            </div>
+                            <div class="refresh-formula-meta" id="refreshMetaHourly">
+                                Toutes les heures · xx:41 UTC<br>—
                             </div>
                         </div>
 
