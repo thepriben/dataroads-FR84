@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.16.1] - 2026-08-25
+
+### Fixed
+
+- **Moved alignments are credited to whoever moved them, not to an edit from 2018.** Cards in the latest changes layer showed dates as old as 2018 or 2019, which made the layer look broken. A way also changes shape when one of its vertices is dragged, without the way itself being reopened: its own version and author then still describe its last real edit, years back. Such changes now carry a *Tracé déplacé* badge and name the contributor who moved the vertex. Augmented diffs return a way's vertices stripped of any metadata, so the extraction compares the two versions to find which ones moved and asks Overpass separately who moved them — 49 of the 279 current changes, all now dated within the window, for about ten extra seconds per hourly run. A vertex that cannot be resolved leaves the card saying so rather than blaming an unrelated contributor.
+
 ## [0.16.0] - 2026-08-25
 
 ### Added

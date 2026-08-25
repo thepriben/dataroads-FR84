@@ -63,6 +63,10 @@ AXIS_CLASSES = (
 # bougé. Le reste n'est gardé que s'il a changé.
 IDENTITY_TAGS = ("highway", "name", "ref", "surface", "maxspeed")
 
+# Overpass accepte de longues listes d'identifiants, mais on découpe pour
+# garder des requêtes lisibles et des échecs partiels supportables.
+NODE_META_BATCH = 400
+
 MAX_TAG_CHANGES = 14
 MAX_TAG_VALUE = 120
 
@@ -256,6 +260,99 @@ def meta_properties(element: ET.Element) -> dict[str, Any]:
     }
 
 
+def moved_node_ids(old_element: ET.Element, new_element: ET.Element) -> list[str]:
+    """Nœuds communs aux deux versions dont la position a changé.
+
+    C'est la seule trace du déplacement : l'``adiff`` renvoie les sommets d'une
+    voie sans la moindre métadonnée, juste ``ref``, ``lat`` et ``lon``.
+    """
+    before = {
+        node.get("ref"): (node.get("lat"), node.get("lon"))
+        for node in old_element.findall("nd")
+        if node.get("ref")
+    }
+    moved = []
+    for node in new_element.findall("nd"):
+        ref = node.get("ref")
+        if not ref or ref not in before:
+            continue
+        if before[ref] != (node.get("lat"), node.get("lon")):
+            moved.append(ref)
+    return moved
+
+
+def fetch_node_meta(node_ids: list[str]) -> dict[str, dict[str, str]]:
+    """Qui a déplacé ces nœuds, et quand.
+
+    Requête ordinaire par identifiants, sans ``adiff`` : elle ne coûte presque
+    rien puisqu'on ne demande que les métadonnées de la dernière version, qui
+    est justement le déplacement recherché.
+    """
+    meta: dict[str, dict[str, str]] = {}
+    if not node_ids:
+        return meta
+
+    for start in range(0, len(node_ids), NODE_META_BATCH):
+        batch = node_ids[start : start + NODE_META_BATCH]
+        query = f'[out:xml][timeout:180];node(id:{",".join(batch)});out meta;'
+        try:
+            root = ET.fromstring(request_overpass(query))
+        except (urllib.error.URLError, TimeoutError, ET.ParseError) as error:
+            print(f"latest-changes: node metadata unavailable ({error})", file=sys.stderr)
+            return meta
+        for node in root.findall("node"):
+            node_id = node.get("id")
+            if node_id:
+                meta[node_id] = meta_properties(node)
+    return meta
+
+
+def attribute_geometry_moves(features: list[dict[str, Any]]) -> int:
+    """Recrédite les voies dont seul le tracé a bougé.
+
+    Sans cela, la fiche affiche la dernière retouche de la voie elle-même, qui
+    peut remonter à des années alors que le déplacement date de cette semaine.
+    """
+    pending = [
+        feature
+        for feature in features
+        if feature["properties"].get("_geometry_only")
+    ]
+    wanted = sorted({
+        node_id for feature in pending for node_id in feature["properties"].get("_moved") or []
+    })
+    meta = fetch_node_meta(wanted)
+
+    attributed = 0
+    for feature in pending:
+        moved = feature["properties"].get("_moved")
+        # Le sommet déplacé le plus récemment porte la date du changement vu.
+        candidates = [meta[node_id] for node_id in (moved or []) if node_id in meta]
+        newest = max(candidates, key=lambda item: item.get("timestamp") or "", default=None)
+        feature["properties"]["moved_only"] = True
+        if newest:
+            feature["properties"].update(
+                {
+                    "user": newest.get("user"),
+                    "uid": newest.get("uid"),
+                    "timestamp": newest.get("timestamp"),
+                    "changeset": newest.get("changeset"),
+                    "via_node": True,
+                }
+            )
+            attributed += 1
+        else:
+            # Mieux vaut ne rien affirmer qu'attribuer le déplacement à
+            # l'auteur d'une édition sans rapport, vieille de plusieurs années.
+            for key in ("user", "uid", "timestamp", "changeset"):
+                feature["properties"][key] = None
+
+    for feature in features:
+        feature["properties"].pop("_geometry_only", None)
+        feature["properties"].pop("_moved", None)
+    return attributed
+
+
 def action_feature(
     action: str,
     element: ET.Element,
@@ -352,6 +449,12 @@ def parse_actions(xml_text: str) -> tuple[list[dict[str, Any]], int, int]:
         if not keep(feature):
             continue
 
+        # Version inchangée : la voie n'a pas été éditée, ce sont ses sommets
+        # qui ont bougé. Ses métadonnées ne disent donc rien du changement vu.
+        if old_element.get("version") == new_element.get("version"):
+            feature["properties"]["_geometry_only"] = True
+            feature["properties"]["_moved"] = moved_node_ids(old_element, new_element)
+
         # Le tracé d'avant n'est conservé que s'il a réellement bougé : sur une
         # simple retouche de tags, il ferait doublon avec le nouveau.
         old_geometry = element_geometry(old_element)
@@ -405,6 +508,10 @@ def main() -> int:
     except (ET.ParseError, RuntimeError) as error:
         print(f"latest-changes: {error}", file=sys.stderr)
         return 1
+
+    attributed = attribute_geometry_moves(features)
+    if attributed:
+        print(f"Geometry-only moves credited to their node author: {attributed}")
 
     geojson = collection(features, actions, since)
     changed = write_json_if_changed(OUTPUT, geojson)

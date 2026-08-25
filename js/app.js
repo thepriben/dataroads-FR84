@@ -3546,9 +3546,11 @@
             return `il y a ${days} j`;
         }
 
-        function latestChangeTagsHtml(changes) {
+        function latestChangeTagsHtml(changes, movedOnly) {
             if (!changes || !changes.length) {
-                return `<div class="latest-change-empty">Tracé retouché, aucun attribut modifié.</div>`;
+                return movedOnly
+                    ? `<div class="latest-change-empty">Un sommet du tracé a été déplacé. La voie elle-même n'a pas été rouverte : ses attributs sont inchangés.</div>`
+                    : `<div class="latest-change-empty">Tracé retouché, aucun attribut modifié.</div>`;
             }
             const rows = changes.map(change => {
                 const before = change.old === null || change.old === undefined
@@ -3562,14 +3564,36 @@
             return `<table class="latest-change-tags"><tbody>${rows}</tbody></table>`;
         }
 
-        function latestChangePopupHtml(props) {
+        function latestChangeActionLabel(props) {
             const action = LATEST_CHANGE_ACTIONS[props.action] || LATEST_CHANGE_ACTIONS.modify;
-            const axis = latestChangeAxis(props.axis);
+            return props.moved_only ? { label: 'Tracé déplacé', color: action.color } : action;
+        }
+
+        // Sur un déplacement, l'auteur vient du sommet bougé, pas de la voie : la
+        // voie n'a pas été rouverte, et sa dernière édition peut dater d'années.
+        function latestChangeAuthorHtml(props) {
+            if (!props.user) {
+                return `<div class="latest-change-author">Auteur du déplacement non résolu.</div>`;
+            }
             const when = new Date(props.timestamp);
             const date = Number.isNaN(when.getTime())
                 ? ''
-                : when.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
-            const user = props.user ? escapeHtml(props.user) : 'contributeur inconnu';
+                : `${when.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })} (${latestChangeAgeLabel(props.timestamp)})`;
+            const lead = props.moved_only ? 'Sommet déplacé par' : 'Par';
+            const version = props.moved_only || !props.version ? '' : ` · v${escapeHtml(props.version)}`;
+            return `<div class="latest-change-author">
+                ${lead} <a href="https://www.openstreetmap.org/user/${encodeURIComponent(props.user)}" target="_blank" rel="noopener noreferrer">${escapeHtml(props.user)}</a>
+                ${date ? ` · ${date}` : ''}${version}
+            </div>`;
+        }
+
+        function latestChangePopupHtml(props) {
+            const action = latestChangeActionLabel(props);
+            const axis = latestChangeAxis(props.axis);
+            const changesetLink = props.changeset
+                ? `<span class="node-osm-sep">·</span>
+                    <a href="https://www.openstreetmap.org/changeset/${props.changeset}" target="_blank" rel="noopener noreferrer">changeset</a>`
+                : '';
             return `
                 <div class="route-popup latest-change-popup">
                     <h3>${escapeHtml(latestChangeTitle(props))}</h3>
@@ -3578,16 +3602,11 @@
                         <span class="latest-change-axis">${escapeHtml(axis.name)}</span>
                         ${props.highway ? `<code class="latest-change-hw">highway=${escapeHtml(props.highway)}</code>` : ''}
                     </div>
-                    <div class="latest-change-author">
-                        Par <a href="https://www.openstreetmap.org/user/${encodeURIComponent(props.user || '')}" target="_blank" rel="noopener noreferrer">${user}</a>
-                        ${date ? ` · ${date} (${latestChangeAgeLabel(props.timestamp)})` : ''}
-                        ${props.version ? ` · v${escapeHtml(props.version)}` : ''}
-                    </div>
-                    ${latestChangeTagsHtml(props.changes)}
+                    ${latestChangeAuthorHtml(props)}
+                    ${latestChangeTagsHtml(props.changes, props.moved_only)}
                     <div class="node-osm-link"><span class="node-osm-label">OpenStreetMap</span>
                         <a href="https://www.openstreetmap.org/way/${props.osm_id}" target="_blank" rel="noopener noreferrer">objet</a>
-                        <span class="node-osm-sep">·</span>
-                        <a href="https://www.openstreetmap.org/changeset/${props.changeset}" target="_blank" rel="noopener noreferrer">changeset</a>
+                        ${changesetLink}
                         <span class="node-osm-sep">·</span>
                         <a href="https://osmlab.github.io/osm-deep-history/#/way/${props.osm_id}" target="_blank" rel="noopener noreferrer">historique</a>
                     </div>
@@ -3627,7 +3646,7 @@
                         : L.polyline(points, style);
                     if (!isGhost) {
                         line.bindPopup(latestChangePopupHtml(props), { minWidth: 250, maxWidth: 330 });
-                        line.bindTooltip(`${action.label} — ${latestChangeTitle(props)}`, { sticky: true });
+                        line.bindTooltip(`${latestChangeActionLabel(props).label} — ${latestChangeTitle(props)}`, { sticky: true });
                     }
                     line.addTo(latestChangesLayer);
                 });
