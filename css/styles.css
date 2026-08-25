@@ -1137,11 +1137,29 @@
         }
 
         .latest-recap-name {
+            padding: 0;
+            border: none;
+            background: none;
+            text-align: left;
+            font: inherit;
             font-size: 0.78rem;
             font-weight: 600;
             color: #1f2937;
+            cursor: pointer;
             overflow: hidden;
             text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .latest-recap-name:hover,
+        .latest-recap-name:focus-visible {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+
+        .latest-recap-when {
+            color: #475569;
+            font-weight: 600;
             white-space: nowrap;
         }
 
@@ -1160,9 +1178,12 @@
             word-break: break-word;
         }
 
+        /* Un pseudo se lit d'un bloc : la ligne se coupe entre deux auteurs,
+           jamais au milieu d'un nom. */
         .latest-recap-users a {
             color: #2563eb;
             text-decoration: none;
+            white-space: nowrap;
         }
 
         .latest-recap-users a:hover {

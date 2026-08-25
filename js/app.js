@@ -3546,6 +3546,12 @@
             return `il y a ${days} j`;
         }
 
+        function latestChangeDateLabel(timestamp) {
+            const when = new Date(timestamp);
+            if (Number.isNaN(when.getTime())) return '';
+            return when.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+        }
+
         function latestChangeTagsHtml(changes, movedOnly) {
             if (!changes || !changes.length) {
                 return movedOnly
@@ -3650,6 +3656,10 @@
                     if (!isGhost) {
                         line.bindPopup(latestChangePopupHtml(props), { minWidth: 250, maxWidth: 330 });
                         line.bindTooltip(`${latestChangeActionLabel(props).label} — ${latestChangeTitle(props)}`, { sticky: true });
+                        // Le récapitulatif retrouve par là les tronçons d'une
+                        // voie pour les faire ressortir quand on la désigne.
+                        line._roadLabel = latestChangeRoadLabel(props);
+                        line._baseStyle = style;
                     }
                     line.addTo(latestChangesLayer);
                 });
@@ -3765,11 +3775,14 @@
                 if (!label) { unnamed++; return; }
 
                 if (!roads.has(label)) {
-                    roads.set(label, { label, axis: props.axis, count: 0, users: new Map() });
+                    roads.set(label, { label, axis: props.axis, count: 0, users: new Map(), latest: null, bounds: null });
                 }
                 const road = roads.get(label);
                 road.count++;
                 if (props.user) road.users.set(props.user, (road.users.get(props.user) || 0) + 1);
+                // Horodatages ISO : l'ordre lexicographique est l'ordre du temps.
+                if (props.timestamp && (!road.latest || props.timestamp > road.latest)) road.latest = props.timestamp;
+                road.bounds = road.bounds ? road.bounds.extend(bounds) : L.latLngBounds(bounds.getSouthWest(), bounds.getNorthEast());
                 // Un axe traversant plusieurs classes est annoncé par la plus
                 // structurante, celle sous laquelle on le cherche.
                 if (latestChangeAxisRank(props.axis) < latestChangeAxisRank(road.axis)) road.axis = props.axis;
@@ -3827,11 +3840,19 @@
 
             const rows = roads.slice(0, LATEST_RECAP_MAX_ROADS).map(road => {
                 const axis = latestChangeAxis(road.axis);
+                // La date la plus récente répond à « c'est de quand ? » sans
+                // ouvrir chaque tronçon un par un.
+                const when = road.latest ? latestChangeAgeLabel(road.latest) : '';
+                const whenHtml = when
+                    ? `<span class="latest-recap-when" title="${escapeHtml(latestChangeDateLabel(road.latest))}">${escapeHtml(when)}</span>
+                       <span class="latest-recap-sep">·</span>`
+                    : '';
                 return `<li class="latest-recap-road">
                     <span class="latest-recap-bar" style="height:${axis.weight}px;" title="${escapeHtml(axis.name)}"></span>
-                    <span class="latest-recap-name">${escapeHtml(road.label)}</span>
+                    <button type="button" class="latest-recap-name" data-road="${escapeHtml(road.label)}"
+                        title="Cadrer la carte sur les changements de ${escapeHtml(road.label)}">${escapeHtml(road.label)}</button>
                     <span class="latest-recap-count">${road.count.toLocaleString('fr-FR')}</span>
-                    <span class="latest-recap-users">${latestChangeUsersHtml(road.users)}</span>
+                    <span class="latest-recap-users">${whenHtml}${latestChangeUsersHtml(road.users)}</span>
                 </li>`;
             }).join('');
 
@@ -3850,6 +3871,48 @@
             latestRecapDismissed = true;
             renderLatestChangesRecap();
         };
+
+        // Désigner une voie dans la liste doit mener à ses tronçons : la liste
+        // dit qu'il s'est passé quelque chose sur la D 938, encore faut-il
+        // pouvoir aller y voir sans la chercher à l'œil sur la carte.
+        let latestRecapHighlighted = [];
+        let latestRecapHighlightTimer = null;
+
+        function clearLatestRecapHighlight() {
+            if (latestRecapHighlightTimer) {
+                clearTimeout(latestRecapHighlightTimer);
+                latestRecapHighlightTimer = null;
+            }
+            latestRecapHighlighted.forEach(line => {
+                if (line._baseStyle && latestChangesLayer.hasLayer(line)) line.setStyle(line._baseStyle);
+            });
+            latestRecapHighlighted = [];
+        }
+
+        function focusLatestChangeRoad(label) {
+            const { roads } = collectLatestChangesInView();
+            const road = roads.find(entry => entry.label === label);
+            if (!road || !road.bounds) return;
+
+            clearLatestRecapHighlight();
+            latestChangesLayer.getLayers().forEach(line => {
+                if (line._roadLabel !== label || !line._baseStyle) return;
+                line.setStyle({ weight: line._baseStyle.weight + 6, opacity: 1 });
+                line.bringToFront();
+                latestRecapHighlighted.push(line);
+            });
+            // L'accent s'efface de lui-même : il sert à retrouver la voie, pas
+            // à la marquer durablement au milieu des autres changements.
+            latestRecapHighlightTimer = setTimeout(clearLatestRecapHighlight, 2600);
+
+            window.map.fitBounds(road.bounds, { padding: [60, 60], maxZoom: 16 });
+        }
+
+        document.addEventListener('click', event => {
+            const button = event.target.closest && event.target.closest('.latest-recap-name');
+            if (!button || !button.dataset.road) return;
+            focusLatestChangeRoad(button.dataset.road);
+        });
 
         function applyLatestChangesUi() {
             const icon = document.getElementById('latestChangesToggleIcon');

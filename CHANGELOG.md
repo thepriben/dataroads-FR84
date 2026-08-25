@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.6] - 2026-08-25
+
+### Changed
+
+- **Roads in the latest changes recap are now clickable, and say when they were edited.** The list named the roads but left you to find them by eye on the map, and said nothing about whether a change dated from this morning or from last week — the two questions a recap is there to answer. Clicking a road name frames the map on its changes and thickens them for a couple of seconds, long enough to pick them out among the others. Each line carries the age of its most recent change, *il y a 7 h* or *il y a 6 j*, with the exact date on hover. A contributor name is no longer split across two lines.
+
 ## [0.17.5] - 2026-08-25
 
 ### Fixed
