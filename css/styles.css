@@ -2937,7 +2937,7 @@
         .dashboard-panel {
             position: relative;
             width: min(1180px, calc(100vw - 48px));
-            max-height: min(82vh, 820px);
+            max-height: min(94vh, 1040px);
             background: #fafbfc;
             border-radius: 12px;
             box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18);
@@ -3724,71 +3724,62 @@
 
         .dash-tiles {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
             gap: 7px;
         }
 
+        /* Le pictogramme tient la colonne de gauche plutôt que l'angle : c'est
+           ce qui lui permet de tripler de taille sans rogner sur le chiffre. */
         .dash-tile {
             position: relative;
             display: flex;
-            flex-direction: column;
-            align-items: flex-start;
+            flex-direction: row;
+            align-items: center;
             justify-content: flex-start;
-            gap: 2px;
-            min-height: 58px;
-            padding: 8px 9px;
+            gap: 10px;
+            min-height: 72px;
+            padding: 10px 11px;
             background: #f8fafb;
             border: 1px solid #e8eef3;
             border-radius: 8px;
             text-align: left;
         }
 
-        /* Picto posé en pastille dans le coin de la tuile : assez grand pour se
-           repérer d'un coup d'œil dans la grille, assez pâle pour laisser le
-           chiffre dominer. */
+        .dash-tile-body {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        /* Pastille assez grande pour se repérer d'un coup d'œil dans la grille,
+           assez pâle pour laisser le chiffre dominer. */
         .dash-tile-icon {
-            position: absolute;
-            top: 5px;
-            right: 5px;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 26px;
-            height: 26px;
-            border-radius: 7px;
+            flex: none;
+            width: 68px;
+            height: 68px;
+            border-radius: 16px;
             background: #eef3f7;
-            font-size: 1rem;
+            font-size: 2.6rem;
             line-height: 1;
-            opacity: 0.9;
+            opacity: 0.95;
             pointer-events: none;
         }
 
-        .dash-tile-value,
-        .dash-tile-label {
-            padding-right: 30px;
-        }
-
         .dash-tile-full .dash-tile-icon {
-            width: 30px;
-            height: 30px;
-            font-size: 1.15rem;
-        }
-
-        .dash-tile-full .dash-tile-value,
-        .dash-tile-full .dash-tile-label {
-            padding-right: 36px;
+            width: 74px;
+            height: 74px;
+            font-size: 2.9rem;
         }
 
         @media (max-width: 520px) {
             .dash-tile-icon {
-                width: 22px;
-                height: 22px;
-                font-size: 0.86rem;
-            }
-
-            .dash-tile-value,
-            .dash-tile-label {
-                padding-right: 26px;
+                width: 42px;
+                height: 42px;
+                font-size: 1.5rem;
             }
         }
 

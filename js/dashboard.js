@@ -66,7 +66,15 @@
                 { metricsKey: 'accidents', key: 'total', label: 'Accidents', unit: 'sinistres', icon: '💥' },
                 { metricsKey: 'accidents', key: 'fatal', label: 'Dont mortels', unit: 'victimes', icon: '💀' },
                 { metricsKey: 'accidents', key: 'hospitalized', label: 'Hospitalisés', unit: 'victimes', icon: '🚑' },
-                { metricsKey: 'accidents', key: 'light', label: 'Blessés légers', unit: 'victimes', icon: '⚠️' }
+                { metricsKey: 'accidents', key: 'light', label: 'Blessés légers', unit: 'victimes', icon: '⚠️' },
+                {
+                    metricsKey: 'accidents',
+                    key: 'latestTotal',
+                    label: 'Dernier millésime',
+                    unit: 'sinistres',
+                    icon: '🗓️',
+                    detailKey: 'latestYear'
+                }
             ]
         },
         {
@@ -164,6 +172,12 @@
                 return formatCount(section[key]);
 
             case 'accidents':
+                // Une année se lit « 2024 » et non « 2 024 ».
+                if (key === 'latestYear') {
+                    return Number.isFinite(section.latestYear) ? String(section.latestYear) : null;
+                }
+                return formatCount(section[key]);
+
             case 'bisonFute':
                 return formatCount(section[key]);
 
@@ -321,11 +335,13 @@
                 return `
                     <div class="dash-tile${fullClass}"${titleAttr}>
                         ${iconHtml}
-                        <div class="dash-tile-value">${valueHtml}</div>
-                        ${unitBlockHtml}
-                        <div class="dash-tile-label">${escapeHtml(item.label)}</div>
-                        ${hintHtml}
-                        ${detailHtml}
+                        <div class="dash-tile-body">
+                            <div class="dash-tile-value">${valueHtml}</div>
+                            ${unitBlockHtml}
+                            <div class="dash-tile-label">${escapeHtml(item.label)}</div>
+                            ${hintHtml}
+                            ${detailHtml}
+                        </div>
                     </div>
                 `;
             }).join('');

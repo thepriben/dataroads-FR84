@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.1] - 2026-08-25
+
+### Changed
+
+- **Key figure pictograms are about three times bigger, and the panel no longer scrolls.** At 26 px in the corner of a tile the pictograms were decorative at best: too small to be read as a category marker, they only ate into the figure's width. They now hold a 68 px column on the left of each tile, which turns the grid into something closer to a dataviz than a table of numbers. Tiles grew from 88 to 158 px, and the panel from 82 to 94 % of the viewport height so that the six blocks fit without a scrollbar.
+
+### Fixed
+
+- **The key figures no longer label six years of accidents as a single vintage.** The Sécurité block announced *Millésime 2024* above 1 923 casualties, 195 of them fatal — figures that actually sum the whole 2019-2024 BAAC file, 2024 alone accounting for 608. Reading a six-year total as one year overstates the department's road toll more than threefold. The vintage is now derived from the data rather than hardcoded, and reads *Synthèse 2019–2024*. A *Dernier millésime* tile states the most recent year on its own, 608 casualties in 2024, so both readings are available without either being mistaken for the other. The label follows the year slider when the panel updates live, instead of quoting the file's full span next to filtered counts.
+
 ## [0.17.0] - 2026-08-25
 
 ### Changed

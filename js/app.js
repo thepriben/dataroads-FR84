@@ -10368,6 +10368,7 @@
         function applyAccidentVisibility() {
             const { min, max } = accidentYearFilter;
             const counts = { fatal: 0, hospitalized: 0, light: 0 };
+            const perYear = {};
 
             accidentMarkers.forEach(marker => {
                 const y = marker.accidentYear;
@@ -10379,6 +10380,7 @@
                     if (marker.accidentGravite === 'mortel') counts.fatal++;
                     else if (marker.accidentGravite === 'grave') counts.hospitalized++;
                     else counts.light++;
+                    if (Number.isFinite(y)) perYear[y] = (perYear[y] || 0) + 1;
                 }
 
                 const typeVisible = accidentTypeVisibility[marker.accidentGravite] !== false;
@@ -10398,17 +10400,22 @@
             renderAccidentHistogram();
 
             if (typeof window.patchDashboardMetrics === 'function') {
-                const yr = accidentYearBounds;
+                // La légende peut restreindre les années : on étiquette la plage
+                // effectivement comptée, pas l'étendue du fichier.
+                const counted = Object.keys(perYear).map(Number).filter(Number.isFinite);
+                const { latestYear, latestTotal } = latestYearFromCounts(perYear);
                 window.patchDashboardMetrics({
                     accidents: {
                         total: counts.fatal + counts.hospitalized + counts.light,
                         fatal: counts.fatal,
                         hospitalized: counts.hospitalized,
-                        light: counts.light
+                        light: counts.light,
+                        latestYear,
+                        latestTotal
                     },
                     vintages: {
-                        accidents: (Number.isFinite(yr.min) && Number.isFinite(yr.max))
-                            ? `${yr.min}–${yr.max} · BAAC`
+                        accidents: counted.length
+                            ? accidentVintageLabel(Math.min(...counted), Math.max(...counted))
                             : 'BAAC'
                     }
                 });
@@ -11995,22 +12002,51 @@
             };
         }
 
+        // Le fichier BAAC couvre plusieurs années : les totaux en sont la somme,
+        // et l'étiquette doit le dire. Le dernier millésime est isolé à côté,
+        // sans quoi on ne saurait pas si le chiffre parle d'une année ou de six.
+        function accidentVintageLabel(min, max) {
+            if (!Number.isFinite(min) || !Number.isFinite(max)) return 'BAAC';
+            return min === max ? `Millésime ${max} · BAAC` : `Synthèse ${min}–${max} · BAAC`;
+        }
+
+        function latestYearFromCounts(perYear) {
+            const years = Object.keys(perYear).map(Number).filter(Number.isFinite);
+            if (!years.length) return { latestYear: null, latestTotal: null };
+            const latestYear = Math.max(...years);
+            return { latestYear, latestTotal: perYear[latestYear] };
+        }
+
         function computeAccidentsMetricsFromGeoJson(data) {
             const counts = { fatal: 0, hospitalized: 0, light: 0 };
+            const perYear = {};
             (data.features || []).forEach(feature => {
-                const gravite = feature.properties?.gravite;
+                const props = feature.properties || {};
+                const gravite = props.gravite;
                 if (gravite === 'mortel') counts.fatal++;
                 else if (gravite === 'grave') counts.hospitalized++;
                 else counts.light++;
+
+                const year = Number(props.annee);
+                if (Number.isFinite(year)) perYear[year] = (perYear[year] || 0) + 1;
             });
+
+            const years = Object.keys(perYear).map(Number).filter(Number.isFinite);
+            const { latestYear, latestTotal } = latestYearFromCounts(perYear);
             return {
                 accidents: {
                     total: counts.fatal + counts.hospitalized + counts.light,
                     fatal: counts.fatal,
                     hospitalized: counts.hospitalized,
-                    light: counts.light
+                    light: counts.light,
+                    latestYear,
+                    latestTotal
                 },
-                vintages: { accidents: 'Millésime 2024 · BAAC' }
+                vintages: {
+                    accidents: years.length
+                        ? accidentVintageLabel(Math.min(...years), Math.max(...years))
+                        : 'BAAC'
+                }
             };
         }
 

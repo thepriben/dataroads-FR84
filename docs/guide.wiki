@@ -290,7 +290,7 @@ En haut à droite de la carte :
 == En-tête {#header} ==
 
 * '''Logo''' — retour à l'accueil de l'application.
-* '''Chiffres clés''' — ouvre un panneau plein écran : indicateurs réseau (routes, trafic, véloroutes, qualité OSM, etc.), chaque tuile portant en pastille son pictogramme de repérage. Fermer par × ou clic à l'extérieur.
+* '''Chiffres clés''' — ouvre un panneau plein écran : indicateurs réseau (routes, trafic, véloroutes, qualité OSM, etc.), chaque tuile portant en pastille son pictogramme de repérage. Fermer par × ou clic à l'extérieur. ''Note : le bloc Sécurité additionne tous les millésimes BAAC disponibles, ce qu'annonce son étiquette (« Synthèse 2019–2024 ») ; la tuile'' Dernier millésime ''isole la dernière année pour éviter de lire un cumul de six ans comme un bilan annuel.''
 * '''Météo''' — un aperçu d'une station du département (température, conditions). Pour toutes les stations, utiliser la couche ''Stations météo''.
 
 == URL et partage {#url} ==
