@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.5] - 2026-08-25
+
+### Fixed
+
+- **One rate-limited dataset no longer freezes the eight others.** An agglomeration sign was reading `name=entrée de Sarrians`, a contributor's slip already corrected in OpenStreetMap that same morning — the layer was showing it because its cache had not been rebuilt since. Monday's scheduled run had been turned away by Overpass with a 429 and stopped there, taking the datasets queued behind it down with it and leaving everything stale until Thursday. Each dataset is now attempted on its own, a refusal costing only the dataset concerned, and the run ends by naming those left stale. Retries also wait twenty then forty seconds instead of five and ten, since a quota does not clear in five seconds, and whatever was fetched before a failure is committed rather than discarded with the runner.
+
 ## [0.17.4] - 2026-08-25
 
 ### Fixed

@@ -18,6 +18,10 @@ jobs:
       - name: Update GeoJSON
         run: python3 scripts/update_osm_geojson.py
       - name: Commit changes
+        # Un jeu refusé par Overpass fait échouer l'étape précédente, mais ce
+        # qui a été rapatrié avant doit être publié quand même : le garder sur
+        # le disque du runner ne servirait personne.
+        if: always()
         run: |
           if git diff --quiet -- data/osm; then
             echo "No GeoJSON changes."

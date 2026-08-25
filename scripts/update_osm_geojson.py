@@ -769,7 +769,10 @@ def refresh_cache(name: str, query: str) -> bool:
             last_error = error
             if attempt == 3:
                 raise
-            wait_seconds = attempt * 5
+            # Un 429 veut dire que le quota est épuisé : cinq secondes ne
+            # suffisent pas à libérer un créneau, et l'échec se solde par un
+            # cache figé jusqu'à la prochaine exécution planifiée.
+            wait_seconds = attempt * 20
             print(f"{name}: retry in {wait_seconds}s after {error}", file=sys.stderr)
             time.sleep(wait_seconds)
     else:
@@ -801,8 +804,20 @@ def main() -> int:
         queries = QUERIES
 
     changed = False
+    failed: list[str] = []
     for name, query in queries.items():
-        changed = refresh_cache(name, query) or changed
+        try:
+            changed = refresh_cache(name, query) or changed
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, RuntimeError) as error:
+            # Un jeu refusé ne doit pas emporter les suivants : autrement une
+            # limite de débit sur l'un laisse tous les autres inchangés jusqu'à
+            # la prochaine exécution planifiée, plusieurs jours plus tard.
+            print(f"{name}: left unchanged after {error}", file=sys.stderr)
+            failed.append(name)
+
+    if failed:
+        print(f"Datasets left stale: {', '.join(failed)}", file=sys.stderr)
+        return 1
 
     return 0
 
