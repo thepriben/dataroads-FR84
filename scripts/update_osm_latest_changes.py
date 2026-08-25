@@ -69,6 +69,9 @@ IDENTITY_TAGS = ("highway", "name", "ref", "surface", "maxspeed")
 # garder des requêtes lisibles et des échecs partiels supportables.
 NODE_META_BATCH = 400
 
+# Répit laissé au serveur entre l'``adiff`` et la requête des sommets.
+NODE_META_PAUSE = float(os.environ.get("LATEST_CHANGES_NODE_PAUSE", "5"))
+
 # Sous ce seuil, le sommet a été recalé de si peu que l'ancien tracé se confond
 # avec le nouveau à l'écran : signaler un tel changement ne ferait que noyer
 # ceux qui se voient. Ne s'applique qu'aux voies non rééditées par ailleurs.
@@ -180,6 +183,27 @@ def request_overpass(query: str) -> str:
     )
     with urllib.request.urlopen(request, timeout=300) as response:
         return response.read().decode("utf-8")
+
+
+def request_overpass_with_retry(query: str, label: str, attempts: int = 3) -> str | None:
+    """Interroge Overpass en réessayant : un 504 signe un serveur occupé.
+
+    Toutes les requêtes du script ont besoin de cette patience, pas seulement
+    l'``adiff`` : la requête des sommets part juste derrière lui, quand le
+    serveur est le plus chargé, et c'est elle qui décide si un déplacement de
+    tracé sera crédité à quelqu'un ou restera anonyme.
+    """
+    for attempt in range(1, attempts + 1):
+        try:
+            return request_overpass(query)
+        except (urllib.error.URLError, TimeoutError) as error:
+            if attempt == attempts:
+                print(f"latest-changes: giving up on {label} after {error}", file=sys.stderr)
+                return None
+            wait_seconds = attempt * 20
+            print(f"latest-changes: retry {label} in {wait_seconds}s after {error}", file=sys.stderr)
+            time.sleep(wait_seconds)
+    return None
 
 
 def axis_class(highway: str | None) -> str:
@@ -319,14 +343,24 @@ def fetch_node_meta(node_ids: list[str]) -> dict[str, dict[str, str]]:
     if not node_ids:
         return meta
 
+    # L'``adiff`` vient de mobiliser le serveur une quarantaine de secondes :
+    # enchaîner sans reprendre son souffle, c'est se faire refouler.
+    time.sleep(NODE_META_PAUSE)
+
     for start in range(0, len(node_ids), NODE_META_BATCH):
         batch = node_ids[start : start + NODE_META_BATCH]
+        label = f"node metadata {start // NODE_META_BATCH + 1}"
         query = f'[out:xml][timeout:180];node(id:{",".join(batch)});out meta;'
+        payload = request_overpass_with_retry(query, label)
+        # Un lot perdu ne doit pas coûter les autres : chaque sommet résolu est
+        # un déplacement de plus qui portera le nom de son auteur.
+        if payload is None:
+            continue
         try:
-            root = ET.fromstring(request_overpass(query))
-        except (urllib.error.URLError, TimeoutError, ET.ParseError) as error:
-            print(f"latest-changes: node metadata unavailable ({error})", file=sys.stderr)
-            return meta
+            root = ET.fromstring(payload)
+        except ET.ParseError as error:
+            print(f"latest-changes: unreadable {label} ({error})", file=sys.stderr)
+            continue
         for node in root.findall("node"):
             node_id = node.get("id")
             if node_id:
@@ -334,7 +368,7 @@ def fetch_node_meta(node_ids: list[str]) -> dict[str, dict[str, str]]:
     return meta
 
 
-def attribute_geometry_moves(features: list[dict[str, Any]]) -> int:
+def attribute_geometry_moves(features: list[dict[str, Any]]) -> tuple[int, int]:
     """Recrédite les voies dont seul le tracé a bougé.
 
     Sans cela, la fiche affiche la dernière retouche de la voie elle-même, qui
@@ -376,7 +410,7 @@ def attribute_geometry_moves(features: list[dict[str, Any]]) -> int:
     for feature in features:
         feature["properties"].pop("_geometry_only", None)
         feature["properties"].pop("_moved", None)
-    return attributed
+    return attributed, len(pending)
 
 
 def action_feature(
@@ -537,20 +571,9 @@ def main() -> int:
     print(f"Overpass endpoint: {ENDPOINT}")
     print(f"Window: {WINDOW_DAYS} day(s), since {since:%Y-%m-%dT%H:%M:%SZ}")
 
-    last_error: Exception | None = None
-    xml_text = ""
-    for attempt in range(1, 4):
-        try:
-            xml_text = request_overpass(query)
-            break
-        except (urllib.error.URLError, TimeoutError, ET.ParseError) as error:
-            last_error = error
-            if attempt == 3:
-                print(f"latest-changes: giving up after {error}", file=sys.stderr)
-                return 1
-            wait_seconds = attempt * 20
-            print(f"latest-changes: retry in {wait_seconds}s after {error}", file=sys.stderr)
-            time.sleep(wait_seconds)
+    xml_text = request_overpass_with_retry(query, "augmented diff")
+    if xml_text is None:
+        return 1
 
     try:
         features, actions, outside, negligible = parse_actions(xml_text)
@@ -558,9 +581,16 @@ def main() -> int:
         print(f"latest-changes: {error}", file=sys.stderr)
         return 1
 
-    attributed = attribute_geometry_moves(features)
-    if attributed:
-        print(f"Geometry-only moves credited to their node author: {attributed}")
+    attributed, moves = attribute_geometry_moves(features)
+    if moves:
+        # Le manque se lit dans le journal : une attribution tombée à zéro est
+        # une panne de la requête des sommets, pas une semaine sans déplacement.
+        print(f"Geometry-only moves credited to their node author: {attributed}/{moves}")
+        if attributed < moves:
+            print(
+                f"latest-changes: {moves - attributed} move(s) left without an author",
+                file=sys.stderr,
+            )
 
     geojson = collection(features, actions, since)
     changed = write_json_if_changed(OUTPUT, geojson)

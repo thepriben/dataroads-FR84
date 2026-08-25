@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.4] - 2026-08-25
+
+### Fixed
+
+- **Moved alignments had lost their authors again, all 99 of them.** The recap listed roads such as D 31 with four changes and no contributor. Crediting a moved alignment takes a second Overpass query, asking who moved the vertices, and that query fired straight after the augmented diff had kept the server busy for forty seconds. It came back with a 504, and where the main query retried three times this one gave up on its first refusal — and gave up on every batch at once, not just the one that failed. The week's moves therefore stayed anonymous until an hour later, when a run happened to get through. Both queries now share the same retry policy, a lost batch no longer costs the others, and the vertex query lets the server breathe first. The run log states how many moves were credited out of how many, so a repeat failure shows up as `0/99` instead of passing silently. All 99 moves of the current week are credited again.
+
 ## [0.17.3] - 2026-08-25
 
 ### Added

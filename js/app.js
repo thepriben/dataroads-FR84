@@ -3795,7 +3795,10 @@
             ));
             const rest = sorted.length - shown.length;
             if (rest > 0) shown.push(`<span class="latest-recap-more">+${rest}</span>`);
-            return shown.join('<span class="latest-recap-sep">·</span>') || '<span class="latest-recap-more">auteur inconnu</span>';
+            // Même formulation que la fiche : un sommet déplacé dont l'auteur
+            // n'a pas pu être retrouvé n'est pas un changement sans auteur.
+            return shown.join('<span class="latest-recap-sep">·</span>')
+                || '<span class="latest-recap-more">auteur non résolu</span>';
         }
 
         function renderLatestChangesRecap() {
