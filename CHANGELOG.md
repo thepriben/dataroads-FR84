@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.2] - 2026-08-25
+
+### Fixed
+
+- **Hiding the counting layer now takes its road trace with it.** Clicking a counting station draws an indigo accent over the matching axis and fills the side panel with its details. Switching the layer off removed the 111 station markers but left the axis drawn — 282 segments of a D975 singled out on the map with nothing left to explain why. The trace and its card are now cleared with the layer. A road opened by clicking the road itself is left alone, since its selection owes nothing to the counting layer.
+- **Cache markers were not bumped with the code, so returning visitors kept the previous build.** Scripts are versioned by hand through a `?v=` suffix and the browser caches each URL as it stands; leaving the suffix untouched meant a deployed fix stayed invisible until the cache expired. The four files changed since the last release carry a fresh marker.
+
 ## [0.17.1] - 2026-08-25
 
 ### Changed

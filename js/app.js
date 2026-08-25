@@ -6479,6 +6479,7 @@
                 setToggleIcon(icon, false);
                 if (title) title.style.fontWeight = '600';
                 updateSubtypeLegendUi('traffic', trafficTypeVisibility, false);
+                clearStationSelection();
                 console.log('✗ Stations de comptage masquées');
             }
             syncLegendChrome();
@@ -7998,6 +7999,11 @@
             window.map.closePopup();
         }
 
+        // Axis currently traced from a station click. Remembered so the info
+        // panel is only closed when it still describes that selection, and not
+        // when it describes a road opened by clicking the road itself.
+        let stationAxisRef = null;
+
         // Remove the accent trace drawn for a clicked counting station.
         function clearStationAxisTrace() {
             if (Array.isArray(window.stationAxisLayers)) {
@@ -8006,8 +8012,23 @@
                 });
             }
             window.stationAxisLayers = [];
+            stationAxisRef = null;
         }
         window.clearStationAxisTrace = clearStationAxisTrace;
+
+        // Hiding the counting layer must take away what a station click had put
+        // on screen, otherwise the map keeps an axis singled out by a station
+        // that is no longer there to explain it.
+        function clearStationSelection() {
+            const ref = stationAxisRef;
+            clearStationAxisTrace();
+            if (!ref) return;
+
+            const section = document.getElementById('road-info-section');
+            const shownRef = document.querySelector('#road-info-panel .road-info-title')?.textContent;
+            if (section && shownRef === ref) section.style.display = 'none';
+        }
+        window.clearStationSelection = clearStationSelection;
 
         // Draw a distinct accent trace over a road axis when a counting station is
         // clicked (issue #9). A vivid indigo line with a white casing reads clearly
@@ -8034,6 +8055,7 @@
 
             const hierarchy = polylines[0].options.roadHierarchy;
             displayRoadInfo(key, hierarchy);
+            stationAxisRef = key;
         }
         window.highlightStationAxis = highlightStationAxis;
 
