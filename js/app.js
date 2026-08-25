@@ -3579,7 +3579,10 @@
             const date = Number.isNaN(when.getTime())
                 ? ''
                 : `${when.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })} (${latestChangeAgeLabel(props.timestamp)})`;
-            const lead = props.moved_only ? 'Sommet déplacé par' : 'Par';
+            const distance = props.moved_metres
+                ? ` de ${props.moved_metres.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m`
+                : '';
+            const lead = props.moved_only ? `Sommet déplacé${distance} par` : 'Par';
             const version = props.moved_only || !props.version ? '' : ` · v${escapeHtml(props.version)}`;
             return `<div class="latest-change-author">
                 ${lead} <a href="https://www.openstreetmap.org/user/${encodeURIComponent(props.user)}" target="_blank" rel="noopener noreferrer">${escapeHtml(props.user)}</a>

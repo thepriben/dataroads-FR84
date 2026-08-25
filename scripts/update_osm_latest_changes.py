@@ -12,6 +12,7 @@ which no visitor should ever wait for.
 from __future__ import annotations
 
 import json
+import math
 import os
 import sys
 import time
@@ -37,10 +38,11 @@ ENDPOINT = os.environ.get("OVERPASS_ENDPOINT", "https://overpass-api.de/api/inte
 USER_AGENT = os.environ.get("OVERPASS_USER_AGENT", user_agent())
 APP_VERSION = os.environ.get("APP_VERSION", read_version())
 
-# Fenêtre glissante. Le serveur suivrait jusqu'à sept jours (une quarantaine de
-# secondes), mais le fichier atteint alors 1,5 Mo, ce qui est beaucoup à
-# committer toutes les heures. Trois jours couvrent un week-end pour ~400 ko.
-WINDOW_DAYS = int(os.environ.get("LATEST_CHANGES_DAYS", "3"))
+# Fenêtre glissante : une semaine de recul sur les contributions. Overpass la
+# calcule en une quarantaine de secondes, et le recadrage départemental joint au
+# tri des retouches imperceptibles maintient le fichier à une taille raisonnable
+# pour un commit horaire.
+WINDOW_DAYS = int(os.environ.get("LATEST_CHANGES_DAYS", "7"))
 
 # Emprise du Vaucluse. L'``adiff`` n'accepte pas de filtre par zone
 # administrative — il lui faut une boîte englobante, qui déborde largement sur
@@ -66,6 +68,11 @@ IDENTITY_TAGS = ("highway", "name", "ref", "surface", "maxspeed")
 # Overpass accepte de longues listes d'identifiants, mais on découpe pour
 # garder des requêtes lisibles et des échecs partiels supportables.
 NODE_META_BATCH = 400
+
+# Sous ce seuil, le sommet a été recalé de si peu que l'ancien tracé se confond
+# avec le nouveau à l'écran : signaler un tel changement ne ferait que noyer
+# ceux qui se voient. Ne s'applique qu'aux voies non rééditées par ailleurs.
+MIN_MOVE_METRES = float(os.environ.get("LATEST_CHANGES_MIN_MOVE", "1"))
 
 MAX_TAG_CHANGES = 14
 MAX_TAG_VALUE = 120
@@ -251,34 +258,54 @@ def tag_changes(old: dict[str, str], new: dict[str, str]) -> list[dict[str, Any]
 
 
 def meta_properties(element: ET.Element) -> dict[str, Any]:
+    # Pas d'``uid`` : les liens vers un profil se font par nom d'utilisateur.
     return {
         "version": element.get("version"),
         "user": element.get("user"),
-        "uid": element.get("uid"),
         "timestamp": element.get("timestamp"),
         "changeset": element.get("changeset"),
     }
 
 
-def moved_node_ids(old_element: ET.Element, new_element: ET.Element) -> list[str]:
-    """Nœuds communs aux deux versions dont la position a changé.
+def metres_between(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Approximation équirectangulaire : à l'échelle d'un sommet, elle suffit."""
+    mean_lat = math.radians((lat1 + lat2) / 2)
+    dx = (lon2 - lon1) * 111320 * math.cos(mean_lat)
+    dy = (lat2 - lat1) * 110540
+    return math.hypot(dx, dy)
+
+
+def moved_node_ids(old_element: ET.Element, new_element: ET.Element) -> tuple[list[str], float]:
+    """Nœuds communs aux deux versions dont la position a changé, et de combien.
 
     C'est la seule trace du déplacement : l'``adiff`` renvoie les sommets d'une
-    voie sans la moindre métadonnée, juste ``ref``, ``lat`` et ``lon``.
+    voie sans la moindre métadonnée, juste ``ref``, ``lat`` et ``lon``. La
+    distance se calcule ici, sur les coordonnées brutes — l'arrondi appliqué à
+    la sortie effacerait justement les déplacements que l'on veut mesurer.
     """
     before = {
         node.get("ref"): (node.get("lat"), node.get("lon"))
         for node in old_element.findall("nd")
         if node.get("ref")
     }
-    moved = []
+    moved: list[str] = []
+    largest = 0.0
     for node in new_element.findall("nd"):
         ref = node.get("ref")
         if not ref or ref not in before:
             continue
-        if before[ref] != (node.get("lat"), node.get("lon")):
-            moved.append(ref)
-    return moved
+        old_lat, old_lon = before[ref]
+        new_lat, new_lon = node.get("lat"), node.get("lon")
+        if (old_lat, old_lon) == (new_lat, new_lon):
+            continue
+        moved.append(ref)
+        if None in (old_lat, old_lon, new_lat, new_lon):
+            continue
+        largest = max(
+            largest,
+            metres_between(float(old_lat), float(old_lon), float(new_lat), float(new_lon)),
+        )
+    return moved, largest
 
 
 def fetch_node_meta(node_ids: list[str]) -> dict[str, dict[str, str]]:
@@ -334,7 +361,6 @@ def attribute_geometry_moves(features: list[dict[str, Any]]) -> int:
             feature["properties"].update(
                 {
                     "user": newest.get("user"),
-                    "uid": newest.get("uid"),
                     "timestamp": newest.get("timestamp"),
                     "changeset": newest.get("changeset"),
                     "via_node": True,
@@ -344,7 +370,7 @@ def attribute_geometry_moves(features: list[dict[str, Any]]) -> int:
         else:
             # Mieux vaut ne rien affirmer qu'attribuer le déplacement à
             # l'auteur d'une édition sans rapport, vieille de plusieurs années.
-            for key in ("user", "uid", "timestamp", "changeset"):
+            for key in ("user", "timestamp", "changeset"):
                 feature["properties"][key] = None
 
     for feature in features:
@@ -366,25 +392,37 @@ def action_feature(
         return None
 
     highway = tags.get("highway")
+    axis = axis_class(highway)
+
+    # Le tracé d'avant n'est qu'un repère visuel : il n'ouvre pas de fiche, et
+    # ne porte donc que de quoi être filtré comme le tracé actuel. Répéter
+    # l'auteur et les tags y coûterait 70 ko par fichier pour rien.
+    if state == "old":
+        return {
+            "type": "Feature",
+            "geometry": geometry,
+            "properties": {"state": "old", "osm_id": element.get("id"), "axis": axis},
+        }
+
     properties: dict[str, Any] = {
         "action": action,
         "state": state,
         "osm_type": element.tag,
         "osm_id": element.get("id"),
         "highway": highway,
-        "axis": axis_class(highway),
+        "axis": axis,
         **meta_properties(meta),
     }
     for key in IDENTITY_TAGS:
         if key != "highway" and tags.get(key):
             properties[key] = clip_value(tags[key])
-    if state == "new" and changes:
+    if changes:
         properties["changes"] = changes
 
     return {"type": "Feature", "geometry": geometry, "properties": properties}
 
 
-def parse_actions(xml_text: str) -> tuple[list[dict[str, Any]], int, int]:
+def parse_actions(xml_text: str) -> tuple[list[dict[str, Any]], int, int, int]:
     root = ET.fromstring(xml_text)
     remark = root.find("remark")
     if remark is not None and remark.text:
@@ -394,6 +432,7 @@ def parse_actions(xml_text: str) -> tuple[list[dict[str, Any]], int, int]:
     actions = root.findall("action")
     rings = load_boundary_rings()
     outside = 0
+    negligible = 0
     kept_ids: set[str] = set()
 
     def keep(feature: dict[str, Any] | None) -> bool:
@@ -445,15 +484,25 @@ def parse_actions(xml_text: str) -> tuple[list[dict[str, Any]], int, int]:
             continue
 
         changes = tag_changes(old_tags, new_tags)
-        feature = action_feature("modify", new_element, new_element, new_tags, changes, "new")
-        if not keep(feature):
-            continue
 
         # Version inchangée : la voie n'a pas été éditée, ce sont ses sommets
         # qui ont bougé. Ses métadonnées ne disent donc rien du changement vu.
-        if old_element.get("version") == new_element.get("version"):
+        geometry_only = old_element.get("version") == new_element.get("version")
+        moved: list[str] = []
+        shift = 0.0
+        if geometry_only:
+            moved, shift = moved_node_ids(old_element, new_element)
+            if shift < MIN_MOVE_METRES:
+                negligible += 1
+                continue
+
+        feature = action_feature("modify", new_element, new_element, new_tags, changes, "new")
+        if not keep(feature):
+            continue
+        if geometry_only:
             feature["properties"]["_geometry_only"] = True
-            feature["properties"]["_moved"] = moved_node_ids(old_element, new_element)
+            feature["properties"]["_moved"] = moved
+            feature["properties"]["moved_metres"] = round(shift, 1)
 
         # Le tracé d'avant n'est conservé que s'il a réellement bougé : sur une
         # simple retouche de tags, il ferait doublon avec le nouveau.
@@ -461,7 +510,7 @@ def parse_actions(xml_text: str) -> tuple[list[dict[str, Any]], int, int]:
         if old_geometry and old_geometry != feature["geometry"]:
             keep(action_feature("modify", old_element, new_element, old_tags, [], "old"))
 
-    return features, len(actions), outside
+    return features, len(actions), outside, negligible
 
 
 def collection(features: list[dict[str, Any]], actions: int, since: datetime) -> dict[str, Any]:
@@ -504,7 +553,7 @@ def main() -> int:
             time.sleep(wait_seconds)
 
     try:
-        features, actions, outside = parse_actions(xml_text)
+        features, actions, outside, negligible = parse_actions(xml_text)
     except (ET.ParseError, RuntimeError) as error:
         print(f"latest-changes: {error}", file=sys.stderr)
         return 1
@@ -519,7 +568,8 @@ def main() -> int:
     size_kb = OUTPUT.stat().st_size / 1024
     print(
         f"{OUTPUT.relative_to(ROOT)}: {state}, {len(features)} features "
-        f"from {actions} actions ({outside} hors Vaucluse), {size_kb:.0f} kB"
+        f"from {actions} actions ({outside} hors Vaucluse, "
+        f"{negligible} recalages < {MIN_MOVE_METRES:g} m), {size_kb:.0f} kB"
     )
     return 0
 

@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.0] - 2026-08-25
+
+### Changed
+
+- **The latest changes layer now covers seven days instead of three**, taking it from 279 to 1 270 changes: 90 on main axes, 393 on secondary ones, 609 on local access roads. A week is the span that lets a Monday review catch the whole weekend.
+- **Vertex moves below one metre are dropped.** At that distance the previous alignment is indistinguishable from the current one on screen — the ghost line is not even drawn — so flagging the change only buries the moves that can actually be seen. 76 such recalibrations were filtered out of the week, leaving 99 real moves ranging from 1 to 44 metres, median 3. Cards now state how far the vertex travelled. Both the window and the threshold are settable through `LATEST_CHANGES_DAYS` and `LATEST_CHANGES_MIN_MOVE`.
+- **Trimmed the payload against the wider window.** Previous alignments carry no popup, so repeating their author, tags and version cost 70 kB for nothing; they now keep only what the axis filter needs. Dropping the unused `uid` saved a further 20 kB. Seven days weigh 918 kB where they would have weighed 1 010 kB.
+
 ## [0.16.1] - 2026-08-25
 
 ### Fixed

@@ -52,7 +52,7 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 | Communes | OpenStreetMap | cache du 2026-05-17 22:53 UTC | 151 communes ; les tags de population pointent vers 2021. |
 | Aires d'arrêt & covoiturage | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 213 aires : covoiturage, aires de repos, parkings-relais et aires d'arrêt (layby) le long des RD (issue #7), nœuds / contours / relations, générées par `scripts/update_osm_geojson.py`. |
 | Panneaux directionnels & agglomération | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 2 167 mâts directionnels (`information=guidepost`, dont ~1 450 avec photo référencée) et 468 panneaux d'agglomération (`traffic_sign=city_limit`), générés par `scripts/update_osm_geojson.py`. |
-| Derniers changements OSM | OpenStreetMap (*augmented diff*) | cache horaire (xx:41 UTC) | 3 jours glissants de contributions sur `way[highway]`, recadrés sur la limite départementale, générés par `scripts/update_osm_latest_changes.py`. Les tracés déplacés par un sommet sont recrédités à l'auteur du déplacement. |
+| Derniers changements OSM | OpenStreetMap (*augmented diff*) | cache horaire (xx:41 UTC) | 7 jours glissants de contributions sur `way[highway]`, recadrés sur la limite départementale, générés par `scripts/update_osm_latest_changes.py`. Les tracés déplacés par un sommet sont recrédités à l'auteur du déplacement ; les recalages de moins d'un mètre sont écartés. |
 | Limite du Vaucluse | OpenStreetMap | GeoJSON local | Limite départementale 84, figée dans `data/static/`. |
 | Accidentologie | BAAC / ONISR (data.gouv.fr) | 2019-2024 | 1 923 accidents corporels géolocalisés (dép. 84), généré par `scripts/build_accidents_vaucluse.py`. |
 | Comptages CD84 | data.gouv.fr | 1996-2025 | 3 098 observations ; la carte affiche la dernière année disponible par station. |
@@ -109,7 +109,7 @@ dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 
 `scripts/update_external_data.py` matérialise les données data.gouv.fr et Info Routière dans `data/external/`. Si Info Routière est indisponible, le script conserve un GeoJSON vide avec l'erreur dans `_cache`.
 
-`scripts/update_osm_latest_changes.py` produit `data/osm/latest-changes.geojson` à partir d'un *augmented diff* Overpass. Ce mode n'existe qu'en XML et n'accepte pas de filtre par zone administrative : le script interroge donc une boîte englobante, puis écarte les tronçons hors Vaucluse. La fenêtre par défaut couvre 3 jours et se règle par `LATEST_CHANGES_DAYS`.
+`scripts/update_osm_latest_changes.py` produit `data/osm/latest-changes.geojson` à partir d'un *augmented diff* Overpass. Ce mode n'existe qu'en XML et n'accepte pas de filtre par zone administrative : le script interroge donc une boîte englobante, puis écarte les tronçons hors Vaucluse. La fenêtre par défaut couvre 7 jours (`LATEST_CHANGES_DAYS`) et le seuil de déplacement visible vaut 1 m (`LATEST_CHANGES_MIN_MOVE`).
 
 ### Activer la couche Waze native
 
