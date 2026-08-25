@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.3] - 2026-08-25
+
+### Added
+
+- **The latest changes layer now recaps the roads on screen and who edited them.** A thousand coloured segments say something happened, not on which roads nor by whom, and the answer was only reachable one popup at a time. A panel in the bottom-right corner now lists the most edited ways within the current viewport — structuring axes first, then by number of changes — each with its count and the contributors who worked on it, linked to their OSM profiles. It follows the map on every pan and obeys the axis filters. A departmental road is grouped under its reference rather than the street names it takes through each town, otherwise a single D 900 showed up as two entries; ways with neither reference nor name are counted at the foot of the list. Bounding-box intersection is used to decide what is in view, which was checked to return exactly the same set as testing every vertex at three zoom levels.
+
 ## [0.17.2] - 2026-08-25
 
 ### Fixed

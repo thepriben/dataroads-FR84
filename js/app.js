@@ -3695,7 +3695,158 @@
             latestChangeAxisVisibility[key] = !latestChangeAxisVisibility[key];
             updateLatestChangesLegend();
             renderLatestChanges();
+            renderLatestChangesRecap();
         });
+
+        // ---------- Récapitulatif de l'emprise affichée ----------
+        // Un millier de segments colorés dit qu'il s'est passé quelque chose,
+        // pas sur quelles routes ni par qui. Le récapitulatif répond aux deux,
+        // pour la seule emprise à l'écran : c'est ce qu'on regarde.
+        const LATEST_RECAP_MAX_ROADS = 8;
+        const LATEST_RECAP_MAX_USERS = 3;
+        let latestRecapDismissed = false;
+
+        // L'emprise d'un tracé ne bouge plus une fois le fichier chargé : on la
+        // calcule une fois pour toutes, le panneau se redessinant à chaque
+        // déplacement de carte.
+        function latestChangeFeatureBounds(feature) {
+            if (feature._bounds !== undefined) return feature._bounds;
+
+            const geometry = feature.geometry;
+            const rings = !geometry ? []
+                : geometry.type === 'Polygon' ? geometry.coordinates
+                : geometry.type === 'LineString' ? [geometry.coordinates]
+                : [];
+            let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+            rings.forEach(ring => ring.forEach(([lon, lat]) => {
+                if (lat < minLat) minLat = lat;
+                if (lat > maxLat) maxLat = lat;
+                if (lon < minLon) minLon = lon;
+                if (lon > maxLon) maxLon = lon;
+            }));
+
+            feature._bounds = Number.isFinite(minLat)
+                ? L.latLngBounds([minLat, minLon], [maxLat, maxLon])
+                : null;
+            return feature._bounds;
+        }
+
+        // La référence prime sur le nom : une même départementale change de nom
+        // de rue en traversant les communes, et la lister sous chacun de ces
+        // noms la ferait paraître plusieurs routes distinctes. Une voie sans ref
+        // ni nom est comptée à part plutôt qu'affichée sous son identifiant OSM,
+        // qui ne dirait rien à personne.
+        function latestChangeRoadLabel(props) {
+            return props.ref || props.name || null;
+        }
+
+        function collectLatestChangesInView() {
+            const empty = { roads: [], unnamed: 0, total: 0, users: 0 };
+            if (!window.map || !latestChangesDataLoaded) return empty;
+
+            const view = window.map.getBounds();
+            const roads = new Map();
+            const users = new Set();
+            let unnamed = 0;
+            let total = 0;
+
+            latestChangesFeatures.forEach(feature => {
+                const props = feature.properties || {};
+                if (props.state === 'old') return;
+                if (!latestChangeAxisVisibility[props.axis]) return;
+
+                const bounds = latestChangeFeatureBounds(feature);
+                if (!bounds || !view.intersects(bounds)) return;
+
+                total++;
+                if (props.user) users.add(props.user);
+
+                const label = latestChangeRoadLabel(props);
+                if (!label) { unnamed++; return; }
+
+                if (!roads.has(label)) {
+                    roads.set(label, { label, axis: props.axis, count: 0, users: new Map() });
+                }
+                const road = roads.get(label);
+                road.count++;
+                if (props.user) road.users.set(props.user, (road.users.get(props.user) || 0) + 1);
+                // Un axe traversant plusieurs classes est annoncé par la plus
+                // structurante, celle sous laquelle on le cherche.
+                if (latestChangeAxisRank(props.axis) < latestChangeAxisRank(road.axis)) road.axis = props.axis;
+            });
+
+            const ranked = [...roads.values()].sort((a, b) => (
+                latestChangeAxisRank(a.axis) - latestChangeAxisRank(b.axis) || b.count - a.count
+                || a.label.localeCompare(b.label, 'fr')
+            ));
+            return { roads: ranked, unnamed, total, users: users.size };
+        }
+
+        function latestChangeAxisRank(key) {
+            const index = LATEST_CHANGE_AXES.findIndex(axis => axis.key === key);
+            return index === -1 ? LATEST_CHANGE_AXES.length : index;
+        }
+
+        function latestChangeUsersHtml(users) {
+            const sorted = [...users.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'));
+            const shown = sorted.slice(0, LATEST_RECAP_MAX_USERS).map(([user]) => (
+                `<a href="https://www.openstreetmap.org/user/${encodeURIComponent(user)}"
+                    target="_blank" rel="noopener noreferrer">${escapeHtml(user)}</a>`
+            ));
+            const rest = sorted.length - shown.length;
+            if (rest > 0) shown.push(`<span class="latest-recap-more">+${rest}</span>`);
+            return shown.join('<span class="latest-recap-sep">·</span>') || '<span class="latest-recap-more">auteur inconnu</span>';
+        }
+
+        function renderLatestChangesRecap() {
+            const panel = document.getElementById('latestChangesRecap');
+            if (!panel) return;
+
+            const open = latestChangesVisible && latestChangesDataLoaded && !latestRecapDismissed;
+            panel.classList.toggle('is-open', open);
+            if (!open) return;
+
+            const { roads, unnamed, total, users } = collectLatestChangesInView();
+            const scope = document.getElementById('latestChangesRecapScope');
+            const body = document.getElementById('latestChangesRecapBody');
+
+            if (scope) {
+                scope.textContent = total
+                    ? `${total.toLocaleString('fr-FR')} changement${total > 1 ? 's' : ''} · ${users} contributeur${users > 1 ? 's' : ''}`
+                    : '';
+            }
+            if (!body) return;
+
+            if (!total) {
+                body.innerHTML = `<p class="latest-recap-empty">Aucun changement dans cette emprise. Dézoomez ou déplacez la carte.</p>`;
+                return;
+            }
+
+            const rows = roads.slice(0, LATEST_RECAP_MAX_ROADS).map(road => {
+                const axis = latestChangeAxis(road.axis);
+                return `<li class="latest-recap-road">
+                    <span class="latest-recap-bar" style="height:${axis.weight}px;" title="${escapeHtml(axis.name)}"></span>
+                    <span class="latest-recap-name">${escapeHtml(road.label)}</span>
+                    <span class="latest-recap-count">${road.count.toLocaleString('fr-FR')}</span>
+                    <span class="latest-recap-users">${latestChangeUsersHtml(road.users)}</span>
+                </li>`;
+            }).join('');
+
+            const hidden = roads.length - Math.min(roads.length, LATEST_RECAP_MAX_ROADS);
+            const footnotes = [];
+            if (hidden > 0) footnotes.push(`${hidden} autre${hidden > 1 ? 's' : ''} voie${hidden > 1 ? 's' : ''} nommée${hidden > 1 ? 's' : ''}`);
+            if (unnamed > 0) footnotes.push(`${unnamed.toLocaleString('fr-FR')} changement${unnamed > 1 ? 's' : ''} sur des voies sans nom`);
+
+            body.innerHTML = `
+                <ul class="latest-recap-list">${rows}</ul>
+                ${footnotes.length ? `<p class="latest-recap-foot">${escapeHtml(footnotes.join(' · '))}</p>` : ''}
+            `;
+        }
+
+        window.dismissLatestChangesRecap = function dismissLatestChangesRecap() {
+            latestRecapDismissed = true;
+            renderLatestChangesRecap();
+        };
 
         function applyLatestChangesUi() {
             const icon = document.getElementById('latestChangesToggleIcon');
@@ -3714,8 +3865,12 @@
             } else {
                 latestChangesLayer.clearLayers();
                 if (window.map.hasLayer(latestChangesLayer)) window.map.removeLayer(latestChangesLayer);
+                // Rallumer la couche doit ramener le récapitulatif : le masquer
+                // vaut pour la session en cours, pas pour toujours.
+                latestRecapDismissed = false;
             }
             applyLatestChangesUi();
+            renderLatestChangesRecap();
             syncLegendChrome();
         }
 
@@ -7530,6 +7685,9 @@
         map.on('zoom', scheduleRouteLabelRefresh);
         map.on('zoomend', scheduleRouteLabelRefresh);
         map.on('moveend', scheduleRouteLabelRefresh);
+
+        map.on('zoomend', renderLatestChangesRecap);
+        map.on('moveend', renderLatestChangesRecap);
 
         // ========== OSM QUALITY MANAGEMENT ==========
         

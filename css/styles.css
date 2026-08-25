@@ -1035,6 +1035,165 @@
             display: block;
         }
 
+        /* Récapitulatif des derniers changements : posé en bas à droite pour
+           laisser libres le bandeau d'outils en haut et la légende à gauche. */
+        .latest-recap {
+            position: absolute;
+            right: 14px;
+            bottom: 32px;
+            z-index: 998;
+            width: min(310px, calc(100% - 28px));
+            max-height: min(48vh, 420px);
+            display: none;
+            flex-direction: column;
+            background: #ffffff;
+            border: 1px solid rgba(44, 62, 80, 0.12);
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16);
+            overflow: hidden;
+        }
+
+        .latest-recap.is-open {
+            display: flex;
+        }
+
+        .latest-recap-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 9px 10px 9px 12px;
+            background: #1f2937;
+            color: #ffffff;
+        }
+
+        .latest-recap-head h3 {
+            margin: 0;
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
+        .latest-recap-close {
+            flex: none;
+            width: 22px;
+            height: 22px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.18);
+            color: #ffffff;
+            font-size: 1rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .latest-recap-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .latest-recap-scope {
+            padding: 7px 12px;
+            border-bottom: 1px solid #eef2f5;
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .latest-recap-scope:empty {
+            display: none;
+        }
+
+        .latest-recap-body {
+            overflow-y: auto;
+            padding: 8px 12px 10px;
+        }
+
+        .latest-recap-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        /* Le nom prend la place restante, le compte et les auteurs gardent la
+           leur : les lignes restent alignées quelle que soit la longueur. */
+        .latest-recap-road {
+            display: grid;
+            grid-template-columns: 10px minmax(0, 1fr) auto;
+            align-items: center;
+            gap: 4px 7px;
+            padding: 6px 0;
+            border-bottom: 1px solid #f3f6f8;
+        }
+
+        .latest-recap-road:last-child {
+            border-bottom: none;
+        }
+
+        .latest-recap-bar {
+            width: 10px;
+            border-radius: 2px;
+            background: #94a3b8;
+        }
+
+        .latest-recap-name {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #1f2937;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .latest-recap-count {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #475569;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .latest-recap-users {
+            grid-column: 2 / -1;
+            font-size: 0.71rem;
+            color: #64748b;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .latest-recap-users a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .latest-recap-users a:hover {
+            text-decoration: underline;
+        }
+
+        .latest-recap-sep {
+            margin: 0 4px;
+            color: #cbd5e1;
+        }
+
+        .latest-recap-more {
+            color: #94a3b8;
+        }
+
+        .latest-recap-empty,
+        .latest-recap-foot {
+            margin: 6px 0 0;
+            color: #94a3b8;
+            font-size: 0.71rem;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 720px) {
+            .latest-recap {
+                right: 8px;
+                bottom: 8px;
+                max-height: 38vh;
+            }
+        }
+
         .bridge-viewer-panel {
             position: absolute;
             right: 14px;
