@@ -508,6 +508,75 @@
             setFamilyVisibility(familyId, counts.visible === 0);
         }
 
+        const LAYER_FAMILIES = ['factual', 'stats', 'realtime', 'incubator'];
+
+        function expandLegendFamily(familyId) {
+            const fam = document.querySelector(`.legend-family[data-family="${familyId}"]`);
+            if (!fam) return;
+            fam.dataset.expanded = 'true';
+            fam.querySelector('.legend-family-expand')?.setAttribute('aria-expanded', 'true');
+            fam.querySelector('.legend-family-chevron-btn')?.setAttribute('aria-expanded', 'true');
+            fam.scrollIntoView({ block: 'nearest' });
+        }
+
+        // Chaque thématique des chiffres clés a sa couche : lire « 1 923
+        // accidents » donne envie de les voir, autant y aller d'un clic plutôt
+        // que de refermer le panneau et de chercher la bonne ligne de légende.
+        const DASHBOARD_THEMES = {
+            network: {
+                family: 'factual',
+                show: () => ensureHierarchyVisibility(true)
+            },
+            traffic: {
+                family: 'stats',
+                show: () => ensureLayerToggle(trafficVisible, window.toggleTraffic)
+            },
+            safety: {
+                family: 'stats',
+                show: () => ensureLayerToggle(accidentsVisible, window.toggleAccidents)
+            },
+            live: {
+                family: 'realtime',
+                show: () => ensureLayerToggle(bisonFuteVisible, window.toggleBisonFute)
+            },
+            mobility: {
+                family: 'factual',
+                show: () => {
+                    ensureLayerToggle(bicycleVisible, window.toggleBicycleRoutes);
+                    ensureLayerToggle(constructionVisible, window.toggleConstruction);
+                }
+            },
+            // La qualité ne se peint pas sur la carte : son rapport tient lieu
+            // de destination.
+            quality: {
+                family: 'tools',
+                panel: () => {
+                    const panel = document.getElementById('qualityPanel');
+                    if (panel && !panel.classList.contains('active')) window.toggleQualityPanel();
+                }
+            }
+        };
+
+        window.focusDashboardTheme = function focusDashboardTheme(themeKey) {
+            const theme = DASHBOARD_THEMES[themeKey];
+            if (!theme) return;
+
+            if (theme.show) {
+                // Le raccourci est exclusif : on repart d'une carte nette pour
+                // que le thème demandé s'y lise seul.
+                suppressAppUrlSync = true;
+                LAYER_FAMILIES.forEach(family => setFamilyVisibility(family, false));
+                theme.show();
+                suppressAppUrlSync = false;
+                syncLegendChrome();
+                scheduleAppUrlSync();
+            }
+            if (theme.panel) theme.panel();
+
+            expandLegendFamily(theme.family);
+            if (typeof window.toggleDashboardPanel === 'function') window.toggleDashboardPanel(false);
+        };
+
         function setupLegendFamilies() {
             document.querySelectorAll('.legend-family').forEach(fam => {
                 refreshFamilyMeta(fam);

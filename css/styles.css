@@ -3893,6 +3893,40 @@
             gap: 8px;
         }
 
+        /* La flèche annonce que le titre mène quelque part : discrète au repos,
+           franche au survol. */
+        .dash-block-link {
+            padding: 0;
+            border: none;
+            background: none;
+            font: inherit;
+            color: inherit;
+            letter-spacing: inherit;
+            text-transform: inherit;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: color 0.15s;
+        }
+
+        .dash-block-go {
+            font-size: 0.9em;
+            color: rgba(22, 160, 133, 0.5);
+            transition: transform 0.15s, color 0.15s;
+        }
+
+        .dash-block-link:hover,
+        .dash-block-link:focus-visible {
+            color: #0e7c66;
+        }
+
+        .dash-block-link:hover .dash-block-go,
+        .dash-block-link:focus-visible .dash-block-go {
+            color: #0e7c66;
+            transform: translateX(2px);
+        }
+
         .dash-block-vintage {
             font-size: 0.58rem;
             font-weight: 500;

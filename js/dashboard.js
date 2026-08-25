@@ -22,6 +22,8 @@
     const DASHBOARD_SECTIONS = [
         {
             title: 'Réseau',
+            theme: 'network',
+            shortcut: 'Afficher la hiérarchie du réseau seule sur la carte',
             items: [
                 { metricsKey: 'network', key: 'refs', label: 'Routes départementales', unit: 'routes', icon: '🛣️' },
                 { metricsKey: 'network', key: 'lengthKm', label: 'Linéaire routier', unit: 'km', icon: '📏' },
@@ -39,6 +41,8 @@
         },
         {
             title: 'Trafic',
+            theme: 'traffic',
+            shortcut: 'Afficher les stations de comptage seules sur la carte',
             items: [
                 { metricsKey: 'traffic', key: 'stations', label: 'Stations de comptage', unit: 'stations', icon: '📡' },
                 {
@@ -61,6 +65,8 @@
         },
         {
             title: 'Sécurité',
+            theme: 'safety',
+            shortcut: "Afficher l'accidentologie seule sur la carte",
             vintageKey: 'accidents',
             items: [
                 { metricsKey: 'accidents', key: 'total', label: 'Accidents', unit: 'sinistres', icon: '💥' },
@@ -79,6 +85,8 @@
         },
         {
             title: 'Live',
+            theme: 'live',
+            shortcut: 'Afficher les événements routiers seuls sur la carte',
             vintageKey: 'bisonFute',
             items: [
                 { metricsKey: 'bisonFute', key: 'total', label: 'Événements actifs', unit: 'alertes', icon: '📣' },
@@ -89,6 +97,8 @@
         },
         {
             title: 'Mobilité',
+            theme: 'mobility',
+            shortcut: 'Afficher les véloroutes et les chantiers seuls sur la carte',
             items: [
                 {
                     metricsKey: 'bicycle',
@@ -124,6 +134,8 @@
         },
         {
             title: 'Qualité',
+            theme: 'quality',
+            shortcut: 'Ouvrir le rapport qualité OSM',
             vintageKey: 'osm',
             items: [
                 { metricsKey: 'quality', key: 'wikidataPct', label: 'Couverture Wikidata', unit: '%', icon: '🔗' },
@@ -305,9 +317,13 @@
         const metrics = window.dashboardMetrics;
         const sectionsHtml = DASHBOARD_SECTIONS.map(section => {
             const vintageLabel = section.vintageKey && metrics.vintages?.[section.vintageKey];
+            const headingHtml = section.theme
+                ? `<button type="button" class="dash-block-link" data-theme="${escapeHtml(section.theme)}"
+                        title="${escapeHtml(section.shortcut || '')}">${escapeHtml(section.title)}<span class="dash-block-go" aria-hidden="true">→</span></button>`
+                : escapeHtml(section.title);
             const titleHtml = vintageLabel
-                ? `${section.title}<span class="dash-block-vintage">${escapeHtml(vintageLabel)}</span>`
-                : section.title;
+                ? `${headingHtml}<span class="dash-block-vintage">${escapeHtml(vintageLabel)}</span>`
+                : headingHtml;
 
             const tilesHtml = section.items.map(item => {
                 const value = formatDashboardValue(item.metricsKey, item.key, metrics);
@@ -360,11 +376,15 @@
     window.patchDashboardMetrics = function patchDashboardMetrics(partial) {
         if (!partial || typeof partial !== 'object') return;
         if (window.dashboardRefreshInProgress) return;
-        Object.assign(window.dashboardMetrics, partial);
-        if (partial.vintages) {
+        // Les millésimes se fusionnent : les extraire d'abord évite qu'Object
+        // .assign ne remplace la table entière, laissant la fusion suivante
+        // recopier ce qu'elle vient d'écraser.
+        const { vintages, ...rest } = partial;
+        Object.assign(window.dashboardMetrics, rest);
+        if (vintages) {
             window.dashboardMetrics.vintages = {
                 ...window.dashboardMetrics.vintages,
-                ...partial.vintages
+                ...vintages
             };
         }
     };
@@ -419,6 +439,12 @@
             }
         }
     };
+
+    document.addEventListener('click', event => {
+        const link = event.target.closest && event.target.closest('.dash-block-link');
+        if (!link || !link.dataset.theme) return;
+        if (typeof window.focusDashboardTheme === 'function') window.focusDashboardTheme(link.dataset.theme);
+    });
 
     window.renderDashboard = renderDashboard;
 })(window);

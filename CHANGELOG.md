@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.7] - 2026-08-25
+
+### Added
+
+- **The key figures themes are shortcuts to their layer.** Reading *1 923 accidents* makes you want to see them, and until now that meant closing the panel, finding the right sidebar family and unfolding it. Clicking a theme title now clears the map and leaves that theme alone on it — Réseau, Trafic, Sécurité, Live, Mobilité — then closes the panel and unfolds the matching legend family so the fine tuning stays one click away. Qualité opens its report instead, having no layer to paint.
+
+### Fixed
+
+- **A vintage label no longer erases its neighbours.** Any layer patching the dashboard sent the other vintage labels with it: `Object.assign` replaced the whole table, and the merge that followed copied back what it had just overwritten. Toggling accidents was enough to lose the Bison Futé and OSM cache dates.
+
 ## [0.17.6] - 2026-08-25
 
 ### Changed

@@ -292,7 +292,7 @@ En haut à droite de la carte :
 == En-tête {#header} ==
 
 * '''Logo''' — retour à l'accueil de l'application.
-* '''Chiffres clés''' — ouvre un panneau plein écran : indicateurs réseau (routes, trafic, véloroutes, qualité OSM, etc.), chaque tuile portant en pastille son pictogramme de repérage. Fermer par × ou clic à l'extérieur. ''Note : le bloc Sécurité additionne tous les millésimes BAAC disponibles, ce qu'annonce son étiquette (« Synthèse 2019–2024 ») ; la tuile'' Dernier millésime ''isole la dernière année pour éviter de lire un cumul de six ans comme un bilan annuel.''
+* '''Chiffres clés''' — ouvre un panneau plein écran : indicateurs réseau (routes, trafic, véloroutes, qualité OSM, etc.), chaque tuile portant en pastille son pictogramme de repérage. Fermer par × ou clic à l'extérieur. '''Le titre de chaque thématique est un raccourci''' (repérable à sa flèche) : cliquer ''Sécurité'' referme le panneau et pose l'accidentologie '''seule''' sur la carte, toutes les autres couches éteintes — de même pour ''Réseau'', ''Trafic'', ''Live'' et ''Mobilité''. ''Qualité'' ouvre le rapport détaillé sans toucher aux couches. La rubrique correspondante de la légende se déplie au passage, pour affiner ensuite d'un clic. ''Note : le bloc Sécurité additionne tous les millésimes BAAC disponibles, ce qu'annonce son étiquette (« Synthèse 2019–2024 ») ; la tuile'' Dernier millésime ''isole la dernière année pour éviter de lire un cumul de six ans comme un bilan annuel.''
 * '''Météo''' — un aperçu d'une station du département (température, conditions). Pour toutes les stations, utiliser la couche ''Stations météo''.
 
 == URL et partage {#url} ==
