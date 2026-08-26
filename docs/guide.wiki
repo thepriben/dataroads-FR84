@@ -31,6 +31,8 @@ et la carte. La légende défile à l'intérieur de la colonne ; la carte occupe
 
 {{include:docs/guide-figure-interface.svg|Vue d'ensemble : légende à gauche, carte à droite, outils en haut à droite de la carte.}}
 
+Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte le temps que le fond et la limite du département arrivent — en général une à deux secondes. La légende et l'en-tête restent lisibles pendant ce temps.
+
 == Navigation sur la carte {#navigation} ==
 
 * '''Déplacer''' — clic maintenu + glisser, ou trackpad.

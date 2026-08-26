@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.12] - 2026-08-26
+
+### Added
+
+- **An waiting screen holds the map until it is actually there.** The Géoplateforme takes around 0.8 s to answer for each tile, so for the first second or so the map area was nothing but the flat colour laid outside the department — indistinguishable from a page that had given up. A spinner now names what is being waited for, over the map only so the legend and header stay readable, and fades out once both halves are in place: the tiles, and the boundary that cuts the department out. Waiting on the boundary too matters, since otherwise one would glimpse a full rectangle of map before the flat colour comes to reframe it. Should a tile never arrive, or the boundary fail outright, the screen steps aside rather than holding the demo hostage.
+
 ## [0.17.11] - 2026-08-26
 
 ### Changed

@@ -902,6 +902,58 @@
 
         /* Floating data quality button */
         /* === Unified toolbar (top-right) === */
+        /* La Géoplateforme met environ 0,8 s à répondre par tuile : le temps
+           qu'elles arrivent toutes, la carte n'est qu'un aplat, et rien ne dit
+           qu'il se passe quelque chose. Au-dessus de la barre d'outils, qui n'a
+           rien à commander tant qu'il n'y a pas de carte, mais sous les fenêtres
+           modales (2500 et plus). */
+        .map-loader {
+            position: absolute;
+            inset: 0;
+            z-index: 1100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 24px;
+            text-align: center;
+            background: #e9ebe9;
+            color: #5d6d7e;
+            transition: opacity 0.45s ease;
+        }
+
+        .map-loader.is-done {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .map-loader-spinner {
+            width: 30px;
+            height: 30px;
+            border: 2px solid #d3d8d3;
+            border-top-color: #5d6d7e;
+            border-radius: 50%;
+            animation: dashboardSpin 0.75s linear infinite;
+        }
+
+        .map-loader-text {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .map-loader-hint {
+            margin: 0;
+            font-size: 0.78rem;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .map-loader-spinner { animation-duration: 2.4s; }
+            .map-loader { transition: none; }
+        }
+
         .map-toolbar {
             position: absolute;
             top: 12px;

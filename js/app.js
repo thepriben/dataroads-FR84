@@ -6958,6 +6958,33 @@
             window.basemapLayer.getContainer().style.filter = basemapConfig.filter;
         }
 
+        // L'écran d'attente ne se retire qu'une fois les deux moitiés de la carte
+        // en place : les tuiles, et la frontière qui découpe le département. Sans
+        // cette seconde condition, on découvrirait un rectangle de carte pleine
+        // avant que l'aplat ne vienne le recadrer, ce qui saute aux yeux.
+        const mapLoader = document.getElementById('mapLoader');
+        let basemapSettled = false;
+        let boundarySettled = false;
+
+        function dismissMapLoader() {
+            if (!mapLoader || !mapLoader.isConnected) return;
+            mapLoader.classList.add('is-done');
+            // Retiré une fois le fondu fini : il n'a plus à intercepter les clics,
+            // ni à rester annoncé aux lecteurs d'écran.
+            window.setTimeout(() => mapLoader.remove(), 600);
+        }
+
+        window.settleMapLoader = function(part) {
+            if (part === 'basemap') basemapSettled = true;
+            if (part === 'boundary') boundarySettled = true;
+            if (part === 'giveup' || (basemapSettled && boundarySettled)) dismissMapLoader();
+        };
+
+        window.basemapLayer.once('load', () => window.settleMapLoader('basemap'));
+        // Filet : une tuile qui ne vient jamais ne doit pas laisser la démo
+        // derrière un écran d'attente perpétuel.
+        window.setTimeout(() => window.settleMapLoader('giveup'), 12000);
+
         window.basemapLayer.on('tileerror', () => {
             if (basemapTileRetryTimer) return;
             basemapTileRetryTimer = window.setTimeout(() => {
@@ -7186,6 +7213,7 @@
                 }).addTo(window.map);
 
                 restrictBasemapToVaucluse(geojsonData);
+                window.settleMapLoader('boundary');
 
                 vaucluseDefaultBounds = boundaryLayer.getBounds();
 
@@ -7201,7 +7229,11 @@
                 
             } catch (error) {
                 console.error('Erreur lors du chargement de la limite départementale:', error);
-                
+
+                // Sans frontière il n'y aura ni découpe ni aplat : inutile de
+                // retenir l'écran d'attente pour quelque chose qui ne viendra pas.
+                window.settleMapLoader('giveup');
+
                 L.popup()
                     .setLatLng([44.0, 5.1])
                     .setContent('<div style="padding: 10px;"><strong>⚠️ Limite non disponible</strong><br><small>Erreur de chargement des données</small></div>')
