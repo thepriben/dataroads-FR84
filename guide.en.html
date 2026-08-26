@@ -69,6 +69,8 @@
 <li><strong>Resize the legend</strong> — drag the vertical bar between the legend and the map; double-click to return to the default width.</li>
 </ul>
 <p class="guide-hint">On load, only the department boundary is visible: turn on the layers you need.</p>
+
+<p><strong>The basemap stops at Vaucluse.</strong> Tiles are only fetched for the department and its immediate surroundings; nothing is requested beyond that, which lightens the load. Whatever lies past the boundary is <strong>washed out</strong> under a pale veil, so the eye stays on the territory the demo covers. Neighbouring municipalities remain faintly legible, to keep your bearings near the edges.</p>
         </section>
         <section class="guide-section" id="controles">
             <h2>Visibility controls</h2>
@@ -181,7 +183,7 @@
 <li><strong>Wikidata</strong> next, if the bridge is linked to it, to fill the gaps: structure type (P31), material (P186), number of spans (P1314), length (P2043), height (P2048), width (P2049). A small <strong>info card</strong> (name, image, inception, material, dimensions) then appears, with clickable links to <em>Wikidata</em> and OpenStreetMap.</li>
 <li><strong>Structure name</strong> as a last resort for the arch count (e.g. "pont des 13 arches" → 13 spans).</li>
 </ol>
-<p><strong>2D map under the bridge.</strong> A basemap (CartoDB Voyager) is laid flat beneath the model, centred on the structure and north-up: it shows <strong>rivers in blue</strong> and roads. Falls back to a plain water plane if the tiles are unavailable.</p>
+<p><strong>2D map under the bridge.</strong> A basemap (IGN Plan) is laid flat beneath the model, centred on the structure and north-up: it shows <strong>rivers in blue</strong> and roads. Falls back to a plain water plane if the tiles are unavailable.</p>
 <p><strong>Panoramax / Mapillary photos.</strong> Each photo is placed at its <strong>real capture location</strong> (provider geolocation), with a ground marker and a mast. The image faces outward (the photographer's viewpoint); the back, facing the bridge, is coloured by source — <strong>green</strong> for Mapillary, <strong>violet</strong> for Panoramax. A <strong>colour dot</strong> marks the role of the documented element (pier, abutment, deck…), using the same colour code as the map.</p>
 <p><strong>Navigation.</strong> <strong>Clicking</strong> a gallery thumbnail or a panel refocuses the camera on it, shows it enlarged in the centre (the other photos fade so they don't hide it) and shows a link to the source. Click empty space to deselect. <span class="guide-kbd">Esc</span> or × to close. If WebGL is unavailable, a 2D fallback gallery is shown.</p>
 </div><div class="guide-layer" id="layer-signs">

@@ -40,6 +40,8 @@ et la carte. La légende défile à l'intérieur de la colonne ; la carte occupe
 
 {{hint|Au chargement, seule la limite du département est visible : activez les couches dont vous avez besoin.}}
 
+'''Le fond de carte s'arrête au Vaucluse.''' Les tuiles ne sont tirées que pour le département et ses abords immédiats : au-delà, plus rien n'est demandé au serveur, ce qui allège le chargement. Ce qui dépasse de la frontière est '''délavé''' sous un voile clair, de sorte que le regard reste sur le territoire couvert par la démo. Les communes voisines restent lisibles en filigrane, pour se repérer aux abords des limites.
+
 == Contrôles de visibilité {#controles} ==
 
 Trois niveaux complémentaires :
@@ -176,7 +178,7 @@ Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit e
 <li><strong>Nom de l'ouvrage</strong> en dernier recours pour le nombre d'arches (ex. « pont des 13 arches » → 13 travées).</li>
 </ol>
 
-<p><strong>Carte 2D sous le pont.</strong> Un fond cartographique (CartoDB Voyager) est posé à plat sous le modèle, centré sur l'ouvrage et orienté nord : on y voit les <strong>fleuves en bleu</strong> et les voiries. Repli sur un plan d'eau uni si les tuiles sont indisponibles.</p>
+<p><strong>Carte 2D sous le pont.</strong> Un fond cartographique (Plan IGN) est posé à plat sous le modèle, centré sur l'ouvrage et orienté nord : on y voit les <strong>fleuves en bleu</strong> et les voiries. Repli sur un plan d'eau uni si les tuiles sont indisponibles.</p>
 
 <p><strong>Photos Panoramax / Mapillary.</strong> Chaque photo est posée à son <strong>lieu réel de prise de vue</strong> (géolocalisation du fournisseur), avec un marqueur et un mât au sol. L'image est tournée vers l'extérieur (point de vue du photographe) ; le dos, face au pont, est coloré selon la source — <strong>vert</strong> pour Mapillary, <strong>violet</strong> pour Panoramax. Une <strong>pastille de couleur</strong> identifie le rôle de l'élément documenté (pile, culée, tablier…), avec le même code couleur que la carte.</p>
 

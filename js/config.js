@@ -13,7 +13,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.17.9',
+        version: '0.17.10',
         repository,
         basemap: {
             // Fond vectoriel OpenFreeMap, style Positron : libre, sans clé, sans
@@ -25,6 +25,16 @@
                 + ' <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a>'
                 + ' © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
             maxZoom: 20,
+            // La démo ne parle que du Vaucluse : le fond s'arrête à ses abords, et
+            // aucune tuile n'est demandée au-delà. Ce qui dépasse de la frontière
+            // est délavé sous un voile teinté de la couleur de fond du style — les
+            // abords estompés et le vide au-delà se confondent alors, si bien que
+            // le bord du rectangle de tuiles ne se voit pas.
+            focus: {
+                bounds: [4.50, 43.51, 5.91, 44.58],
+                veilColor: 'rgb(242, 243, 240)',
+                veilOpacity: 0.72
+            },
             // Repli raster, sans clé lui aussi : le Plan IGN de la Géoplateforme.
             // Il couvre les postes sans WebGL, et sert de texture au sol de la
             // visionneuse 3D des ponts, qui peint des tuiles sur un canvas et ne

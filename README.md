@@ -93,6 +93,8 @@ L'architecture des données est séparée par usage :
 
 `js/config.js` centralise les chemins de fichiers et les sources dynamiques. `js/api.js` fournit un chargeur JSON/GeoJSON avec cache navigateur. `js/app.js` lit les fichiers déclarés dans la configuration.
 
+Le fond de carte est le style vectoriel **Positron d'OpenFreeMap** (données OpenStreetMap, licence MIT), sans clé ni quota, rendu par MapLibre GL dans un canvas posé sur le *tile pane* de Leaflet. Les postes sans WebGL retombent sur le **Plan IGN** de la Géoplateforme, keyless lui aussi ; la visionneuse 3D des ponts le prend également, puisqu'elle peint son sol tuile par tuile sur un canvas et ne sait rien faire d'un style vectoriel. Le fond est **cadré sur le Vaucluse** : `basemap.focus.bounds` borne les sources du style, si bien qu'aucune tuile n'est réclamée hors du département et de ses abords, et un voile clair (`veilColor`, `veilOpacity`) délave ce qui dépasse de la frontière.
+
 Trois scripts Python maintiennent les données :
 
 ```bash

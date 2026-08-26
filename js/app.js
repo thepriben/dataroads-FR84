@@ -6943,38 +6943,132 @@
             && Boolean(basemapConfig.style)
             && webglSupported();
 
-        if (vectorBasemapUsable) {
-            window.basemapLayer = L.maplibreGL({
-                style: basemapConfig.style,
-                // Renseignée explicitement : le greffon ne la déduit du style qu'une
-                // fois celui-ci chargé, et l'attribution est une obligation, pas un
-                // ornement qu'on peut se permettre d'afficher en retard.
-                attributionControl: { customAttribution: basemapConfig.attribution }
-            }).addTo(window.map);
-        } else {
-            console.warn('WebGL indisponible : repli du fond de carte sur le Plan IGN.');
-            const fallback = basemapConfig.rasterFallback || {};
-            window.basemapLayer = L.tileLayer(fallback.url, {
-                attribution: fallback.attribution,
-                maxZoom: fallback.maxZoom || 19,
-                keepBuffer: 2
-            }).addTo(window.map);
-        }
-        // Le zoom maximum venait de la couche raster ; une couche GL n'en déclare
-        // pas, et la carte se laisserait zoomer sans fin.
-        window.map.setMaxZoom(vectorBasemapUsable
-            ? (basemapConfig.maxZoom || 20)
-            : (basemapConfig.rasterFallback?.maxZoom || 19));
-
         let basemapTileRetryTimer = null;
         let basemapRecoveryTimer = null;
+
+        const focusConfig = basemapConfig.focus || {};
+
+        // Le fond s'arrête aux abords du Vaucluse : MapLibre ne réclame aucune
+        // tuile hors de `bounds`, et la carte ne paie plus le planisphère qu'elle
+        // n'affiche jamais. La source vectorielle se déclare via un TileJSON, dont
+        // les valeurs écrasent celles posées ici : il faut donc le résoudre
+        // nous-mêmes pour que la limite tienne. Cela ne coûte pas une requête de
+        // plus — c'est celle que MapLibre aurait faite de son côté.
+        async function restrictStyleToFocus(style) {
+            if (!Array.isArray(focusConfig.bounds)) return style;
+            await Promise.all(Object.values(style.sources || {}).map(async source => {
+                if (source.url) {
+                    const tileJson = await fetch(source.url).then(response => response.json());
+                    ['tiles', 'minzoom', 'maxzoom', 'attribution', 'scheme'].forEach(key => {
+                        if (tileJson[key] !== undefined) source[key] = tileJson[key];
+                    });
+                    delete source.url;
+                }
+                source.bounds = focusConfig.bounds;
+            }));
+            return style;
+        }
+
+        // Le rectangle de tuiles déborde forcément du département, qui n'est pas
+        // rectangulaire. Un voile vient délaver ce débord : un polygone couvrant
+        // le monde, percé de la frontière. Percé de son seul contour extérieur —
+        // rouvrir les anneaux intérieurs raviverait des îlots au milieu du voile.
+        const VEIL_PANE = 'vaucluse-veil';
+        const VEIL_WORLD_RING = [[-85, -180], [-85, 180], [85, 180], [85, -180]];
+
+        function veilOutsideVaucluse(geojson) {
+            const rings = [VEIL_WORLD_RING];
+            const collect = geometry => {
+                if (!geometry) return;
+                if (geometry.type === 'GeometryCollection') {
+                    (geometry.geometries || []).forEach(collect);
+                    return;
+                }
+                const parts = geometry.type === 'MultiPolygon' ? geometry.coordinates
+                    : geometry.type === 'Polygon' ? [geometry.coordinates]
+                    : [];
+                parts.forEach(part => rings.push(part[0].map(([lng, lat]) => [lat, lng])));
+            };
+            (geojson.features || [geojson]).forEach(feature => collect(feature.geometry));
+            if (rings.length < 2) return;
+
+            // Entre le fond (200) et les données (400) : le voile estompe les
+            // abords sans jamais toucher aux couches métier.
+            if (!window.map.getPane(VEIL_PANE)) {
+                const pane = window.map.createPane(VEIL_PANE);
+                pane.style.zIndex = 250;
+                pane.style.pointerEvents = 'none';
+            }
+            L.polygon(rings, {
+                pane: VEIL_PANE,
+                interactive: false,
+                stroke: false,
+                // Le remplissage pair-impair est ce qui creuse les trous.
+                fillRule: 'evenodd',
+                fillColor: focusConfig.veilColor,
+                fillOpacity: focusConfig.veilOpacity ?? 0
+            }).addTo(window.map);
+        }
+
+        function addRasterBasemap(reason) {
+            console.warn(`${reason} : repli du fond de carte sur le Plan IGN.`);
+            const fallback = basemapConfig.rasterFallback || {};
+            const focus = focusConfig.bounds;
+            const layer = L.tileLayer(fallback.url, {
+                attribution: fallback.attribution,
+                maxZoom: fallback.maxZoom || 19,
+                keepBuffer: 2,
+                bounds: focus ? L.latLngBounds([focus[1], focus[0]], [focus[3], focus[2]]) : undefined
+            }).addTo(window.map);
+            window.map.setMaxZoom(fallback.maxZoom || 19);
+            // `tileerror` n'existe que sur une couche de tuiles : la couche GL ne
+            // charge pas de vignettes une à une et signale ses échecs côté MapLibre.
+            layer.on('tileerror', () => {
+                if (basemapTileRetryTimer) return;
+                basemapTileRetryTimer = window.setTimeout(() => {
+                    basemapTileRetryTimer = null;
+                    window.ensureBasemapVisible();
+                    if (!basemapHasLoadedTiles() && window.map) {
+                        window.map.invalidateSize({ pan: false });
+                    }
+                }, 480);
+            });
+            window.basemapLayer = layer;
+        }
+
+        // Le style est récupéré nous-mêmes plutôt que confié à MapLibre : le
+        // cadrage doit être posé avant le premier rendu, faute de quoi la carte
+        // commence par réclamer les tuiles du monde entier.
+        if (vectorBasemapUsable) {
+            // Le zoom maximum venait de la couche raster ; une couche GL n'en
+            // déclare pas, et la carte se laisserait zoomer sans fin.
+            window.map.setMaxZoom(basemapConfig.maxZoom || 20);
+            fetch(basemapConfig.style)
+                .then(response => response.json())
+                .then(restrictStyleToFocus)
+                .then(style => {
+                    window.basemapLayer = L.maplibreGL({
+                        style,
+                        // Renseignée explicitement : le greffon ne la déduit du style
+                        // qu'une fois celui-ci chargé, et l'attribution est une
+                        // obligation, pas un ornement qu'on peut afficher en retard.
+                        attributionControl: { customAttribution: basemapConfig.attribution }
+                    }).addTo(window.map);
+                })
+                .catch(error => {
+                    console.warn('Style vectoriel illisible.', error);
+                    addRasterBasemap('Style vectoriel illisible');
+                });
+        } else {
+            addRasterBasemap('WebGL indisponible');
+        }
 
         function basemapHasLoadedTiles() {
             const pane = window.map?.getPane?.('tilePane');
             if (!pane) return false;
             // Le fond vectoriel n'a pas de <img> : tout tient dans un canvas unique.
-            if (vectorBasemapUsable) return Boolean(pane.querySelector('.leaflet-gl-layer canvas'));
-            return Boolean(pane.querySelector('img.leaflet-tile-loaded'));
+            return Boolean(pane.querySelector('.leaflet-gl-layer canvas')
+                || pane.querySelector('img.leaflet-tile-loaded'));
         }
 
         window.ensureBasemapVisible = function() {
@@ -6995,21 +7089,6 @@
                 }
             }, 280);
         };
-
-        // `tileerror` n'existe que sur une couche de tuiles : la couche GL ne charge
-        // pas de vignettes une à une et signale ses échecs côté MapLibre.
-        if (!vectorBasemapUsable) {
-            window.basemapLayer.on('tileerror', () => {
-                if (basemapTileRetryTimer) return;
-                basemapTileRetryTimer = window.setTimeout(() => {
-                    basemapTileRetryTimer = null;
-                    window.ensureBasemapVisible();
-                    if (!basemapHasLoadedTiles() && window.map) {
-                        window.map.invalidateSize({ pan: false });
-                    }
-                }, 480);
-            });
-        }
 
         window.map.whenReady(() => {
             window.ensureBasemapVisible();
@@ -7089,6 +7168,8 @@
                         fillOpacity: 0.05
                     }
                 }).addTo(window.map);
+
+                veilOutsideVaucluse(geojsonData);
 
                 vaucluseDefaultBounds = boundaryLayer.getBounds();
 

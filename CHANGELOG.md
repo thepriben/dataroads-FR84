@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.10] - 2026-08-26
+
+### Changed
+
+- **The basemap now stops at Vaucluse, and no longer fetches the rest of the planet.** The demo has only ever spoken about one department, yet the ground beneath it was drawn for the whole world, tile by tile, wherever the view happened to wander. The style's sources are now bounded to the department and its immediate surroundings, so MapLibre asks for nothing beyond — at the default view that is eleven tiles instead of the full viewport, and zooming out no longer pulls in half of France. Bounding the vector source meant resolving its TileJSON ourselves, since the values it carries overwrite anything declared alongside it; that costs no extra request, being the one MapLibre would have made anyway. Whatever still shows past the frontier — the tile rectangle cannot follow a departmental outline — is washed out under a veil laid between the ground and the data layers, pierced by the boundary itself, the Enclave des Papes included. The veil is tinted with the style's own background colour, so the faded surroundings and the emptiness beyond blend into one and the edge of the tile rectangle never shows. Neighbouring municipalities stay faintly legible, which is what you want when reading a road that crosses the boundary.
+
 ## [0.17.9] - 2026-08-26
 
 ### Changed

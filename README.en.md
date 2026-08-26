@@ -91,6 +91,8 @@ The data architecture is separated by usage:
 
 `js/config.js` centralises file paths and dynamic sources. `js/api.js` provides a JSON/GeoJSON loader with browser cache. `js/app.js` reads the files declared in the configuration.
 
+The basemap is **OpenFreeMap's Positron** vector style (OpenStreetMap data, MIT licence), keyless and quota-free, rendered by MapLibre GL into a canvas laid on Leaflet's tile pane. Machines without WebGL fall back to the Géoplateforme **IGN Plan**, keyless as well; the 3D bridge viewer takes it too, since it paints its ground tile by tile onto a canvas and cannot read a vector style. The basemap is **framed on Vaucluse**: `basemap.focus.bounds` bounds the style sources, so no tile is requested outside the department and its surroundings, and a pale veil (`veilColor`, `veilOpacity`) washes out whatever lies past the boundary.
+
 Two Python scripts maintain the data:
 
 ```bash
