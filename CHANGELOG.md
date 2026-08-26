@@ -5,6 +5,17 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.13] - 2026-08-26
+
+### Changed
+
+- **The map opens at its final framing, and so loads one set of tiles instead of two.** It used to open at a zoom written into the source, then reframe itself on the department as soon as the boundary arrived — two views, therefore two levels of tiles, the first of which was fetched entirely and replaced without ever being read. On a 1440-wide window that was 31 tiles where 16 suffice, and on a phone 17 where 6 do. The extent of Vaucluse is known in advance, since it already bounds which tiles may be requested, so the final framing is now worked out before any tile layer exists, when moving the map costs nothing. A second waste sat next to it: the framing was measured by actually running the fit and reading the resulting zoom, which stopped the map at an intermediate scale long enough for the basemap to ask for that scale's tiles. It is now computed rather than tried, by the same arithmetic Leaflet itself uses.
+- **The connection to the Géoplateforme is opened while the page is still parsing.** The first tile cannot leave before the scripts have run and the map exists — 1.3 s on the deployed site — and until then the name lookup and the TLS handshake had not been done either. Announcing the host in the head takes roughly 0.2 s off the moment the ground appears, on a server that already spends 0.65 s deciding to answer.
+
+### Notes
+
+- **A lighter basemap was looked for and does not exist on these terms.** Measured against IGN Plan at 87 KB and 0.65 s per tile: CARTO Positron is 10 KB and 0.09 s, Esri Light Gray 3.5 KB and 0.09 s — six to twenty-five times better on both counts. Neither can be used. CARTO stamps "API KEY REQUIRED" across the tiles it serves without one, and Esri has required an account since April 2022 for the legacy endpoints that still answer. Asking the Géoplateforme for JPEG instead of PNG, which would have cut the weight without changing anything else, returns HTTP 400: the layer is PNG only. The remaining gains are therefore on our side of the wire, which is where the two changes above are.
+
 ## [0.17.12] - 2026-08-26
 
 ### Added

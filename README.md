@@ -97,6 +97,10 @@ Le fond de carte est le **Plan IGN** de la Géoplateforme, en tuiles **raster**,
 
 Le fond **n'existe que sur le Vaucluse**. `basemap.focus.bounds` borne la couche à l'emprise du département, et la frontière est peinte une fois dans un canvas hors écran pour servir de masque : chaque tuile lui demande si elle a quelque chose à montrer, si bien que les tuiles d'angle ne sont même pas réclamées. Au-delà, un aplat sobre (`basemap.focus.veilColor`, repris en fond du conteneur) couvre ce qui dépasse. La visionneuse 3D des ponts prend le même Plan IGN, qui a les en-têtes CORS qu'exige la peinture de tuiles sur un canvas.
 
+La carte **ouvre directement à son cadrage définitif**, déduit de cette même emprise avant qu'aucune couche de tuiles n'existe. Elle s'ouvrait auparavant à un zoom écrit en dur puis se recadrait à l'arrivée de la frontière, chargeant deux niveaux de tuiles là où un seul est lu : 31 tuiles en fenêtre de 1440 px contre 16, et 17 sur téléphone contre 6. Le `preconnect` déclaré dans l'entête ouvre par ailleurs la connexion à la Géoplateforme pendant l'analyse de la page, sans quoi la résolution du nom et la poignée de main TLS ne commenceraient qu'une fois la carte construite.
+
+Un fond plus léger a été cherché : il n'y en a pas à ces conditions. Face aux 87 Ko et 0,65 s par tuile du Plan IGN, CARTO Positron tient en 10 Ko et 0,09 s, Esri Light Gray en 3,5 Ko — mais CARTO tamponne « API KEY REQUIRED » sur les tuiles servies sans clé, et Esri exige un compte depuis avril 2022. Demander du JPEG plutôt que du PNG à la Géoplateforme, qui aurait allégé sans rien changer d'autre, renvoie une erreur 400 : la couche n'existe qu'en PNG.
+
 Trois scripts Python maintiennent les données :
 
 ```bash

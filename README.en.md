@@ -95,6 +95,10 @@ The basemap is the Géoplateforme **IGN Plan**, in **raster** tiles, keyless and
 
 The basemap **exists over Vaucluse only**. `basemap.focus.bounds` bounds the layer to the department's extent, and the boundary is painted once into an offscreen canvas to serve as a mask: every tile asks it whether it has anything to show, so corner tiles are never even requested. Beyond that, a sober flat colour (`basemap.focus.veilColor`, echoed as the container background) covers whatever spills out. The 3D bridge viewer takes the same IGN Plan, which carries the CORS headers that painting tiles onto a canvas demands.
 
+The map **opens at its final framing**, worked out from that same extent before any tile layer exists. It used to open at a zoom written into the source and reframe itself once the boundary arrived, loading two levels of tiles where only one is read: 31 tiles in a 1440-wide window against 16, and 17 on a phone against 6. The `preconnect` declared in the head also opens the connection to the Géoplateforme while the page is still parsing, without which the name lookup and TLS handshake would not begin until the map had been built.
+
+A lighter basemap was looked for and does not exist on these terms. Against the IGN Plan's 87 KB and 0.65 s per tile, CARTO Positron comes in at 10 KB and 0.09 s and Esri Light Gray at 3.5 KB — but CARTO stamps "API KEY REQUIRED" across tiles served without a key, and Esri has required an account since April 2022. Asking the Géoplateforme for JPEG rather than PNG, which would have cut the weight without changing anything else, returns HTTP 400: the layer is PNG only.
+
 Two Python scripts maintain the data:
 
 ```bash

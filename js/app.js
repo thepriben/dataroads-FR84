@@ -1497,27 +1497,24 @@
                 };
             }
 
-            const snapshot = {
-                center: window.map.getCenter(),
-                zoom: window.map.getZoom()
+            // Le cadrage se calcule, il ne s'essaie pas. Passer par un vrai
+            // fitBounds pour lire le zoom obtenu, puis remettre la carte où elle
+            // était, faisait halte à une échelle intermédiaire — et le fond
+            // réclamait aussitôt les tuiles de ce zoom-là, une vingtaine, jetées
+            // dès la vue suivante. C'est le calcul même de fitBounds, mené ici
+            // sans toucher à la carte, donc au même cadrage près d'un pixel.
+            const padding = L.point(DEFAULT_MAP_FRAMING.fitPadding);
+            const fitZoom = Math.min(
+                window.map.getBoundsZoom(vaucluseDefaultBounds, false, padding.add(padding)),
+                DEFAULT_MAP_FRAMING.maxZoom
+            );
+            const southWest = window.map.project(vaucluseDefaultBounds.getSouthWest(), fitZoom);
+            const northEast = window.map.project(vaucluseDefaultBounds.getNorthEast(), fitZoom);
+
+            return {
+                latLng: window.map.unproject(southWest.add(northEast).divideBy(2), fitZoom),
+                zoom: Math.min(fitZoom + DEFAULT_MAP_FRAMING.zoomBump, DEFAULT_MAP_FRAMING.maxZoom)
             };
-
-            window.map.fitBounds(vaucluseDefaultBounds, {
-                padding: DEFAULT_MAP_FRAMING.fitPadding,
-                maxZoom: DEFAULT_MAP_FRAMING.maxZoom,
-                animate: false
-            });
-
-            const target = {
-                latLng: window.map.getCenter(),
-                zoom: Math.min(
-                    window.map.getZoom() + DEFAULT_MAP_FRAMING.zoomBump,
-                    DEFAULT_MAP_FRAMING.maxZoom
-                )
-            };
-
-            window.map.setView(snapshot.center, snapshot.zoom, { animate: false });
-            return target;
         }
 
         function applyDefaultMapView({ animate = false } = {}) {
@@ -6921,6 +6918,28 @@
         window.resetMapView = function() {
             applyDefaultMapView({ animate: true });
         };
+
+        // La carte s'ouvrait à un zoom écrit en dur, puis se recadrait sur le
+        // département dès la frontière reçue. Deux vues, donc deux niveaux de
+        // tuiles : une vingtaine étaient chargées pour la première, soit plus
+        // d'un mégaoctet, avant d'être remplacées sans avoir servi.
+        //
+        // L'emprise du Vaucluse est pourtant connue d'avance, elle borne déjà
+        // les tuiles depuis la configuration. Le cadrage définitif se déduit
+        // donc tout de suite, ici où aucune couche de tuiles n'existe encore et
+        // où déplacer la carte ne demande rien au réseau. La frontière, plus
+        // tard, ne la décalera que d'un pixel.
+        if (!INITIAL_URL_HAS_VIEW) {
+            const focusBbox = window.APP_CONFIG?.basemap?.focus?.bounds;
+            if (Array.isArray(focusBbox) && focusBbox.length === 4) {
+                vaucluseDefaultBounds = L.latLngBounds(
+                    [focusBbox[1], focusBbox[0]],
+                    [focusBbox[3], focusBbox[2]]
+                );
+                const opening = resolveDefaultMapCenterZoom();
+                window.map.setView(opening.latLng, opening.zoom, { animate: false });
+            }
+        }
 
         // Fond Plan IGN, en tuiles raster. Une tuile arrive déjà dessinée et
         // s'affiche seule dès qu'elle est reçue : rien n'attend rien, là où le
