@@ -765,7 +765,11 @@
         // restent simplement beiges, la carte s'affiche dans tous les cas.
         root.add(mapPlane);
 
-        const subs = ['a', 'b', 'c'];
+        // Le sol est peint tuile par tuile sur un canvas : il lui faut du raster,
+        // là où la carte principale est passée au vectoriel. Le Plan IGN fait
+        // l'affaire, sans clé et avec les en-têtes CORS qu'exige `drawImage`.
+        const groundTileUrl = window.APP_CONFIG?.basemap?.rasterFallback?.url || '';
+        if (!groundTileUrl) return;
         for (let ty = minTY; ty <= maxTY; ty++) {
             for (let tx = minTX; tx <= maxTX; tx++) {
                 const img = new Image();
@@ -776,7 +780,7 @@
                     try { ctx.drawImage(img, px, py, 256, 256); tex.needsUpdate = true; } catch (e) { /* tuile contaminée : on garde le beige */ }
                 };
                 img.onerror = () => { /* 404 : la tuile reste beige */ };
-                img.src = `https://${subs[((tx % 3) + (ty % 3)) % 3]}.basemaps.cartocdn.com/rastertiles/voyager/${z}/${tx}/${ty}.png`;
+                img.src = groundTileUrl.replace('{z}', z).replace('{x}', tx).replace('{y}', ty);
             }
         }
     }

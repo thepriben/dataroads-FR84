@@ -13,8 +13,30 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.17.7',
+        version: '0.17.9',
         repository,
+        basemap: {
+            // Fond vectoriel OpenFreeMap, style Positron : libre, sans clé, sans
+            // quota et auto-hébergeable (MIT, données OpenStreetMap). Il remplace
+            // le raster CARTO, que CARTO tamponne désormais « API KEY REQUIRED »
+            // à défaut de clé, à tous les zooms.
+            style: 'https://tiles.openfreemap.org/styles/positron',
+            attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>'
+                + ' <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a>'
+                + ' © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
+            maxZoom: 20,
+            // Repli raster, sans clé lui aussi : le Plan IGN de la Géoplateforme.
+            // Il couvre les postes sans WebGL, et sert de texture au sol de la
+            // visionneuse 3D des ponts, qui peint des tuiles sur un canvas et ne
+            // sait donc rien faire d'un fond vectoriel.
+            rasterFallback: {
+                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+                    + '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png'
+                    + '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+                attribution: '© <a href="https://www.ign.fr/" target="_blank" rel="noopener noreferrer">IGN</a> — Géoplateforme',
+                maxZoom: 19
+            }
+        },
         mapillary: {
             // Jeton d'accès Mapillary (Graph API) pour rechercher une photo près d'un panneau.
             // Laisser vide désactive la recherche : le popup affiche alors "pas de photo".

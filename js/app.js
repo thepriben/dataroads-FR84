@@ -2761,9 +2761,36 @@
         // Ouvrir un popup fait recentrer la carte pour le rendre visible ; le
         // `moveend` qui suit ne doit pas reconstruire la couche, sinon le marqueur
         // porteur est détruit et le popup se referme dans la foulée.
+        // Le suivi passe par les événements plutôt que par `map._popup` : Leaflet
+        // 1.9 y laisse le dernier popup ouvert même après fermeture, et la couche
+        // resterait gelée pour de bon dès le premier clic — elle se viderait alors
+        // au premier déplacement, faute d'être reconstruite sur la nouvelle vue.
+        let openPopupSource = null;
+
+        function trackOpenPopupSource(map) {
+            map.on('popupopen', event => {
+                openPopupSource = (event.popup && event.popup._source) || null;
+            });
+            // Écouteur posé à la création de la carte, donc avant ceux des couches :
+            // leur propre `popupclose` voit bien le popup comme refermé.
+            map.on('popupclose', () => { openPopupSource = null; });
+        }
+
         function layerHasOpenPopup(layer) {
-            const popup = window.map && window.map._popup;
-            return !!(popup && popup._source && layer.hasLayer(popup._source));
+            return !!(openPopupSource && layer.hasLayer(openPopupSource));
+        }
+
+        // Reconstruction d'une couche filtrée sur la vue. La fermeture du popup
+        // sert de rattrapage : tant qu'il était ouvert la couche restait figée,
+        // et le recentrage automatique a pu découvrir une zone encore vide.
+        // Ce rattrapage est différé, car retirer le marqueur porteur pendant la
+        // propagation de `popupclose` referme son popup et relance l'événement.
+        function makeViewportRenderHandler(layer, render) {
+            return event => {
+                if (layerHasOpenPopup(layer)) return;
+                if (event && event.type === 'popupclose') setTimeout(render, 0);
+                else render();
+            };
         }
 
         function applyRoadSignsVisibleUi() {
@@ -2792,8 +2819,8 @@
             if (roadSignsVisible) {
                 if (!window.map.hasLayer(roadSignsLayer)) roadSignsLayer.addTo(window.map);
                 if (!roadSignsZoomHandler) {
-                    roadSignsZoomHandler = () => { if (!layerHasOpenPopup(roadSignsLayer)) renderRoadSigns(); };
-                    window.map.on('zoomend moveend', roadSignsZoomHandler);
+                    roadSignsZoomHandler = makeViewportRenderHandler(roadSignsLayer, renderRoadSigns);
+                    window.map.on('zoomend moveend popupclose', roadSignsZoomHandler);
                 }
                 renderRoadSigns();
                 applyRoadSignsVisibleUi();
@@ -2801,7 +2828,7 @@
                 roadSignsLayer.clearLayers();
                 if (window.map.hasLayer(roadSignsLayer)) window.map.removeLayer(roadSignsLayer);
                 if (roadSignsZoomHandler) {
-                    window.map.off('zoomend moveend', roadSignsZoomHandler);
+                    window.map.off('zoomend moveend popupclose', roadSignsZoomHandler);
                     roadSignsZoomHandler = null;
                 }
                 applyRoadSignsHiddenUi();
@@ -3275,8 +3302,8 @@
             if (guidepostsVisible) {
                 if (!window.map.hasLayer(guidepostsLayer)) guidepostsLayer.addTo(window.map);
                 if (!guidepostsZoomHandler) {
-                    guidepostsZoomHandler = () => { if (!layerHasOpenPopup(guidepostsLayer)) renderGuideposts(); };
-                    window.map.on('zoomend moveend', guidepostsZoomHandler);
+                    guidepostsZoomHandler = makeViewportRenderHandler(guidepostsLayer, renderGuideposts);
+                    window.map.on('zoomend moveend popupclose', guidepostsZoomHandler);
                 }
                 renderGuideposts();
                 applyGuidepostsVisibleUi();
@@ -3284,7 +3311,7 @@
                 guidepostsLayer.clearLayers();
                 if (window.map.hasLayer(guidepostsLayer)) window.map.removeLayer(guidepostsLayer);
                 if (guidepostsZoomHandler) {
-                    window.map.off('zoomend moveend', guidepostsZoomHandler);
+                    window.map.off('zoomend moveend popupclose', guidepostsZoomHandler);
                     guidepostsZoomHandler = null;
                 }
                 applyGuidepostsHiddenUi();
@@ -3495,15 +3522,15 @@
             if (cityLimitsVisible) {
                 if (!window.map.hasLayer(cityLimitsLayer)) cityLimitsLayer.addTo(window.map);
                 if (!cityLimitsZoomHandler) {
-                    cityLimitsZoomHandler = () => { if (!layerHasOpenPopup(cityLimitsLayer)) renderCityLimits(); };
-                    window.map.on('zoomend moveend', cityLimitsZoomHandler);
+                    cityLimitsZoomHandler = makeViewportRenderHandler(cityLimitsLayer, renderCityLimits);
+                    window.map.on('zoomend moveend popupclose', cityLimitsZoomHandler);
                 }
                 renderCityLimits();
             } else {
                 cityLimitsLayer.clearLayers();
                 if (window.map.hasLayer(cityLimitsLayer)) window.map.removeLayer(cityLimitsLayer);
                 if (cityLimitsZoomHandler) {
-                    window.map.off('zoomend moveend', cityLimitsZoomHandler);
+                    window.map.off('zoomend moveend popupclose', cityLimitsZoomHandler);
                     cityLimitsZoomHandler = null;
                 }
             }
@@ -5284,9 +5311,7 @@
             if (webcamsVisible && !webcamsZoomHandler) {
                 // Un flux vidéo ouvert ne doit pas être détruit par un simple
                 // recentrage : on rattrape la vue à la fermeture du popup.
-                webcamsZoomHandler = () => {
-                    if (!layerHasOpenPopup(webcamsLayerGroup)) renderWebcams();
-                };
+                webcamsZoomHandler = makeViewportRenderHandler(webcamsLayerGroup, renderWebcams);
                 window.map.on('zoomend moveend popupclose', webcamsZoomHandler);
             } else if (!webcamsVisible && webcamsZoomHandler) {
                 window.map.off('zoomend moveend popupclose', webcamsZoomHandler);
@@ -6891,25 +6916,65 @@
             );
         }
         window.map.on('moveend zoomend', scheduleAppUrlSync);
+        trackOpenPopupSource(window.map);
 
         window.resetMapView = function() {
             applyDefaultMapView({ animate: true });
         };
 
-        // Plain CartoDB Positron basemap (référence conservée pour rétablir le fond si besoin)
-        window.basemapLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap contributors © CARTO',
-            subdomains: 'abcd',
-            maxZoom: 20,
-            keepBuffer: 2
-        }).addTo(window.map);
+        // Fond OpenFreeMap Positron, vectoriel, rendu par MapLibre dans un canvas
+        // posé sur le tilePane de Leaflet — le reste des couches continue de vivre
+        // dans Leaflet. Sans WebGL il n'y a pas de canvas possible : on retombe sur
+        // le Plan IGN en tuiles, plutôt que de laisser la carte nue.
+        const basemapConfig = window.APP_CONFIG?.basemap || {};
+
+        function webglSupported() {
+            try {
+                const probe = document.createElement('canvas');
+                return Boolean(window.WebGLRenderingContext
+                    && (probe.getContext('webgl') || probe.getContext('experimental-webgl')));
+            } catch (error) {
+                return false;
+            }
+        }
+
+        const vectorBasemapUsable = typeof L.maplibreGL === 'function'
+            && typeof window.maplibregl !== 'undefined'
+            && Boolean(basemapConfig.style)
+            && webglSupported();
+
+        if (vectorBasemapUsable) {
+            window.basemapLayer = L.maplibreGL({
+                style: basemapConfig.style,
+                // Renseignée explicitement : le greffon ne la déduit du style qu'une
+                // fois celui-ci chargé, et l'attribution est une obligation, pas un
+                // ornement qu'on peut se permettre d'afficher en retard.
+                attributionControl: { customAttribution: basemapConfig.attribution }
+            }).addTo(window.map);
+        } else {
+            console.warn('WebGL indisponible : repli du fond de carte sur le Plan IGN.');
+            const fallback = basemapConfig.rasterFallback || {};
+            window.basemapLayer = L.tileLayer(fallback.url, {
+                attribution: fallback.attribution,
+                maxZoom: fallback.maxZoom || 19,
+                keepBuffer: 2
+            }).addTo(window.map);
+        }
+        // Le zoom maximum venait de la couche raster ; une couche GL n'en déclare
+        // pas, et la carte se laisserait zoomer sans fin.
+        window.map.setMaxZoom(vectorBasemapUsable
+            ? (basemapConfig.maxZoom || 20)
+            : (basemapConfig.rasterFallback?.maxZoom || 19));
 
         let basemapTileRetryTimer = null;
         let basemapRecoveryTimer = null;
 
         function basemapHasLoadedTiles() {
             const pane = window.map?.getPane?.('tilePane');
-            return Boolean(pane?.querySelector('img.leaflet-tile-loaded'));
+            if (!pane) return false;
+            // Le fond vectoriel n'a pas de <img> : tout tient dans un canvas unique.
+            if (vectorBasemapUsable) return Boolean(pane.querySelector('.leaflet-gl-layer canvas'));
+            return Boolean(pane.querySelector('img.leaflet-tile-loaded'));
         }
 
         window.ensureBasemapVisible = function() {
@@ -6931,16 +6996,20 @@
             }, 280);
         };
 
-        window.basemapLayer.on('tileerror', () => {
-            if (basemapTileRetryTimer) return;
-            basemapTileRetryTimer = window.setTimeout(() => {
-                basemapTileRetryTimer = null;
-                window.ensureBasemapVisible();
-                if (!basemapHasLoadedTiles() && window.map) {
-                    window.map.invalidateSize({ pan: false });
-                }
-            }, 480);
-        });
+        // `tileerror` n'existe que sur une couche de tuiles : la couche GL ne charge
+        // pas de vignettes une à une et signale ses échecs côté MapLibre.
+        if (!vectorBasemapUsable) {
+            window.basemapLayer.on('tileerror', () => {
+                if (basemapTileRetryTimer) return;
+                basemapTileRetryTimer = window.setTimeout(() => {
+                    basemapTileRetryTimer = null;
+                    window.ensureBasemapVisible();
+                    if (!basemapHasLoadedTiles() && window.map) {
+                        window.map.invalidateSize({ pan: false });
+                    }
+                }, 480);
+            });
+        }
 
         window.map.whenReady(() => {
             window.ensureBasemapVisible();

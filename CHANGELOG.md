@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.9] - 2026-08-26
+
+### Changed
+
+- **The basemap has left CARTO for OpenFreeMap, and no longer asks anyone for a key.** CARTO now stamps "API KEY REQUIRED" across its raster tiles — measured on roughly four out of five, at every zoom from 8 to 20, which is why it looked tied to certain zoom levels — and the free key they offer in exchange never arrived. OpenFreeMap serves the same Positron cartography from OpenStreetMap data with no key, no quota, no registration and no cookies, under an MIT licence, and can be self-hosted should the public instance ever stop. It is vector rather than raster, so MapLibre now draws the ground into a single canvas laid on Leaflet's tile pane while every other layer stays where it was; labels stay crisp at zoom 18 where the old PNGs were interpolated. Machines without WebGL fall back to the IGN Plan, keyless as well, rather than being left with a bare map. The 3D bridge viewer paints its ground tile by tile onto a canvas and cannot read a vector style, so it takes the IGN Plan too — which has the CORS headers that painting demands.
+
+## [0.17.8] - 2026-08-25
+
+### Fixed
+
+- **Opening a signpost no longer wipes the layer off the map.** Clicking a directional signpost, then moving the map, left it bare: the panels never came back, at any zoom. Opening a popup recentres the map, and the layer skips the rebuild that would follow so as not to destroy the marker carrying the popup — but it recognised that popup through `map._popup`, which Leaflet leaves pointing at the last popup long after it is closed. The layer was therefore frozen for good from the very first click, and every pan carried it out of view. Opening is now tracked through the popup events themselves. The same fault silenced the stop signs, the agglomeration signs and the webcams. Closing a popup also puts the layer back on the current view, which was missing since the automatic recentring can uncover an area with nothing drawn on it.
+
 ## [0.17.7] - 2026-08-25
 
 ### Added
