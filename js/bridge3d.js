@@ -765,10 +765,9 @@
         // restent simplement beiges, la carte s'affiche dans tous les cas.
         root.add(mapPlane);
 
-        // Le sol est peint tuile par tuile sur un canvas : il lui faut du raster,
-        // là où la carte principale est passée au vectoriel. Le Plan IGN fait
-        // l'affaire, sans clé et avec les en-têtes CORS qu'exige `drawImage`.
-        const groundTileUrl = window.APP_CONFIG?.basemap?.rasterFallback?.url || '';
+        // Le sol est peint tuile par tuile sur un canvas : le même Plan IGN que la
+        // carte principale, qui a les en-têtes CORS qu'exige `drawImage`.
+        const groundTileUrl = window.APP_CONFIG?.basemap?.url || '';
         if (!groundTileUrl) return;
         for (let ty = minTY; ty <= maxTY; ty++) {
             for (let tx = minTX; tx <= maxTX; tx++) {

@@ -93,7 +93,9 @@ L'architecture des données est séparée par usage :
 
 `js/config.js` centralise les chemins de fichiers et les sources dynamiques. `js/api.js` fournit un chargeur JSON/GeoJSON avec cache navigateur. `js/app.js` lit les fichiers déclarés dans la configuration.
 
-Le fond de carte est le style vectoriel **Positron d'OpenFreeMap** (données OpenStreetMap, licence MIT), sans clé ni quota, rendu par MapLibre GL dans un canvas posé sur le *tile pane* de Leaflet. Les postes sans WebGL retombent sur le **Plan IGN** de la Géoplateforme, keyless lui aussi ; la visionneuse 3D des ponts le prend également, puisqu'elle peint son sol tuile par tuile sur un canvas et ne sait rien faire d'un style vectoriel. Le fond est **cadré sur le Vaucluse** : `basemap.focus.bounds` borne les sources du style, si bien qu'aucune tuile n'est réclamée hors du département et de ses abords, et un voile clair (`veilColor`, `veilOpacity`) délave ce qui dépasse de la frontière.
+Le fond de carte est le **Plan IGN** de la Géoplateforme, en tuiles **raster**, sans clé ni quota. Raster et non vectoriel : la tuile arrive déjà dessinée et s'affiche dès reçue, là où un fond vectoriel demande de charger MapLibre GL (1 Mo de JavaScript) puis de tout redessiner avant la première image — au dézoom, une tuile vectorielle pèse 189 Ko contre 59 ici. Le Plan IGN étant bavard en couleurs pour qui n'en attend qu'un fond, il est désaturé par un filtre CSS (`basemap.filter`), que le compositeur applique sans rien coûter.
+
+Le fond **n'existe que sur le Vaucluse**. `basemap.focus.bounds` borne la couche à l'emprise du département, et la frontière est peinte une fois dans un canvas hors écran pour servir de masque : chaque tuile lui demande si elle a quelque chose à montrer, si bien que les tuiles d'angle ne sont même pas réclamées. Au-delà, un aplat sobre (`basemap.focus.veilColor`, repris en fond du conteneur) couvre ce qui dépasse. La visionneuse 3D des ponts prend le même Plan IGN, qui a les en-têtes CORS qu'exige la peinture de tuiles sur un canvas.
 
 Trois scripts Python maintiennent les données :
 

@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.11] - 2026-08-26
+
+### Changed
+
+- **The basemap is raster again, exists over Vaucluse only, and zooming out no longer crawls.** Vector tiles were the wrong trade for a map of one department: OpenFreeMap's weigh 189 KB apiece at zoom 8 against 59 KB for a raster tile, none of them shows until MapLibre has redrawn it whole, and MapLibre itself is a megabyte of JavaScript to fetch before the first image appears. Zooming out therefore sat waiting on 2 268 KB where it now takes 175 KB. The ground goes back to raster tiles, served by the Géoplateforme IGN Plan — keyless, quota-free, and the reference map of the French state, which is a fitting choice for a departmental council. MapLibre GL and its Leaflet plugin are gone from the page, WebGL with them, and so is the fallback that existed for machines without it.
+- **Nothing is drawn outside the department, and nothing is fetched there either.** The tile frame is a rectangle and Vaucluse is not, so the boundary is painted once into an offscreen canvas and each tile asks that mask whether it has anything to show: the corner tiles are never requested, which at the default view is eleven tiles instead of sixteen. What still spills past the frontier is covered by a flat sober colour, carried by the map container as well so the edge of the tile frame never shows. Zooming out below the point where the department fills the view is no longer possible — it served nothing and cost the largest tiles.
+- **The IGN Plan is desaturated on the way in.** It is a fine map and a talkative one — green relief, orange motorways, park outlines — which is not what you want behind accident clusters and traffic counts. A CSS filter takes the colour out of it, which the compositor does for free, rather than hunting for a sober provider: they all ask for a key.
+
 ## [0.17.10] - 2026-08-26
 
 ### Changed

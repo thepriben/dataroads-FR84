@@ -6922,62 +6922,62 @@
             applyDefaultMapView({ animate: true });
         };
 
-        // Fond OpenFreeMap Positron, vectoriel, rendu par MapLibre dans un canvas
-        // posé sur le tilePane de Leaflet — le reste des couches continue de vivre
-        // dans Leaflet. Sans WebGL il n'y a pas de canvas possible : on retombe sur
-        // le Plan IGN en tuiles, plutôt que de laisser la carte nue.
+        // Fond Plan IGN, en tuiles raster. Une tuile arrive déjà dessinée et
+        // s'affiche seule dès qu'elle est reçue : rien n'attend rien, là où le
+        // fond vectoriel demandait de charger MapLibre puis de tout redessiner
+        // avant que la première image ne paraisse.
         const basemapConfig = window.APP_CONFIG?.basemap || {};
-
-        function webglSupported() {
-            try {
-                const probe = document.createElement('canvas');
-                return Boolean(window.WebGLRenderingContext
-                    && (probe.getContext('webgl') || probe.getContext('experimental-webgl')));
-            } catch (error) {
-                return false;
-            }
-        }
-
-        const vectorBasemapUsable = typeof L.maplibreGL === 'function'
-            && typeof window.maplibregl !== 'undefined'
-            && Boolean(basemapConfig.style)
-            && webglSupported();
+        const focusConfig = basemapConfig.focus || {};
 
         let basemapTileRetryTimer = null;
         let basemapRecoveryTimer = null;
 
-        const focusConfig = basemapConfig.focus || {};
+        // Aucune tuile n'est demandée hors du cadre : Leaflet ne crée même pas les
+        // vignettes dont les coordonnées tombent à côté.
+        const focusBounds = Array.isArray(focusConfig.bounds)
+            ? L.latLngBounds(
+                [focusConfig.bounds[1], focusConfig.bounds[0]],
+                [focusConfig.bounds[3], focusConfig.bounds[2]]
+            )
+            : undefined;
 
-        // Le fond s'arrête aux abords du Vaucluse : MapLibre ne réclame aucune
-        // tuile hors de `bounds`, et la carte ne paie plus le planisphère qu'elle
-        // n'affiche jamais. La source vectorielle se déclare via un TileJSON, dont
-        // les valeurs écrasent celles posées ici : il faut donc le résoudre
-        // nous-mêmes pour que la limite tienne. Cela ne coûte pas une requête de
-        // plus — c'est celle que MapLibre aurait faite de son côté.
-        async function restrictStyleToFocus(style) {
-            if (!Array.isArray(focusConfig.bounds)) return style;
-            await Promise.all(Object.values(style.sources || {}).map(async source => {
-                if (source.url) {
-                    const tileJson = await fetch(source.url).then(response => response.json());
-                    ['tiles', 'minzoom', 'maxzoom', 'attribution', 'scheme'].forEach(key => {
-                        if (tileJson[key] !== undefined) source[key] = tileJson[key];
-                    });
-                    delete source.url;
-                }
-                source.bounds = focusConfig.bounds;
-            }));
-            return style;
+        window.map.setMinZoom(basemapConfig.minZoom || 8);
+        window.map.setMaxZoom(basemapConfig.maxZoom || 19);
+
+        window.basemapLayer = L.tileLayer(basemapConfig.url, {
+            attribution: basemapConfig.attribution,
+            minZoom: basemapConfig.minZoom || 8,
+            maxZoom: basemapConfig.maxZoom || 19,
+            keepBuffer: 2,
+            bounds: focusBounds
+        }).addTo(window.map);
+
+        // Désaturation portée par la couche et non par le tilePane, que d'autres
+        // couches partagent et qui n'a pas à pâlir avec le fond.
+        if (basemapConfig.filter && window.basemapLayer.getContainer()) {
+            window.basemapLayer.getContainer().style.filter = basemapConfig.filter;
         }
 
-        // Le rectangle de tuiles déborde forcément du département, qui n'est pas
-        // rectangulaire. Un voile vient délaver ce débord : un polygone couvrant
-        // le monde, percé de la frontière. Percé de son seul contour extérieur —
-        // rouvrir les anneaux intérieurs raviverait des îlots au milieu du voile.
+        window.basemapLayer.on('tileerror', () => {
+            if (basemapTileRetryTimer) return;
+            basemapTileRetryTimer = window.setTimeout(() => {
+                basemapTileRetryTimer = null;
+                window.ensureBasemapVisible();
+                if (!basemapHasLoadedTiles() && window.map) {
+                    window.map.invalidateSize({ pan: false });
+                }
+            }, 480);
+        });
+
+        // Le cadre des tuiles est un rectangle, le département n'en est pas un.
+        // Deux traitements pour ce débord : un aplat qui le couvre à l'écran, et
+        // un masque qui empêche d'aller chercher les tuiles qu'il recouvre.
         const VEIL_PANE = 'vaucluse-veil';
         const VEIL_WORLD_RING = [[-85, -180], [-85, 180], [85, 180], [85, -180]];
+        const FOCUS_MASK_WIDTH = 512;
 
-        function veilOutsideVaucluse(geojson) {
-            const rings = [VEIL_WORLD_RING];
+        function departmentRings(geojson) {
+            const rings = [];
             const collect = geometry => {
                 if (!geometry) return;
                 if (geometry.type === 'GeometryCollection') {
@@ -6987,88 +6987,104 @@
                 const parts = geometry.type === 'MultiPolygon' ? geometry.coordinates
                     : geometry.type === 'Polygon' ? [geometry.coordinates]
                     : [];
+                // Le contour extérieur de chaque partie suffit : rouvrir les
+                // anneaux intérieurs raviverait des îlots au milieu de l'aplat.
                 parts.forEach(part => rings.push(part[0].map(([lng, lat]) => [lat, lng])));
             };
             (geojson.features || [geojson]).forEach(feature => collect(feature.geometry));
-            if (rings.length < 2) return;
+            return rings;
+        }
 
-            // Entre le fond (200) et les données (400) : le voile estompe les
-            // abords sans jamais toucher aux couches métier.
+        // La frontière est peinte une fois dans un canvas hors écran, en
+        // projection Mercator comme les tuiles. Chaque tuile vient ensuite
+        // demander à ce masque si elle a quelque chose à montrer.
+        function buildFocusMask(rings) {
+            if (!focusBounds) return null;
+            const project = ([lat, lng]) => L.Projection.SphericalMercator.project(L.latLng(lat, lng));
+            const min = project([focusBounds.getSouth(), focusBounds.getWest()]);
+            const max = project([focusBounds.getNorth(), focusBounds.getEast()]);
+            const spanX = max.x - min.x;
+            const spanY = max.y - min.y;
+            if (!(spanX > 0) || !(spanY > 0)) return null;
+            const height = Math.max(1, Math.round(FOCUS_MASK_WIDTH * spanY / spanX));
+            const canvas = document.createElement('canvas');
+            canvas.width = FOCUS_MASK_WIDTH;
+            canvas.height = height;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (!context) return null;
+            context.fillStyle = '#fff';
+            context.beginPath();
+            rings.forEach(ring => {
+                ring.forEach((latLng, index) => {
+                    const point = project(latLng);
+                    const x = (point.x - min.x) / spanX * FOCUS_MASK_WIDTH;
+                    const y = (max.y - point.y) / spanY * height;
+                    if (index === 0) context.moveTo(x, y);
+                    else context.lineTo(x, y);
+                });
+                context.closePath();
+            });
+            context.fill();
+            const pixels = context.getImageData(0, 0, FOCUS_MASK_WIDTH, height).data;
+            const covered = new Uint8Array(FOCUS_MASK_WIDTH * height);
+            for (let index = 0; index < covered.length; index += 1) {
+                covered[index] = pixels[index * 4 + 3] ? 1 : 0;
+            }
+            return { covered, width: FOCUS_MASK_WIDTH, height, minX: min.x, maxY: max.y, spanX, spanY };
+        }
+
+        // Les arrondis élargissent la zone testée plutôt que de la rétrécir : une
+        // tuile de trop coûte une requête, une tuile manquante fait un trou.
+        function maskCoversTile(mask, bounds) {
+            const project = latLng => L.Projection.SphericalMercator.project(latLng);
+            const low = project(bounds.getSouthWest());
+            const high = project(bounds.getNorthEast());
+            const left = Math.max(0, Math.floor((low.x - mask.minX) / mask.spanX * mask.width));
+            const right = Math.min(mask.width, Math.ceil((high.x - mask.minX) / mask.spanX * mask.width));
+            const top = Math.max(0, Math.floor((mask.maxY - high.y) / mask.spanY * mask.height));
+            const bottom = Math.min(mask.height, Math.ceil((mask.maxY - low.y) / mask.spanY * mask.height));
+            for (let y = top; y < Math.max(bottom, top + 1) && y < mask.height; y += 1) {
+                for (let x = left; x < Math.max(right, left + 1) && x < mask.width; x += 1) {
+                    if (mask.covered[y * mask.width + x]) return true;
+                }
+            }
+            return false;
+        }
+
+        function restrictBasemapToVaucluse(geojson) {
+            const rings = departmentRings(geojson);
+            if (!rings.length) return;
+
+            // Entre le fond (200) et les données (400) : l'aplat efface les abords
+            // sans jamais toucher aux couches métier.
             if (!window.map.getPane(VEIL_PANE)) {
                 const pane = window.map.createPane(VEIL_PANE);
                 pane.style.zIndex = 250;
                 pane.style.pointerEvents = 'none';
             }
-            L.polygon(rings, {
+            L.polygon([VEIL_WORLD_RING, ...rings], {
                 pane: VEIL_PANE,
                 interactive: false,
                 stroke: false,
                 // Le remplissage pair-impair est ce qui creuse les trous.
                 fillRule: 'evenodd',
                 fillColor: focusConfig.veilColor,
-                fillOpacity: focusConfig.veilOpacity ?? 0
+                fillOpacity: 1
             }).addTo(window.map);
-        }
 
-        function addRasterBasemap(reason) {
-            console.warn(`${reason} : repli du fond de carte sur le Plan IGN.`);
-            const fallback = basemapConfig.rasterFallback || {};
-            const focus = focusConfig.bounds;
-            const layer = L.tileLayer(fallback.url, {
-                attribution: fallback.attribution,
-                maxZoom: fallback.maxZoom || 19,
-                keepBuffer: 2,
-                bounds: focus ? L.latLngBounds([focus[1], focus[0]], [focus[3], focus[2]]) : undefined
-            }).addTo(window.map);
-            window.map.setMaxZoom(fallback.maxZoom || 19);
-            // `tileerror` n'existe que sur une couche de tuiles : la couche GL ne
-            // charge pas de vignettes une à une et signale ses échecs côté MapLibre.
-            layer.on('tileerror', () => {
-                if (basemapTileRetryTimer) return;
-                basemapTileRetryTimer = window.setTimeout(() => {
-                    basemapTileRetryTimer = null;
-                    window.ensureBasemapVisible();
-                    if (!basemapHasLoadedTiles() && window.map) {
-                        window.map.invalidateSize({ pan: false });
-                    }
-                }, 480);
-            });
-            window.basemapLayer = layer;
-        }
-
-        // Le style est récupéré nous-mêmes plutôt que confié à MapLibre : le
-        // cadrage doit être posé avant le premier rendu, faute de quoi la carte
-        // commence par réclamer les tuiles du monde entier.
-        if (vectorBasemapUsable) {
-            // Le zoom maximum venait de la couche raster ; une couche GL n'en
-            // déclare pas, et la carte se laisserait zoomer sans fin.
-            window.map.setMaxZoom(basemapConfig.maxZoom || 20);
-            fetch(basemapConfig.style)
-                .then(response => response.json())
-                .then(restrictStyleToFocus)
-                .then(style => {
-                    window.basemapLayer = L.maplibreGL({
-                        style,
-                        // Renseignée explicitement : le greffon ne la déduit du style
-                        // qu'une fois celui-ci chargé, et l'attribution est une
-                        // obligation, pas un ornement qu'on peut afficher en retard.
-                        attributionControl: { customAttribution: basemapConfig.attribution }
-                    }).addTo(window.map);
-                })
-                .catch(error => {
-                    console.warn('Style vectoriel illisible.', error);
-                    addRasterBasemap('Style vectoriel illisible');
-                });
-        } else {
-            addRasterBasemap('WebGL indisponible');
+            const mask = buildFocusMask(rings);
+            if (!mask || !window.basemapLayer) return;
+            const layer = window.basemapLayer;
+            const isValidTile = L.TileLayer.prototype._isValidTile;
+            layer._isValidTile = function(coords) {
+                if (!isValidTile.call(this, coords)) return false;
+                return maskCoversTile(mask, this._tileCoordsToBounds(coords));
+            };
         }
 
         function basemapHasLoadedTiles() {
             const pane = window.map?.getPane?.('tilePane');
-            if (!pane) return false;
-            // Le fond vectoriel n'a pas de <img> : tout tient dans un canvas unique.
-            return Boolean(pane.querySelector('.leaflet-gl-layer canvas')
-                || pane.querySelector('img.leaflet-tile-loaded'));
+            return Boolean(pane && pane.querySelector('img.leaflet-tile-loaded'));
         }
 
         window.ensureBasemapVisible = function() {
@@ -7169,7 +7185,7 @@
                     }
                 }).addTo(window.map);
 
-                veilOutsideVaucluse(geojsonData);
+                restrictBasemapToVaucluse(geojsonData);
 
                 vaucluseDefaultBounds = boundaryLayer.getBounds();
 

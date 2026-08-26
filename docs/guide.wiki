@@ -40,7 +40,7 @@ et la carte. La légende défile à l'intérieur de la colonne ; la carte occupe
 
 {{hint|Au chargement, seule la limite du département est visible : activez les couches dont vous avez besoin.}}
 
-'''Le fond de carte s'arrête au Vaucluse.''' Les tuiles ne sont tirées que pour le département et ses abords immédiats : au-delà, plus rien n'est demandé au serveur, ce qui allège le chargement. Ce qui dépasse de la frontière est '''délavé''' sous un voile clair, de sorte que le regard reste sur le territoire couvert par la démo. Les communes voisines restent lisibles en filigrane, pour se repérer aux abords des limites.
+'''Le fond de carte s'arrête au Vaucluse.''' La carte n'est dessinée qu'à l'intérieur du département ; autour, un aplat sobre, sans rien. Ce n'est pas qu'une affaire de lisibilité : les tuiles hors du Vaucluse ne sont même pas demandées au serveur, ce qui rend le chargement et le dézoom nettement plus rapides.
 
 == Contrôles de visibilité {#controles} ==
 

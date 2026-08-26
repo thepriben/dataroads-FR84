@@ -13,38 +13,38 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.17.10',
+        version: '0.17.11',
         repository,
         basemap: {
-            // Fond vectoriel OpenFreeMap, style Positron : libre, sans clé, sans
-            // quota et auto-hébergeable (MIT, données OpenStreetMap). Il remplace
-            // le raster CARTO, que CARTO tamponne désormais « API KEY REQUIRED »
-            // à défaut de clé, à tous les zooms.
-            style: 'https://tiles.openfreemap.org/styles/positron',
-            attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer">OpenFreeMap</a>'
-                + ' <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer">© OpenMapTiles</a>'
-                + ' © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
-            maxZoom: 20,
-            // La démo ne parle que du Vaucluse : le fond s'arrête à ses abords, et
-            // aucune tuile n'est demandée au-delà. Ce qui dépasse de la frontière
-            // est délavé sous un voile teinté de la couleur de fond du style — les
-            // abords estompés et le vide au-delà se confondent alors, si bien que
-            // le bord du rectangle de tuiles ne se voit pas.
+            // Le Plan IGN de la Géoplateforme, en tuiles raster : libre, sans clé
+            // et sans quota, et c'est la carte de référence de l'État — de quoi
+            // remplacer le raster CARTO, tamponné « API KEY REQUIRED » depuis que
+            // CARTO en exige une clé.
+            //
+            // Raster et non vectoriel : la tuile arrive déjà dessinée et s'affiche
+            // dès reçue, au lieu d'attendre que MapLibre ait tout redessiné. Au
+            // dézoom vers 8, mesuré, une tuile vectorielle OpenFreeMap pèse 189 Ko
+            // contre 59 ici — c'est ce qui rendait le dézoom interminable — et on
+            // se passe du mégaoctet de MapLibre GL. La visionneuse 3D des ponts,
+            // qui peint son sol tuile par tuile sur un canvas, prend le même fond.
+            url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+                + '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png'
+                + '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+            attribution: '© <a href="https://www.ign.fr/" target="_blank" rel="noopener noreferrer">IGN</a> — Géoplateforme',
+            minZoom: 8,
+            maxZoom: 19,
+            // Le Plan IGN est bavard en couleurs pour qui ne lui demande qu'un
+            // fond : reliefs verts, autoroutes orange, limites de parcs. On le
+            // désature au compositeur, qui le fait sans rien coûter, plutôt que de
+            // chercher un fournisseur sobre — ils demandent tous une clé.
+            filter: 'saturate(0.25) brightness(1.06) contrast(0.96)',
+            // La démo ne parle que du Vaucluse : aucune tuile n'est demandée hors
+            // de ce cadre, et tout ce qui dépasse de la frontière disparaît sous un
+            // aplat. Le conteneur de la carte porte la même couleur, si bien que le
+            // bord du rectangle de tuiles ne se voit jamais.
             focus: {
-                bounds: [4.50, 43.51, 5.91, 44.58],
-                veilColor: 'rgb(242, 243, 240)',
-                veilOpacity: 0.72
-            },
-            // Repli raster, sans clé lui aussi : le Plan IGN de la Géoplateforme.
-            // Il couvre les postes sans WebGL, et sert de texture au sol de la
-            // visionneuse 3D des ponts, qui peint des tuiles sur un canvas et ne
-            // sait donc rien faire d'un fond vectoriel.
-            rasterFallback: {
-                url: 'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
-                    + '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&FORMAT=image/png'
-                    + '&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
-                attribution: '© <a href="https://www.ign.fr/" target="_blank" rel="noopener noreferrer">IGN</a> — Géoplateforme',
-                maxZoom: 19
+                bounds: [4.64, 43.65, 5.77, 44.44],
+                veilColor: '#e9ebe9'
             }
         },
         mapillary: {

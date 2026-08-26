@@ -91,7 +91,9 @@ The data architecture is separated by usage:
 
 `js/config.js` centralises file paths and dynamic sources. `js/api.js` provides a JSON/GeoJSON loader with browser cache. `js/app.js` reads the files declared in the configuration.
 
-The basemap is **OpenFreeMap's Positron** vector style (OpenStreetMap data, MIT licence), keyless and quota-free, rendered by MapLibre GL into a canvas laid on Leaflet's tile pane. Machines without WebGL fall back to the Géoplateforme **IGN Plan**, keyless as well; the 3D bridge viewer takes it too, since it paints its ground tile by tile onto a canvas and cannot read a vector style. The basemap is **framed on Vaucluse**: `basemap.focus.bounds` bounds the style sources, so no tile is requested outside the department and its surroundings, and a pale veil (`veilColor`, `veilOpacity`) washes out whatever lies past the boundary.
+The basemap is the Géoplateforme **IGN Plan**, in **raster** tiles, keyless and quota-free. Raster rather than vector: a tile arrives already drawn and shows as soon as it lands, where a vector basemap means loading MapLibre GL (1 MB of JavaScript) and redrawing everything before the first image appears — zooming out, a vector tile weighs 189 KB against 59 KB here. The IGN Plan is talkative in colour for something meant to sit behind data, so it is desaturated by a CSS filter (`basemap.filter`), which the compositor applies for free.
+
+The basemap **exists over Vaucluse only**. `basemap.focus.bounds` bounds the layer to the department's extent, and the boundary is painted once into an offscreen canvas to serve as a mask: every tile asks it whether it has anything to show, so corner tiles are never even requested. Beyond that, a sober flat colour (`basemap.focus.veilColor`, echoed as the container background) covers whatever spills out. The 3D bridge viewer takes the same IGN Plan, which carries the CORS headers that painting tiles onto a canvas demands.
 
 Two Python scripts maintain the data:
 
