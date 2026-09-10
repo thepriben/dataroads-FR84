@@ -8079,6 +8079,16 @@
             const withRel = qualityMetrics.withRelation || 0;
             const withoutRel = total - withRel;
 
+            // Les deux manques étaient affichés côte à côte comme deux mesures, et
+            // tombaient sur le même nombre, ce qui donnait le change d'une panne.
+            // Ils n'en font qu'une : l'identifiant Wikidata est porté par la
+            // relation OSM, donc une route sans relation est sans Wikidata, et
+            // toutes les relations départementales du Vaucluse sont taguées. Quand
+            // les deux comptes coïncident, autant le dire une fois et l'expliquer ;
+            // s'ils divergent, c'est qu'une relation a perdu son identifiant, et
+            // cela vaut alors d'être montré séparément.
+            const sameGap = without === withoutRel;
+
             container.innerHTML = `
                 <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
                     <span style="font-family:'JetBrains Mono', monospace;font-size:1.4rem;font-weight:700;color:#27AE60;">${withWd}</span>
@@ -8089,21 +8099,154 @@
                     <div style="width:${pct}%;background:linear-gradient(90deg,#27AE60,#2ECC71);"></div>
                     <div style="width:${100 - pct}%;background:linear-gradient(90deg,#E74C3C,#C0392B);"></div>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;margin-bottom:8px;">
-                    <div style="padding:6px 8px;background:#fdecea;border-radius:4px;color:#922b21;">
-                        <strong>${without}</strong> routes <em>sans Wikidata</em>
+                ${sameGap ? `
+                    <div style="padding:6px 8px;background:#fdecea;border-radius:4px;color:#922b21;font-size:0.72rem;margin-bottom:8px;">
+                        <strong>${without}</strong> routes <em>sans Wikidata</em>, faute de relation OSM :
+                        c'est la relation qui porte l'identifiant.
                     </div>
-                    <div style="padding:6px 8px;background:#fef5e7;border-radius:4px;color:#8a5a00;">
-                        <strong>${withoutRel}</strong> routes <em>sans relation</em>
+                ` : `
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;margin-bottom:8px;">
+                        <div style="padding:6px 8px;background:#fdecea;border-radius:4px;color:#922b21;">
+                            <strong>${without}</strong> routes <em>sans Wikidata</em>
+                        </div>
+                        <div style="padding:6px 8px;background:#fef5e7;border-radius:4px;color:#8a5a00;">
+                            <strong>${withoutRel}</strong> routes <em>sans relation</em>
+                        </div>
                     </div>
-                </div>
+                `}
                 <div style="display:flex;gap:6px;">
-                    <button onclick="highlightRoutesByWikidata(false)" style="flex:1;border:1px solid #E74C3C;background:white;color:#E74C3C;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">Voir les routes sans Wikidata</button>
+                    <button type="button" onclick="toggleWikidataGapPanel()" style="flex:1;border:1px solid #E74C3C;background:white;color:#E74C3C;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">Voir les ${without} routes sans Wikidata</button>
                 </div>
             `;
+
+            // Une liste ouverte doit suivre le recalcul plutôt que de rester sur
+            // des chiffres périmés.
+            const panel = document.getElementById('wikidataGapPanel');
+            if (panel && !panel.hidden) renderWikidataGapPanel();
         }
 
+        // ========== ROUTES SANS WIKIDATA ==========
+
+        // La mise en évidence sur la carte montrait bien les routes concernées, mais
+        // sans jamais les nommer : rien ne permettait de savoir laquelle manquait,
+        // ni d'aller la voir. La liste répond à cette question, et chaque ligne
+        // emmène à la route sur la carte.
+        function routesWithoutWikidata() {
+            return Object.keys(routePolylines)
+                .map(ref => ({ ref, flags: routeQualityByRef(ref) }))
+                .filter(entry => entry.flags && !entry.flags.hasWikidata)
+                .map(entry => ({
+                    ref: entry.ref,
+                    hasRelation: entry.flags.hasRelation,
+                    segments: routePolylines[entry.ref].length,
+                    hierarchy: routePolylines[entry.ref][0]?.options?.roadHierarchy || 'local'
+                }))
+                // Les axes les plus étoffés d'abord : c'est là que le manque pèse,
+                // une D976 de 133 tronçons ne se compare pas à une antenne d'un seul.
+                .sort((a, b) => b.segments - a.segments);
+        }
+
+        function renderWikidataGapPanel() {
+            const panel = document.getElementById('wikidataGapPanel');
+            if (!panel) return;
+            const missing = routesWithoutWikidata();
+
+            if (!missing.length) {
+                panel.innerHTML = `
+                    <div class="wikidata-gap-empty">Toutes les routes chargées sont liées à Wikidata.</div>
+                `;
+                return;
+            }
+
+            const hierarchyLabels = {
+                regional: 'Intérêt régional',
+                territorial: 'Développement territorial',
+                local: 'Intérêt local'
+            };
+
+            // La barre latérale est étroite : chaque ligne se tient sur un rang, et
+            // la hiérarchie passe par la couleur de la pastille, que la légende
+            // au-dessus explique déjà. Seule l'anomalie est étiquetée — une relation
+            // qui existe sans porter d'identifiant — puisque l'autre cas est celui
+            // de toutes les lignes et se lit une fois dans l'entête.
+            const orphans = missing.filter(route => !route.hasRelation).length;
+
+            panel.innerHTML = `
+                <div class="wikidata-gap-head">
+                    <span><strong>${missing.length}</strong> routes sans Wikidata</span>
+                    <button type="button" class="wikidata-gap-close" onclick="toggleWikidataGapPanel()" title="Fermer la liste">✕</button>
+                </div>
+                <div class="wikidata-gap-hint">
+                    ${orphans === missing.length
+                        ? 'Aucune n\'a de relation OSM : c\'est elle qu\'il faut créer, puis taguer.'
+                        : `${orphans} sans relation OSM, ${missing.length - orphans} avec une relation qui ne porte pas d'identifiant.`}
+                    Cliquez une route pour la suivre sur la carte.
+                </div>
+                <div class="wikidata-gap-list" id="wikidataGapList">
+                    ${missing.map(route => `
+                        <div class="road-item wikidata-gap-item" data-ref="${route.ref}"
+                             title="${route.ref} — ${hierarchyLabels[route.hierarchy]} — ${route.segments} tronçons — ${route.hasRelation
+                                 ? 'relation OSM présente mais sans identifiant Wikidata'
+                                 : 'aucune relation OSM, à créer avant de pouvoir la lier'}">
+                            <div class="road-badge ${route.hierarchy}">${route.ref}</div>
+                            <span class="wikidata-gap-count">${route.segments} tronçons</span>
+                            ${route.hasRelation
+                                ? '<span class="wikidata-gap-flag">relation nue</span>'
+                                : ''}
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="wikidata-gap-actions">
+                    <button type="button" onclick="highlightRoutesByWikidata(false)">Toutes en rouge sur la carte</button>
+                    <button type="button" onclick="clearHighlight()">Réinitialiser</button>
+                </div>
+            `;
+
+            panel.querySelectorAll('.wikidata-gap-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const ref = item.getAttribute('data-ref');
+                    panel.querySelectorAll('.wikidata-gap-item').forEach(other => {
+                        other.classList.toggle('active', other === item);
+                    });
+                    highlightRoute(ref);
+                });
+            });
+        }
+
+        window.toggleWikidataGapPanel = function() {
+            const panel = document.getElementById('wikidataGapPanel');
+            if (!panel) return;
+            const opening = panel.hidden;
+            panel.hidden = !opening;
+            if (opening) {
+                renderWikidataGapPanel();
+                // La carte accompagne la liste : on voit d'un coup où sont les
+                // manques, avant d'en choisir un.
+                highlightRoutesByWikidata(false);
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                clearHighlight();
+            }
+        };
+
         window.updateWikidataSummary = updateWikidataSummary;
+
+        // Le même verdict était rendu en quatre endroits par quatre copies du même
+        // calcul, libres de se désaccorder. Il n'en reste qu'une, celle du tableau
+        // de bord, et de quoi retrouver une route par sa référence.
+        function routeDataByRef(ref) {
+            return [
+                ...routesByHierarchy.regional,
+                ...routesByHierarchy.territorial,
+                ...routesByHierarchy.local
+            ].find(r => r.ref === ref);
+        }
+
+        function routeQualityByRef(ref) {
+            const routeData = routeDataByRef(ref);
+            if (!routeData || !routeData.ways) return null;
+            return computeRouteQualityFlags(routeData.ways);
+        }
 
         window.calculateQualityMetrics = function() {
             console.log('📊 Calcul des métriques de qualité OSM...');
@@ -8113,39 +8256,11 @@
             Object.keys(routePolylines).forEach(ref => {
                 qualityMetrics.totalRoutes++;
                 qualityMetrics.totalSegments += routePolylines[ref].length;
-                
-                const routeData = [...routesByHierarchy.regional, ...routesByHierarchy.territorial, ...routesByHierarchy.local]
-                    .find(r => r.ref === ref);
-                
-                if (routeData && routeData.ways) {
-                    // Check Wikidata: relation first, otherwise check if ALL ways have it
-                    let hasWikidata = false;
-                    
-                    // 1. Check whether the relation has Wikidata
-                    const relationWithWikidata = routeData.ways.find(way => 
-                        way.relationTags && way.relationTags.wikidata
-                    );
-                    
-                    if (relationWithWikidata) {
-                        hasWikidata = true;
-                    } else {
-                        // 2. Otherwise check whether all ways have wikidata (rare but possible)
-                        const totalWays = routeData.ways.length;
-                        const waysWithWikidata = routeData.ways.filter(way => 
-                            way.tags && way.tags.wikidata
-                        ).length;
-                        
-                        // If at least 80% of segments have wikidata, consider it OK
-                        hasWikidata = waysWithWikidata > 0 && (waysWithWikidata / totalWays) >= 0.8;
-                    }
-                    
-                    // Check relation
-                    const hasRelation = routeData.ways.some(way => 
-                        way.hasRelation === true || way.relationId
-                    );
-                    
-                    if (hasWikidata) qualityMetrics.withWikidata++;
-                    if (hasRelation) qualityMetrics.withRelation++;
+
+                const flags = routeQualityByRef(ref);
+                if (flags) {
+                    if (flags.hasWikidata) qualityMetrics.withWikidata++;
+                    if (flags.hasRelation) qualityMetrics.withRelation++;
                 }
             });
 
@@ -8376,70 +8491,24 @@
             });
             
             // Highlight matching routes
-            Object.keys(routePolylines).forEach(ref => {
-                const routeData = [...routesByHierarchy.regional, ...routesByHierarchy.territorial, ...routesByHierarchy.local]
-                    .find(r => r.ref === ref);
-                
-                if (routeData && routeData.ways) {
-                    // Same logic as calculateQualityMetrics
-                    let routeHasWikidata = false;
-                    
-                    // 1. Check whether the relation has Wikidata
-                    const relationWithWikidata = routeData.ways.find(way => 
-                        way.relationTags && way.relationTags.wikidata
-                    );
-                    
-                    if (relationWithWikidata) {
-                        routeHasWikidata = true;
-                    } else {
-                        // 2. Otherwise check whether all ways have wikidata
-                        const totalWays = routeData.ways.length;
-                        const waysWithWikidata = routeData.ways.filter(way => 
-                            way.tags && way.tags.wikidata
-                        ).length;
-                        
-                        routeHasWikidata = waysWithWikidata > 0 && (waysWithWikidata / totalWays) >= 0.8;
-                    }
-                    
-                    if (routeHasWikidata === hasWikidata) {
-                        const polylines = routePolylines[ref];
-                        polylines.forEach(polyline => {
-                            const hierarchy = polyline.options.roadHierarchy;
-                            polyline.setStyle({ 
-                                opacity: 1, 
-                                weight: hierarchyWeights[hierarchy] + 2,
-                                color: hasWikidata ? '#27AE60' : '#E74C3C'
-                            });
-                            polyline.bringToFront();
-                        });
-                    }
-                }
+            const matchingRoutes = Object.keys(routePolylines).filter(
+                ref => routeQualityByRef(ref)?.hasWikidata === hasWikidata
+            );
+
+            matchingRoutes.forEach(ref => {
+                routePolylines[ref].forEach(polyline => {
+                    const hierarchy = polyline.options.roadHierarchy;
+                    polyline.setStyle({
+                        opacity: 1,
+                        weight: hierarchyWeights[hierarchy] + 2,
+                        color: hasWikidata ? '#27AE60' : '#E74C3C'
+                    });
+                    polyline.bringToFront();
+                });
             });
-            
-            // Message dans la console
-            const matchingRoutes = Object.keys(routePolylines).filter(ref => {
-                const routeData = [...routesByHierarchy.regional, ...routesByHierarchy.territorial, ...routesByHierarchy.local]
-                    .find(r => r.ref === ref);
-                if (routeData && routeData.ways) {
-                    let routeHasWikidata = false;
-                    const relationWithWikidata = routeData.ways.find(way => 
-                        way.relationTags && way.relationTags.wikidata
-                    );
-                    if (relationWithWikidata) {
-                        routeHasWikidata = true;
-                    } else {
-                        const totalWays = routeData.ways.length;
-                        const waysWithWikidata = routeData.ways.filter(way => 
-                            way.tags && way.tags.wikidata
-                        ).length;
-                        routeHasWikidata = waysWithWikidata > 0 && (waysWithWikidata / totalWays) >= 0.8;
-                    }
-                    return routeHasWikidata === hasWikidata;
-                }
-                return false;
-            });
-            
+
             console.log(`✓ ${matchingRoutes.length} routes mises en évidence (Wikidata : ${hasWikidata ? 'avec' : 'sans'})`);
+            return matchingRoutes;
         }
         
         window.highlightRoutesByRelation = function(hasRelation) {

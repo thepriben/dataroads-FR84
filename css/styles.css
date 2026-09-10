@@ -4474,6 +4474,106 @@
             color: #666;
         }
 
+        /* Liste des routes que rien ne relie encore à Wikidata. */
+        .wikidata-gap-panel {
+            margin-top: 8px;
+            background: white;
+            border: 1px solid #f5b7b1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .wikidata-gap-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: #fdecea;
+            color: #922b21;
+            font-size: 0.78rem;
+        }
+
+        .wikidata-gap-close {
+            margin-left: auto;
+            border: none;
+            background: transparent;
+            color: #922b21;
+            cursor: pointer;
+            font-size: 0.85rem;
+            line-height: 1;
+            padding: 2px 4px;
+        }
+
+        .wikidata-gap-hint {
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            color: #7f8c8d;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .wikidata-gap-list {
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .wikidata-gap-item {
+            padding: 7px 10px;
+        }
+
+        .wikidata-gap-item .road-badge {
+            min-width: 46px;
+            font-size: 0.78rem;
+            padding: 3px 6px;
+        }
+
+        .wikidata-gap-count {
+            flex: 1;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            color: #95a5a6;
+            white-space: nowrap;
+        }
+
+        .wikidata-gap-flag {
+            flex: none;
+            font-size: 0.62rem;
+            font-weight: 600;
+            padding: 2px 5px;
+            border-radius: 3px;
+            white-space: nowrap;
+            background: #fef5e7;
+            color: #8a5a00;
+        }
+
+        .wikidata-gap-empty {
+            padding: 12px 10px;
+            font-size: 0.78rem;
+            color: #27AE60;
+        }
+
+        .wikidata-gap-actions {
+            display: flex;
+            gap: 6px;
+            padding: 8px 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .wikidata-gap-actions button {
+            flex: 1;
+            border: 1px solid #dfe6e9;
+            background: white;
+            color: #566573;
+            border-radius: 5px;
+            padding: 5px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .wikidata-gap-actions button:hover {
+            background: #f8f9fa;
+        }
+
         /* Panneau d'informations de route */
         .road-info-title {
             font-family: 'JetBrains Mono', monospace;

@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.14] - 2026-09-10
+
+### Added
+
+- **The routes with no Wikidata link can now be read as a list, not just seen as red lines.** The button under the coverage figure dimmed the whole network and highlighted the unlinked routes, then said how many it had found — in the browser console, which no one has open. It now opens a list in the sidebar: one row per route, its reference on a badge coloured by hierarchy, its number of OSM segments, and a click that follows it on the map. The heaviest axes come first, since a D2 of 186 segments is not the same gap as a spur of one. Where a route does have an OSM relation but no identifier on it, that anomaly is labelled; where none has a relation at all, which is currently every one of them, the list says so once at the top instead of repeating it on all 78 rows.
+
+### Changed
+
+- **The two coverage figures no longer look like a fault.** "78 routes without Wikidata" sat beside "78 routes without a relation", two boxes agreeing exactly, which reads as a broken counter. They are the same routes, necessarily: the Wikidata identifier is carried by the OSM route relation, so a route with no relation has no identifier, and every departmental relation in Vaucluse is tagged. When the two counts coincide the panel now says it once and explains why; should they ever diverge — a relation having lost its identifier — the two are shown apart again, which is when the distinction means something.
+- **The same verdict was being computed in four places by four copies of the same code**, free to drift from one another. One remains, the dashboard's, now used by the metrics, the map highlight and the new list alike.
+
+### Fixed
+
+- **Wikidata coverage was reported as 62% when it was 66%.** The figure was correctly computed from a snapshot of OSM taken before ten route relations had been tagged. Refreshing the departmental roads brings it to 67% (156 of 234) and pulls in D27, whose [Q138033758](https://www.wikidata.org/wiki/Q138033758) had been linked hours after the morning's extraction. Nothing was wrong with the criteria; the snapshot was simply behind, which the freshness badge above the figure was already saying.
+
 ## [0.17.13] - 2026-08-26
 
 ### Changed

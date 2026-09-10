@@ -266,6 +266,10 @@ Champ de recherche (ex. {{{D900}}}, {{{D4}}}) et liste filtrée. Clic sur une ro
 
 Résumé dans la barre latérale : couverture Wikidata, relations OSM. Bouton '''Panneau détaillé''' : panneau sur la carte (métriques, routes sans Wikidata, sans relation).
 
+Bouton '''Voir les N routes sans Wikidata''' : liste ces routes dans la barre latérale, la plus étoffée d'abord, avec son nombre de tronçons. Un clic sur une ligne suit la route sur la carte ; la carte les montre toutes en rouge à l'ouverture de la liste. L'identifiant Wikidata étant porté par la relation OSM, une route sans relation est nécessairement sans Wikidata : c'est la relation qu'il faut créer d'abord, et la liste signale à part le cas inverse, une relation qui existe sans porter d'identifiant.
+
+Le pourcentage vient du dernier instantané d'OSM, daté par la pastille de fraîcheur juste au-dessus : une relation taguée après cette extraction ne compte qu'au rafraîchissement suivant.
+
 ==== [layer:layer-reseau] Informations réseau ====
 
 Compteurs : nombre de routes, tronçons OSM, longueur cumulée, trafic MJA min/max, ponts, tunnels.
