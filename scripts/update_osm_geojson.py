@@ -6,10 +6,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-import time
 import urllib.error
-import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -21,6 +18,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from project_meta import read_version, user_agent
+from overpass_client import fetch
 
 DATA_DIR = ROOT / "data" / "osm"
 ENDPOINT = os.environ.get("OVERPASS_ENDPOINT", "https://overpass-api.de/api/interpreter")
@@ -133,20 +131,7 @@ QUERIES = {
 
 
 def request_overpass(query: str) -> dict[str, Any]:
-    payload = urllib.parse.urlencode({"data": query}).encode("utf-8")
-    request = urllib.request.Request(
-        ENDPOINT,
-        data=payload,
-        headers={
-            "Accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "User-Agent": USER_AGENT,
-        },
-        method="POST",
-    )
-
-    with urllib.request.urlopen(request, timeout=120) as response:
-        return json.loads(response.read().decode("utf-8"))
+    return fetch(query, endpoint=ENDPOINT, user_agent=USER_AGENT)
 
 
 def normalize_ref(value: str | None) -> str:
@@ -759,24 +744,7 @@ def write_json_if_changed(path: Path, data: dict[str, Any]) -> bool:
 
 
 def refresh_cache(name: str, query: str) -> bool:
-    last_error: Exception | None = None
-
-    for attempt in range(1, 4):
-        try:
-            overpass_data = request_overpass(query)
-            break
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as error:
-            last_error = error
-            if attempt == 3:
-                raise
-            # Un 429 veut dire que le quota est épuisé : cinq secondes ne
-            # suffisent pas à libérer un créneau, et l'échec se solde par un
-            # cache figé jusqu'à la prochaine exécution planifiée.
-            wait_seconds = attempt * 20
-            print(f"{name}: retry in {wait_seconds}s after {error}", file=sys.stderr)
-            time.sleep(wait_seconds)
-    else:
-        raise RuntimeError(f"{name}: {last_error}")
+    overpass_data = request_overpass(query)
 
     geojson = CONVERTERS[name](overpass_data)
     output_path = DATA_DIR / f"{name}.geojson"

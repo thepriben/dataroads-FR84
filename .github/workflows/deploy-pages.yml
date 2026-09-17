@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Bot commits do not trigger push workflows. Publish even partial refreshes:
+  # failed exports retain the previous cache while successful ones are committed.
+  workflow_run:
+    workflows: [Update OSM GeoJSON, Update OSM Latest Changes, Update External Data]
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: read
@@ -22,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Build user guide
         run: python3 scripts/build_guide.py
       - uses: actions/configure-pages@v5

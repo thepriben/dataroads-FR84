@@ -41,6 +41,20 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 - Donnée dynamique directe : météo Open-Meteo, demandée par le navigateur au chargement puis toutes les 10 minutes.
 - Overpass API : jamais appelé par le navigateur. Il sert uniquement dans les scripts d'actualisation OSM — d'autant plus nécessaire pour l'*augmented diff*, qui demande une trentaine de secondes par requête.
 
+Les caches OSM (et leurs liens Wikidata) sont actualisés les lundis et jeudis.
+Chaque fin de workflow de données déclenche une publication GitHub Pages, y compris
+si seuls certains jeux ont pu être rafraîchis. Un jeu en échec conserve son ancien
+fichier et le workflow reste signalé en échec.
+
+Les exports Overpass partagent une file d'exécution et réessaient jusqu'à quatre
+fois, avec temporisation et bascule vers `overpass.private.coffee`. Les réponses
+incomplètes sont rejetées avant écriture. `OVERPASS_ENDPOINT` choisit le serveur
+principal ; `OVERPASS_FALLBACK_ENDPOINTS` permet de remplacer la liste de secours
+(URL séparées par des virgules), ou de la désactiver avec une valeur vide.
+Les fiches détaillées Wikidata restent demandées directement par le navigateur.
+
+Vérification des reprises : `python3 -m unittest discover -s tests -v`.
+
 ## Cohérence des millésimes
 
 État du jeu de données versionné dans ce dépôt :

@@ -15,10 +15,7 @@ import json
 import math
 import os
 import sys
-import time
 import urllib.error
-import urllib.parse
-import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -30,6 +27,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from project_meta import read_version, user_agent
+from overpass_client import fetch
 from update_osm_geojson import write_json_if_changed
 
 DATA_DIR = ROOT / "data" / "osm"
@@ -169,41 +167,13 @@ def build_query(since: datetime) -> str:
     )
 
 
-def request_overpass(query: str) -> str:
-    payload = urllib.parse.urlencode({"data": query}).encode("utf-8")
-    request = urllib.request.Request(
-        ENDPOINT,
-        data=payload,
-        headers={
-            "Accept": "application/xml",
-            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-            "User-Agent": USER_AGENT,
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(request, timeout=300) as response:
-        return response.read().decode("utf-8")
-
-
-def request_overpass_with_retry(query: str, label: str, attempts: int = 3) -> str | None:
-    """Interroge Overpass en réessayant : un 504 signe un serveur occupé.
-
-    Toutes les requêtes du script ont besoin de cette patience, pas seulement
-    l'``adiff`` : la requête des sommets part juste derrière lui, quand le
-    serveur est le plus chargé, et c'est elle qui décide si un déplacement de
-    tracé sera crédité à quelqu'un ou restera anonyme.
-    """
-    for attempt in range(1, attempts + 1):
-        try:
-            return request_overpass(query)
-        except (urllib.error.URLError, TimeoutError) as error:
-            if attempt == attempts:
-                print(f"latest-changes: giving up on {label} after {error}", file=sys.stderr)
-                return None
-            wait_seconds = attempt * 20
-            print(f"latest-changes: retry {label} in {wait_seconds}s after {error}", file=sys.stderr)
-            time.sleep(wait_seconds)
-    return None
+def request_overpass_with_retry(query: str, label: str, attempts: int = 4) -> str | None:
+    try:
+        return fetch(query, endpoint=ENDPOINT, user_agent=USER_AGENT,
+                     output="xml", timeout=300, attempts=attempts)
+    except RuntimeError as error:
+        print(f"latest-changes: giving up on {label} after {error}", file=sys.stderr)
+        return None
 
 
 def axis_class(highway: str | None) -> str:
