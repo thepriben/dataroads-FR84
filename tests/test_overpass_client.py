@@ -62,6 +62,13 @@ class OverpassTests(unittest.TestCase):
                 self.assertEqual(path.read_text(), '{"previous": true}')
                 self.assertEqual(request.call_count, 4)
 
+    def test_node_metadata_recovers_after_timeout(self):
+        xml = b'<osm><node id="42" user="mapper" uid="7" version="2" changeset="99" timestamp="2026-09-17T23:00:00Z"/></osm>'
+        with patch.object(client.urllib.request, 'urlopen', side_effect=[TimeoutError('timeout'), io.BytesIO(xml)]):
+            metadata = latest.fetch_node_meta(['42'])
+            self.assertEqual(metadata['42']['user'], 'mapper')
+            self.assertEqual(self.sleep.call_args_list[0].args, (latest.NODE_META_PAUSE,))
+
     def test_latest_changes_exhaustion_reports_failure_without_writing(self):
         with patch.object(client.urllib.request, 'urlopen', side_effect=TimeoutError('timeout')), patch.object(latest, 'write_json_if_changed') as write:
             self.assertEqual(latest.main(), 1)
