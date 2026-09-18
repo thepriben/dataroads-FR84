@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import http.client
+from datetime import datetime, timedelta, timezone
 import json
 import os
 import sys
@@ -34,6 +35,7 @@ def fetch(query, *, endpoint, user_agent, output="json", timeout=180, attempts=4
                 result = json.loads(text)
                 if not isinstance(result, dict) or not isinstance(result.get("elements"), list):
                     raise ValueError("Invalid Overpass JSON response")
+                base_timestamp = result.get("osm3s", {}).get("timestamp_osm_base")
                 if result.get("remark"):
                     raise ValueError(f"Overpass incomplete response: {result['remark']}")
             else:
@@ -43,7 +45,17 @@ def fetch(query, *, endpoint, user_agent, output="json", timeout=180, attempts=4
                 remark = root.find(".//remark")
                 if remark is not None:
                     raise ValueError(f"Overpass incomplete response: {remark.text}")
+                meta = root.find("meta")
+                base_timestamp = meta.get("osm_base") if meta is not None else None
+                # A week across the entire department cannot safely be replaced
+                # by an empty diff from an unhealthy/lagging replica.
+                if "[adiff:" in query and root.find("action") is None:
+                    raise ValueError("Suspicious empty Overpass augmented diff")
                 result = text
+            if base_timestamp:
+                base = datetime.fromisoformat(base_timestamp.replace("Z", "+00:00"))
+                if datetime.now(timezone.utc) - base > timedelta(days=1):
+                    raise ValueError(f"Overpass replica is stale: {base_timestamp}")
             print(f"Overpass response from {current}", flush=True)
             return result
         except (OSError, http.client.HTTPException, ValueError, ET.ParseError) as error:

@@ -45,6 +45,19 @@ class OverpassTests(unittest.TestCase):
         with patch.object(client.urllib.request, 'urlopen', side_effect=[io.BytesIO(b'<osm><remark>timeout</remark></osm>'), io.BytesIO(b'<osmAugmentedDiff/>')]):
             self.assertEqual(self.fetch(output='xml'), '<osmAugmentedDiff/>')
 
+    def test_stale_replica_is_rejected(self):
+        stale = b'{"elements": [], "osm3s": {"timestamp_osm_base": "2020-01-01T00:00:00Z"}}'
+        with patch.object(client.urllib.request, 'urlopen', side_effect=[io.BytesIO(stale), io.BytesIO(b'{"elements": []}')]) as request:
+            self.assertEqual(self.fetch(), {'elements': []})
+            self.assertEqual(request.call_count, 2)
+
+    def test_empty_augmented_diff_is_retried(self):
+        good = b'<osm><action type="modify"/></osm>'
+        with patch.object(client.urllib.request, 'urlopen', side_effect=[io.BytesIO(b'<osm/>'), io.BytesIO(good)]) as request:
+            result = client.fetch('[adiff:"2026-09-10T00:00:00Z"];', endpoint='https://primary.test/api', user_agent='test', output='xml')
+            self.assertEqual(result, good.decode())
+            self.assertEqual(request.call_count, 2)
+
     def test_permanent_error_is_not_retried(self):
         error = urllib.error.HTTPError('url', 400, 'bad query', {}, None)
         with patch.object(client.urllib.request, 'urlopen', side_effect=error) as request:

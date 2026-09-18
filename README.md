@@ -48,7 +48,8 @@ fichier et le workflow reste signalé en échec.
 
 Les exports Overpass partagent une file d'exécution et réessaient jusqu'à quatre
 fois, avec temporisation et bascule vers `overpass.private.coffee`. Les réponses
-incomplètes sont rejetées avant écriture. `OVERPASS_ENDPOINT` choisit le serveur
+incomplètes, les répliques en retard de plus de 24 h et les diffs hebdomadaires
+suspects sans aucune action sont rejetés avant écriture. `OVERPASS_ENDPOINT` choisit le serveur
 principal ; `OVERPASS_FALLBACK_ENDPOINTS` permet de remplacer la liste de secours
 (URL séparées par des virgules), ou de la désactiver avec une valeur vide.
 Les fiches détaillées Wikidata restent demandées directement par le navigateur.
