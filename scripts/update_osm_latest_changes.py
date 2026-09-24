@@ -169,8 +169,14 @@ def build_query(since: datetime) -> str:
 
 def request_overpass_with_retry(query: str, label: str, attempts: int = 4) -> str | None:
     try:
+        # Ce panneau annonce les modifications de la semaine, heure par heure :
+        # une réplique en retard les tairait sans le dire, puisqu'un ``adiff``
+        # arrêté à hier ressemble à un ``adiff`` sans rien à signaler. La
+        # tolérance large accordée aux extraits bi-hebdomadaires ne vaut donc
+        # pas ici, où le retard se paie en changements manquants.
         return fetch(query, endpoint=ENDPOINT, user_agent=USER_AGENT,
-                     output="xml", timeout=300, attempts=attempts)
+                     output="xml", timeout=300, attempts=attempts,
+                     max_lag=timedelta(days=1))
     except RuntimeError as error:
         print(f"latest-changes: giving up on {label} after {error}", file=sys.stderr)
         return None

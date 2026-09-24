@@ -747,11 +747,20 @@ def refresh_cache(name: str, query: str) -> bool:
     overpass_data = request_overpass(query)
 
     geojson = CONVERTERS[name](overpass_data)
+    # L'heure d'écriture ne dit rien de l'âge des données, seulement de l'âge du
+    # fichier : une réplique en retard produit un fichier tout neuf rempli de
+    # faits périmés. On retient donc la coupure annoncée par le serveur, la
+    # seule qui permette de savoir jusqu'à quand OSM a été lu.
+    base_timestamp = (overpass_data.get("osm3s") or {}).get("timestamp_osm_base")
+    if base_timestamp and isinstance(geojson.get("_cache"), dict):
+        geojson["_cache"]["source_timestamp"] = base_timestamp
+
     output_path = DATA_DIR / f"{name}.geojson"
     changed = write_json_if_changed(output_path, geojson)
     features_count = len(geojson.get("features", []))
     state = "updated" if changed else "unchanged"
-    print(f"{output_path.relative_to(ROOT)}: {state}, {features_count} features")
+    print(f"{output_path.relative_to(ROOT)}: {state}, {features_count} features"
+          f"{f', OSM lu jusqu au {base_timestamp}' if base_timestamp else ''}")
     return changed
 
 
@@ -784,8 +793,20 @@ def main() -> int:
             failed.append(name)
 
     if failed:
-        print(f"Datasets left stale: {', '.join(failed)}", file=sys.stderr)
-        return 1
+        # Un jeu qui manque son tour n'est pas une panne du rendez-vous : les
+        # autres sont à jour et seront poussés. Peindre toute l'exécution en
+        # échec pour un 504 sur la requête la plus lourde a mis cinq des six
+        # dernières au rouge, et un voyant rouge en permanence ne prévient plus
+        # de rien — c'est ainsi que les extraits ont vieilli de deux semaines
+        # sans que personne s'en alarme. L'avertissement reste visible dans le
+        # résumé de l'exécution ; seul un échec total, où rien n'a pu être lu,
+        # mérite encore d'être une erreur.
+        summary = ", ".join(failed)
+        print(f"::warning title=Overpass incomplet::Jeux laissés en place : {summary}")
+        print(f"Datasets left stale: {summary}", file=sys.stderr)
+        if len(failed) == len(queries):
+            print("Aucun jeu n'a pu être lu.", file=sys.stderr)
+            return 1
 
     return 0
 

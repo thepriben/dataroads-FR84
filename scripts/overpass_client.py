@@ -12,17 +12,45 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-FALLBACK = "https://overpass.private.coffee/api/interpreter"
+# Il n'existe plus de miroir public en état de servir. Mesuré le 24 septembre
+# 2026 : private.coffee et kumi.systems ne répondent pas en moins d'une minute,
+# osm.jp présente un certificat invalide, osm.ch renvoie un autre format et
+# rambler.ru n'a plus d'enregistrement DNS. Un repli muet coûte plus qu'il ne
+# rapporte — il consommait une tentative sur deux — et celui-ci, quand il
+# répondait, annonçait une base vieille de quatre mois, prête à remplacer nos
+# données par de plus anciennes. OVERPASS_FALLBACK_ENDPOINTS reste là pour en
+# déclarer un le jour où il en existera un qui tienne.
+FALLBACK = ""
+
+# Retard toléré sur la réplique interrogée. Le serveur principal répartit la
+# charge sur plusieurs répliques dont certaines traînent d'un jour ou deux ; le
+# seuil d'un jour les refusait, et cinq des six dernières exécutions planifiées
+# ont échoué pour cette raison. Or un refus ne conserve pas des données
+# fraîches, il conserve celles du disque : refuser deux jours de retard nous
+# laissait avec deux semaines. Le seuil n'a donc à écarter que les répliques
+# franchement décrochées, de plusieurs mois. La fraîcheur au jour près ne
+# concerne que le diff horaire, qui la réclame explicitement.
+DEFAULT_MAX_LAG = timedelta(days=7)
 
 
-def fetch(query, *, endpoint, user_agent, output="json", timeout=180, attempts=4):
+def _pick_endpoint(endpoints, stale, attempt):
+    # Une réplique déjà surprise en retard pendant cette requête ne mérite pas
+    # les tentatives qui restent : sans cela un miroir décroché les épuisait à
+    # lui seul, en alternance avec le serveur qui répondait.
+    usable = [url for url in endpoints if url not in stale] or endpoints
+    return usable[attempt % len(usable)]
+
+
+def fetch(query, *, endpoint, user_agent, output="json", timeout=180, attempts=4,
+          max_lag=DEFAULT_MAX_LAG):
     # An empty override disables failover (e.g. for a private Overpass server).
     endpoints = list(dict.fromkeys([endpoint, *filter(None, (
         value.strip() for value in os.environ.get("OVERPASS_FALLBACK_ENDPOINTS", FALLBACK).split(",")
     ))]))
     payload = urllib.parse.urlencode({"data": query}).encode("utf-8")
+    stale: set[str] = set()
     for attempt in range(attempts):
-        current = endpoints[attempt % len(endpoints)]
+        current = _pick_endpoint(endpoints, stale, attempt)
         request = urllib.request.Request(current, data=payload, headers={
             "Accept": "application/json" if output == "json" else "application/xml",
             "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
@@ -52,11 +80,16 @@ def fetch(query, *, endpoint, user_agent, output="json", timeout=180, attempts=4
                 if "[adiff:" in query and root.find("action") is None:
                     raise ValueError("Suspicious empty Overpass augmented diff")
                 result = text
-            if base_timestamp:
+            if base_timestamp and max_lag is not None:
                 base = datetime.fromisoformat(base_timestamp.replace("Z", "+00:00"))
-                if datetime.now(timezone.utc) - base > timedelta(days=1):
-                    raise ValueError(f"Overpass replica is stale: {base_timestamp}")
-            print(f"Overpass response from {current}", flush=True)
+                lag = datetime.now(timezone.utc) - base
+                if lag > max_lag:
+                    stale.add(current)
+                    raise ValueError(
+                        f"Overpass replica is stale by {lag.days} d "
+                        f"(limit {max_lag.days} d): {base_timestamp}"
+                    )
+            print(f"Overpass response from {current} (base {base_timestamp})", flush=True)
             return result
         except (OSError, http.client.HTTPException, ValueError, ET.ParseError) as error:
             # Bad queries and authorization failures must not be retried.

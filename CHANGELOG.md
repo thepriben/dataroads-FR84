@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.15] - 2026-09-24
+
+### Fixed
+
+- **The twice-weekly OSM refresh had been failing for two weeks, and the reason was a guard rail set too tight.** Five of the last six scheduled runs ended in failure after half an hour, leaving every extract untouched; the roads on the map were fourteen days old. The main Overpass server spreads load over several replicas and some of them trail a day or two behind, which the one-day staleness limit treated as a fault worth refusing. Refusing does not keep fresh data, it keeps whatever is on disk — so turning down a replica two days behind left us with one a fortnight behind. The limit now stands at seven days for the bulk extracts, which still turns away the grossly detached replicas it was written for, while the hourly changes feed keeps its strict one-day requirement, since a lagging replica would silently drop the edits that panel exists to announce. Refreshed against a healthy server, Wikidata coverage turns out to be 79% (185 of 234), not the 67% the stale extract reported.
+- **The failover mirror was doing harm.** Measured on 24 September, `overpass.private.coffee` does not answer inside a minute and, when it did, announced a database four months old — old enough to overwrite good data with worse. It also consumed every other attempt, since the client alternated endpoints blindly, so the healthy server only ever got two tries out of four. No public mirror stood up to the test: `kumi.systems` times out, `osm.jp` presents an invalid certificate, `osm.ch` answers in another format, and `rambler.ru` has lost its DNS record. There is no fallback by default now, `OVERPASS_FALLBACK_ENDPOINTS` remaining for the day a serviceable one exists, and a replica caught lagging during a request no longer receives the attempts that remain.
+- **A single dataset missing its turn no longer paints the whole run red.** A gateway timeout on the heaviest query marked the run as failed even when the other nine had been fetched and committed, and a light that is always red warns of nothing — which is how the extracts came to age two weeks unnoticed. Partial results now raise a warning visible in the run summary; only a run where nothing at all could be read is still an error.
+- **`VERSION` had drifted seven releases behind `js/config.js`**, having been edited directly rather than through the bump tool. The scripts read `VERSION`, so every Overpass request had been introducing itself as version 0.17.7 since August.
+
+### Changed
+
+- **Each extract now records the cut-off announced by the server**, alongside the time it was written. The write time says how old the file is, not how old the facts in it are: a lagging replica produces a brand-new file full of stale data, which is exactly what went unnoticed here.
+
 ## [0.17.14] - 2026-09-10
 
 ### Added
