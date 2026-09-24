@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.16] - 2026-09-24
+
+### Fixed
+
+- **The Limitations tool repainted the network and hid its own key.** Pressing the button recoloured nine thousand segments into a seven-tone speed scale, then put the legend that decodes it — the scale itself, the four gauge filters, and the notice that the signs only appear from zoom 13 — inside a sidebar section folded shut by default. The section was being revealed, its parent was not, so nothing reached the screen: a network turned grey, amber and blue with nothing to read it by, no pictograms at the opening zoom, and thirteen controls that could not be clicked. Switching the mode on now unfolds the section holding the legend and scrolls it into view, as the key-figures shortcuts already did.
+
 ## [0.17.15] - 2026-09-24
 
 ### Fixed

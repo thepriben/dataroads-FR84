@@ -12437,6 +12437,19 @@
             setToolActive('limitsBtn', active);
         }
 
+        // La légende porte toute la clé de lecture du mode : l'échelle des
+        // vitesses, les gabarits, et le rappel que les panneaux n'arrivent qu'au
+        // zoom 13. Elle vit dans une rubrique repliée par défaut : l'afficher ne
+        // suffisait pas, on dépliait un bloc lui-même invisible et le réseau se
+        // recolorait sans la moindre clé à l'écran.
+        function revealLimitationsLegend() {
+            const legend = document.getElementById('limitationsLegend');
+            const family = legend?.closest('.legend-family');
+            if (!family) return;
+            expandLegendFamily(family.dataset.family);
+            legend.scrollIntoView({ block: 'nearest' });
+        }
+
         window.toggleLimitationsMode = function() {
             limitationsMode = !limitationsMode;
             console.log(`🚦 Mode Limitations : ${limitationsMode ? 'ON' : 'OFF'}`);
@@ -12476,6 +12489,7 @@
                 setLimitationsButtonActive(false);
             }
             updateLimitationsLegend();
+            if (limitationsMode) revealLimitationsLegend();
             syncLegendChrome();
         };
 
