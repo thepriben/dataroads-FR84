@@ -5,6 +5,15 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.20.0] - 2026-09-24
+
+### Changed
+
+- **The whole division is now drawn, not only the sector being filtered on.** Picking a scale outlines every one of its units: choose "Municipality" and the 150 municipal boundaries appear at once, the selected one thickening and taking a faint tint. Seeing only the sector you had already picked told you nothing you did not know; seeing the mesh shows where the sector sits, and which neighbour holds the road that leaves it.
+- **An outline can be clicked to select its unit**, and hovering it gives the name and the mileage. That is the gesture a displayed division invites, and it beats hunting for one municipality among 150 in a list when you already know where you are looking on the map.
+- The outlines carry no fill, so the inside of a sector still belongs to the roads: their popups open through it as before. Only the selected sector gets a tint, and that layer is inert to clicks for the same reason.
+- The boundaries file is now read as soon as a scale that has outlines is chosen, rather than waiting for a unit to be selected.
+
 ## [0.19.0] - 2026-09-24
 
 ### Added

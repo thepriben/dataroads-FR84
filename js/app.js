@@ -6751,7 +6751,9 @@
                     ? `<strong>${unit.name}</strong> · ${unit.ways} tronçons · ${unit.refs.length} routes
                        ${outlineNote(unit)}
                        <button type="button" class="territory-clear" data-territory-unit="all">Tout le département</button>`
-                    : `${units.length} unités · cliquer pour n'afficher que ce secteur`;
+                    : `${units.length} unités · cliquer pour n'afficher que ce secteur${
+                        TERRITORY_OUTLINE_SCALES.includes(territorialScale)
+                            ? ', ici ou sur son contour tracé sur la carte' : ''}`;
             }
         }
 
@@ -6777,10 +6779,16 @@
 
         // Quatre cents kilo-octets de contours n'ont rien à faire dans le
         // chargement initial d'une carte qu'on ouvre sur le département entier :
-        // le fichier n'est lu qu'au premier secteur sélectionné.
+        // le fichier n'est lu qu'à la première échelle qui a des emprises.
         let territorialOutlines = null;
         let territorialOutlinesRequest = null;
-        let territorialOutlineLayer = null;
+        // Le maillage entier de l'échelle courante, en traits fins cliquables,
+        // et l'aplat du secteur choisi. Deux couches et non une : l'aplat doit
+        // laisser passer les clics vers les routes qu'il recouvre, les traits
+        // doivent au contraire les recevoir.
+        let territorialMeshLayer = null;
+        let territorialMeshScale = '';
+        let territorialFillLayer = null;
 
         function loadTerritorialOutlines() {
             const path = window.APP_CONFIG?.data?.json?.['territorial-boundaries'];
@@ -6800,49 +6808,104 @@
             return territorialOutlinesRequest;
         }
 
-        function clearTerritorialOutline() {
-            if (!territorialOutlineLayer) return;
-            window.map?.removeLayer(territorialOutlineLayer);
-            territorialOutlineLayer = null;
+        function clearTerritorialOutlines() {
+            [territorialMeshLayer, territorialFillLayer].forEach(layer => {
+                if (layer) window.map?.removeLayer(layer);
+            });
+            territorialMeshLayer = null;
+            territorialMeshScale = '';
+            territorialFillLayer = null;
         }
 
-        async function drawTerritorialOutline() {
-            const unit = territorialCurrentUnit();
+        function territorialIndexOfSlug(scale, slug) {
+            return territorialUnits(scale).findIndex(unit => territorialSlug(unit.name) === slug);
+        }
+
+        // Même bleu nuit que la limite du Vaucluse, mais trait plein là où elle
+        // est pointillée : une seule écriture pour les frontières, deux niveaux
+        // de lecture. Les couleurs des réseaux — rouge, orange, bleu — sont
+        // exclues, un contour ne doit pas se lire comme une route, et le violet
+        // dit déjà « en projet ». Le maillage reste discret pour ne pas
+        // concurrencer le réseau ; seul le secteur choisi appuie son trait.
+        function territorialMeshStyle(slug) {
+            const chosen = territorialUnit !== null
+                && territorialSlug(territorialCurrentUnit()?.name) === slug;
+            return {
+                color: '#2C3E50',
+                weight: chosen ? 3.5 : 1.5,
+                opacity: chosen ? 1 : 0.6,
+                // Sans remplissage, seul le trait reçoit les clics : l'intérieur
+                // d'un secteur reste celui des routes et de leurs fiches.
+                fill: false
+            };
+        }
+
+        async function drawTerritorialOutlines() {
             const scale = territorialScale;
-            if (!unit || !TERRITORY_OUTLINE_SCALES.includes(scale)) {
-                clearTerritorialOutline();
+            if (!TERRITORY_OUTLINE_SCALES.includes(scale)) {
+                clearTerritorialOutlines();
                 return;
             }
             const data = territorialOutlines || await loadTerritorialOutlines();
-            // Le secteur a pu changer pendant la lecture du fichier : ne tracer
+            // L'échelle a pu changer pendant la lecture du fichier : ne tracer
             // que si la demande est toujours celle de l'utilisateur.
-            if (territorialCurrentUnit() !== unit || territorialScale !== scale) return;
-            clearTerritorialOutline();
-            const geometry = data?.scales?.[scale]?.[territorialSlug(unit.name)];
-            if (!geometry || !window.map) return;
-            // Même bleu nuit que la limite du Vaucluse, mais trait plein là où
-            // elle est pointillée : une seule écriture pour les frontières, deux
-            // niveaux de lecture. Les couleurs des réseaux — rouge, orange,
-            // bleu — sont exclues, un contour ne doit pas se lire comme une
-            // route, et le violet dit déjà « en projet ».
-            territorialOutlineLayer = L.geoJSON(geometry, {
-                style: {
-                    color: '#2C3E50',
-                    weight: 3,
-                    opacity: 0.95,
-                    fillColor: '#2C3E50',
-                    fillOpacity: 0.04
-                },
+            if (territorialScale !== scale) return;
+            const outlines = data?.scales?.[scale];
+            if (!outlines || !window.map) {
+                clearTerritorialOutlines();
+                return;
+            }
+
+            if (territorialMeshScale !== scale) {
+                clearTerritorialOutlines();
+                territorialMeshLayer = L.geoJSON({
+                    type: 'FeatureCollection',
+                    features: Object.entries(outlines).map(([slug, geometry]) => ({
+                        type: 'Feature', geometry, properties: { slug }
+                    }))
+                }, {
+                    style: feature => territorialMeshStyle(feature.properties.slug),
+                    onEachFeature: (feature, layer) => {
+                        const slug = feature.properties.slug;
+                        const unit = territorialUnits(scale)[territorialIndexOfSlug(scale, slug)];
+                        if (unit) {
+                            layer.bindTooltip(`${unit.name} — ${unit.km.toFixed(0)} km`,
+                                              { sticky: true, direction: 'top' });
+                        }
+                        // Cliquer une limite sur la carte vaut cliquer sa ligne
+                        // dans la liste : c'est le geste qu'un maillage affiché
+                        // appelle, et chercher cent cinquante communes dans une
+                        // liste quand on sait où l'on regarde n'a pas de sens.
+                        layer.on('click', () => window.selectTerritorialUnit(
+                            territorialIndexOfSlug(scale, slug)));
+                    }
+                }).addTo(window.map);
+                // Sous les tracés : le maillage situe les secteurs, il ne doit
+                // pas passer devant les routes qu'on est venu regarder.
+                territorialMeshLayer.bringToBack();
+                territorialMeshScale = scale;
+            } else {
+                territorialMeshLayer.setStyle(
+                    feature => territorialMeshStyle(feature.properties.slug));
+            }
+
+            if (territorialFillLayer) {
+                window.map.removeLayer(territorialFillLayer);
+                territorialFillLayer = null;
+            }
+            const unit = territorialCurrentUnit();
+            const geometry = unit && outlines[territorialSlug(unit.name)];
+            if (!geometry) return;
+            territorialFillLayer = L.geoJSON(geometry, {
+                style: { stroke: false, fillColor: '#2C3E50', fillOpacity: 0.04 },
                 interactive: false
             }).addTo(window.map);
-            // Sous les tracés : le contour situe le secteur, il ne doit pas
-            // passer devant les routes qu'on est venu regarder.
-            territorialOutlineLayer.bringToBack();
+            territorialFillLayer.bringToBack();
         }
 
         function applyTerritorialFilter() {
             if (typeof window.updateHierarchyDisplay === 'function') window.updateHierarchyDisplay();
-            drawTerritorialOutline();
+            drawTerritorialOutlines();
             const unit = territorialCurrentUnit();
             if (unit && Array.isArray(unit.bounds) && window.map) {
                 window.map.fitBounds(

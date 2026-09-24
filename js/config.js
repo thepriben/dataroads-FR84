@@ -13,7 +13,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.19.0',
+        version: '0.20.0',
         repository,
         basemap: {
             // Le Plan IGN de la Géoplateforme, en tuiles raster : libre, sans clé
