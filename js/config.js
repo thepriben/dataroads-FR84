@@ -13,7 +13,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.17.17',
+        version: '0.18.0',
         repository,
         basemap: {
             // Le Plan IGN de la Géoplateforme, en tuiles raster : libre, sans clé
@@ -80,6 +80,12 @@
                 // Instance OpenEventDatabase statique (repo thepriben/oedb-rs),
                 // régénérée toutes les 3 h — URL absolue, CORS ouvert par Pages.
                 'oedb-events': 'https://thepriben.github.io/oedb-rs/api/event.json'
+            },
+            // Jeux qui ne sont pas des FeatureCollection : la table du découpage
+            // territorial ne porte que des indices, la géométrie restant celle
+            // des tronçons déjà chargés.
+            json: {
+                'territorial-units': 'data/external/territorial-units.json'
             }
         },
         live: {

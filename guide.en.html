@@ -24,7 +24,9 @@
                 <li><a href="#interface">General layout</a></li>
                 <li><a href="#navigation">Map navigation</a></li>
                 <li><a href="#controles">Visibility controls</a></li>
+                <li><a href="#territory">Territory</a></li>
                 <li><a href="#factual">Factual mapping</a></li>
+                <li><a href="#signage">Signage &amp; structures</a></li>
                 <li><a href="#stats">Statistical data</a></li>
                 <li><a href="#realtime">Real time</a></li>
                 <li><a href="#incubator">Incubator</a></li>
@@ -87,13 +89,24 @@
         </section>
         <section class="guide-section" id="familles">
             <h2>Families and layers</h2>
-<article class="guide-family" data-family="factual" id="factual">
-<h3>Factual mapping</h3>
-<p>Network, territory and basic infrastructure, mostly from OpenStreetMap.</p>
+<article class="guide-family" data-family="territory" id="territory">
+<h3>Territory</h3>
+<p>The department's extent and its administrative divisions. This family carries no layer to switch on: it defines the perimeter the others draw within.</p>
 <div class="guide-layer" id="layer-territoire">
 <h4>Territory — Vaucluse boundary (84)</h4>
 <p>Always shown. Dashed outline of the department; a reference for framing.</p>
-</div><div class="guide-layer" id="layer-hierarchie">
+</div><div class="guide-layer" id="layer-echelle">
+<h4>Territorial scale</h4>
+<p>Narrows the displayed network to one sector, at five scales: <strong>road agency</strong> (4), <strong>maintenance centre</strong> (11), <strong>canton</strong> (17), <strong>intercommunality</strong> (14), <strong>municipality</strong> (150).</p>
+<p><strong>How:</strong> pick the scale, then the unit in the list — clicking it again restores the whole department. Above twelve units a filter field appears. The map reframes on the sector, and the page URL keeps the choice (<code>terr</code> parameter), so it can be shared as is.</p>
+<p>Maintenance sectors come from the <strong>operating limits of the departmental road network</strong> published by the Department on DataSud, attached to road sections rather than drawn as areas — 57 municipalities are served by more than one centre, so no polygon exists to overlay. Each OSM section's sector is computed offline by proximity; the municipality is determined by inclusion in the OSM municipal boundaries, and the intercommunality derived from the INSEE code via the État's API Géo.</p>
+<p class="guide-hint">The filter acts on visibility, not on styling: it combines with the Limitations mode, the hierarchy levels and the labels.</p>
+</div>
+</article>
+<article class="guide-family" data-family="factual" id="factual">
+<h3>Factual mapping</h3>
+<p>The departmental network and its basic infrastructure, mostly from OpenStreetMap.</p>
+<div class="guide-layer" id="layer-hierarchie">
 <h4>Network hierarchy</h4>
 <p>Three levels of departmental roads, each with its own colour:</p>
 <ul>
@@ -129,41 +142,9 @@
 <p><strong>How:</strong> enable the “Roadside areas &amp; car-pooling” layer; each type has its own swatch and counter in the legend. Click its row to hide or show that type independently. Click a marker (or the footprint) for details: type, capacity, operator, access, an <strong>OSM completeness</strong> indicator (present / missing attributes), the <strong>Wikidata</strong> link when present (otherwise flagged “no link”), and <strong>nearby street-level photos</strong> from Mapillary and Panoramax when coverage exists — click a thumbnail to open the source photo in a new tab. <em>View</em> / <em>Improve</em> links on OpenStreetMap.</p>
 </div>
 </article>
-<article class="guide-family" data-family="stats" id="stats">
-<h3>Statistical data</h3>
-<p>Historical or aggregated data — loaded on demand to avoid overloading the map.</p>
-<div class="guide-layer" id="layer-accidents">
-<h4>Road safety</h4>
-<p>Multi-year cloud of injury crashes (BAAC / ONISR, 2019 → 2024) geolocated across the Vaucluse. Two visual encodings:</p>
-<ul>
-<li><strong>Colour = recency</strong> — recent crashes appear in a vivid/saturated orange, older ones in a dark red.</li>
-<li><strong>Severity</strong> — <strong>fatal crashes leave the recency ramp</strong>: a <strong>black</strong> dot ringed in white, slightly larger, spotted at a glance whatever the year. <strong>Hospitalised</strong> injuries keep the recency colour with a <strong>black ring</strong>; <strong>slight</strong> injuries have only a thin white outline.</li>
-</ul>
-<p>The legend embeds a <strong>temporal dataviz</strong>: the old → recent colour scale, a <strong>mini-histogram</strong> of crashes per year, and a <strong>year-range slider</strong> (from / to) to filter the cloud.</p>
-<p><strong>How:</strong> enable the layer; drag the year slider to watch the evolution over time; click a point for details (year, casualties, date, municipality, address). <em>Note: BAAC geolocation is patchier for older years, hence a denser cloud on recent vintages.</em></p>
-</div><div class="guide-layer" id="layer-comptages">
-<h4>Traffic-count stations</h4>
-<p>CD84 stations (data.gouv.fr / DataSud), classified by traffic: high (&gt; 20k veh/day), medium, low. Each badge shows the <strong>rounded average traffic</strong> at its centre (e.g. <code>22k</code> for 22,136 veh/day), readable regardless of colour.</p>
-<p><strong>How:</strong> enable in the legend <em>or</em> via the <strong>CD84 counts</strong> button on the map (both stay in sync). Click a station for a detailed card: <strong>AADT</strong> (all vehicles), HGV share and flow, and a <strong>traffic-evolution chart</strong> across every available vintage (1996–2025) with the first → last trend.</p>
-<p>Clicking a station also <strong>highlights the matching road axis</strong> — a distinct <strong>indigo</strong> trace, separate from the round count badges — and shows the axis details (length, municipalities crossed…) in the <em>Route information</em> panel, without moving the view.</p>
-</div>
-</article>
-<article class="guide-family" data-family="realtime" id="realtime">
-<h3>Real time</h3>
-<p>Recent signals: weather and announced traffic.</p>
-<div class="guide-layer" id="layer-meteo-stations">
-<h4>Weather stations</h4>
-<p>A few stations across the department (Open-Meteo). Current data: temperature, wind, humidity.</p>
-<p><strong>How:</strong> enable the layer; click a marker for the card. One station is also picked at random in the header.</p>
-</div><div class="guide-layer" id="layer-bison">
-<h4>Road events (Bison Futé)</h4>
-<p>Roadworks, congestion, ongoing crashes (DATEX II / Info Routière feed), filtered to the area.</p>
-<p><strong>How:</strong> enable the layer; icons on the map, popup on click.</p>
-</div>
-</article>
-<article class="guide-family" data-family="incubator" id="incubator">
-<h3>Incubator</h3>
-<p>Experimental layers: civil-engineering structures, environment, biodiversity, listed webcams. Only the <strong>bridges layer</strong> shows a refresh chip (twice weekly, Mon. &amp; Thu.).</p>
+<article class="guide-family" data-family="signage" id="signage">
+<h3>Signage &amp; structures</h3>
+<p>Street furniture and civil-engineering structures surveyed in OpenStreetMap, refreshed with the other extracts (twice weekly, Mon. &amp; Thu.).</p>
 <div class="guide-layer" id="layer-ponts">
 <h4>Bridges layer</h4>
 <p>OSM civil-engineering structures across the department. Display adapts to zoom:</p>
@@ -203,15 +184,40 @@
 <h4>Town-boundary signs</h4>
 <p>Village entries and exits from OpenStreetMap (<code>traffic_sign=city_limit</code> nodes, 468 across the Vaucluse, 446 of them named): the EB10 / EB20 signs marking where the speed regime changes through a built-up area. A natural companion to the <em>Limitations</em> mode.</p>
 <p><strong>How:</strong> enable the layer. When zoomed out, points are grouped into <strong>red clusters</strong> (click to zoom in); from <strong>zoom ≥ 13</strong>, each sign is drawn as the <strong>real plate</strong> — the place name on white with a red border. A plate <strong>crossed by a red diagonal</strong> is an <strong>exit</strong> from the built-up area (<code>city_limit=end</code>). The popup gives the direction, alternative names (including Occitan), reference and operator where available, the <strong>photos of the sign</strong> referenced in OSM, and an <strong>OpenStreetMap</strong> link (<em>voir</em> / <em>compléter</em> in the iD editor) to fix the sign straight from the map.</p>
-</div><div class="guide-layer" id="layer-ens">
-<h4>Sensitive natural areas (ENS)</h4>
-<p>CD84 polygons (DataSud). Area, municipalities, manager.</p>
-<p><strong>How:</strong> enable the layer; click a polygon for the card.</p>
-</div><div class="guide-layer" id="layer-inat">
-<h4>iNaturalist observations</h4>
-<p>Observations filtered by intersection with the 84's sensitive natural areas.</p>
-<p><strong>How:</strong> enable the layer; click the coloured circle (enlarged click zone) for species, date, iNaturalist link. Works alongside the ENS layer shown at the same time.</p>
-</div><div class="guide-layer" id="layer-webcams">
+</div>
+</article>
+<article class="guide-family" data-family="stats" id="stats">
+<h3>Statistical data</h3>
+<p>Historical or aggregated data — loaded on demand to avoid overloading the map.</p>
+<div class="guide-layer" id="layer-accidents">
+<h4>Road safety</h4>
+<p>Multi-year cloud of injury crashes (BAAC / ONISR, 2019 → 2024) geolocated across the Vaucluse. Two visual encodings:</p>
+<ul>
+<li><strong>Colour = recency</strong> — recent crashes appear in a vivid/saturated orange, older ones in a dark red.</li>
+<li><strong>Severity</strong> — <strong>fatal crashes leave the recency ramp</strong>: a <strong>black</strong> dot ringed in white, slightly larger, spotted at a glance whatever the year. <strong>Hospitalised</strong> injuries keep the recency colour with a <strong>black ring</strong>; <strong>slight</strong> injuries have only a thin white outline.</li>
+</ul>
+<p>The legend embeds a <strong>temporal dataviz</strong>: the old → recent colour scale, a <strong>mini-histogram</strong> of crashes per year, and a <strong>year-range slider</strong> (from / to) to filter the cloud.</p>
+<p><strong>How:</strong> enable the layer; drag the year slider to watch the evolution over time; click a point for details (year, casualties, date, municipality, address). <em>Note: BAAC geolocation is patchier for older years, hence a denser cloud on recent vintages.</em></p>
+</div><div class="guide-layer" id="layer-comptages">
+<h4>Traffic-count stations</h4>
+<p>CD84 stations (data.gouv.fr / DataSud), classified by traffic: high (&gt; 20k veh/day), medium, low. Each badge shows the <strong>rounded average traffic</strong> at its centre (e.g. <code>22k</code> for 22,136 veh/day), readable regardless of colour.</p>
+<p><strong>How:</strong> enable in the legend <em>or</em> via the <strong>CD84 counts</strong> button on the map (both stay in sync). Click a station for a detailed card: <strong>AADT</strong> (all vehicles), HGV share and flow, and a <strong>traffic-evolution chart</strong> across every available vintage (1996–2025) with the first → last trend.</p>
+<p>Clicking a station also <strong>highlights the matching road axis</strong> — a distinct <strong>indigo</strong> trace, separate from the round count badges — and shows the axis details (length, municipalities crossed…) in the <em>Route information</em> panel, without moving the view.</p>
+</div>
+</article>
+<article class="guide-family" data-family="realtime" id="realtime">
+<h3>Real time</h3>
+<p>Recent signals: weather and announced traffic.</p>
+<div class="guide-layer" id="layer-meteo-stations">
+<h4>Weather stations</h4>
+<p>A few stations across the department (Open-Meteo). Current data: temperature, wind, humidity.</p>
+<p><strong>How:</strong> enable the layer; click a marker for the card. One station is also picked at random in the header.</p>
+</div><div class="guide-layer" id="layer-bison">
+<h4>Road events (Bison Futé)</h4>
+<p>Roadworks, congestion, ongoing crashes (DATEX II / Info Routière feed), filtered to the area.</p>
+<p><strong>How:</strong> enable the layer; icons on the map, popup on click.</p>
+</div>
+<div class="guide-layer" id="layer-webcams">
 <h4>Webcams</h4>
 <p>4 CD84 traffic webcams (Bonpas) and Mont Serein (Vision-Environnement).</p>
 <p><strong>How:</strong> enable the layer; click a marker to start the live video feed in the popup.</p>
@@ -221,7 +227,27 @@
 <p>Vaucluse events served by our static <a href="https://github.com/openeventdatabase/backend" rel="noopener" target="_blank">OpenEventDatabase</a> instance: the <a href="https://github.com/thepriben/oedb-rs" rel="noopener" target="_blank">oedb-rs</a> repository (Rust) rebuilds an OEDB-compatible API on GitHub Pages every 3 hours, from the Bison Futé DATEX II feed filtered on Vaucluse (accidents, roadworks, jams) and manual curation (e.g. the Jeudis d'Orange night markets, category <code>culture.market.night</code>). Expired events are purged at every build.</p>
 <p><strong>How:</strong> enable the layer; click a legend row (Accidents, Roadworks, Jams, Culture, Others) to hide / show that category; click a marker for the label, dates, place and source.</p>
 </div>
+
 </article>
+<article class="guide-family" data-family="incubator" id="incubator">
+<h3>Incubator</h3>
+<p>What has not yet found its place: the watch on OSM edits, whose form is still to be settled, and two environmental layers the Department manages although they are not about roads.</p>
+<div class="guide-layer" id="layer-latest-changes">
+<h4>Latest OSM changes</h4>
+<p>Recent contributions to the Vaucluse <strong>road network</strong>, following the principle of the <em>OSM Latest Changes</em> tool. A rolling seven days, on the order of a thousand sections created, modified or deleted depending on the week's activity.</p>
+<p><strong>How:</strong> enable the layer. Each section is coloured by what happened to it — <strong>green</strong> created, <strong>orange</strong> modified, <strong>red</strong> deleted (its last known geometry is then drawn). When an edit <strong>moved</strong> the geometry, the former one appears as a <strong>grey dashed line</strong> beside the new: the most direct way to see a bend straightened or a road realigned on imagery. Line weight follows the road's importance.</p>
+<p><strong>Filtering by road class.</strong> The legend offers one box per class — <strong>main roads</strong> (<code>motorway</code>, <code>trunk</code>, <code>primary</code>), <strong>secondary roads</strong> (<code>secondary</code>, <code>tertiary</code>), <strong>local access</strong> (<code>residential</code>, <code>unclassified</code>, <code>service</code>), <strong>tracks and active travel</strong> (<code>track</code>, <code>path</code>, <code>footway</code>, <code>cycleway</code>) and <strong>works</strong> (<code>construction</code>, <code>proposed</code>) — each with its count. Unchecking tracks and local access leaves only the structuring network, where the changes a road manager cares about happen.</p>
+<p><strong>The view summary.</strong> A box at the bottom right answers, for the current extent only, which roads were touched and by whom: the <strong>most edited roads</strong> (structuring axes first, then by number of changes), the age of the most recent change, and the <strong>contributors</strong> involved, with links to their OSM profiles. Clicking a road name frames the map on its changes and highlights them for a few seconds. A departmental road is grouped under its <strong>reference</strong> rather than the street names it takes through the municipalities.</p>
+<p><strong>Why this is not live.</strong> Overpass's <em>augmented diff</em> rebuilds the state of the whole extent at two dates and compares them: filtering on <code>highway</code> lightens what comes back, not the computation. Reckon on forty seconds for one week across the department. The query therefore runs <strong>every hour</strong> in a GitHub Actions workflow, and the browser only reads a 900 kB GeoJSON like any other layer.</p>
+</div><div class="guide-layer" id="layer-ens">
+<h4>Sensitive natural areas (ENS)</h4>
+<p>CD84 polygons (DataSud). Area, municipalities, manager.</p>
+<p><strong>How:</strong> enable the layer; click a polygon for the card.</p>
+</div><div class="guide-layer" id="layer-inat">
+<h4>iNaturalist observations</h4>
+<p>Observations filtered by intersection with the 84's sensitive natural areas.</p>
+<p><strong>How:</strong> enable the layer; click the coloured circle (enlarged click zone) for species, date, iNaturalist link. Works alongside the ENS layer shown at the same time.</p>
+</div></article>
 <article class="guide-family" data-family="tools" id="tools">
 <h3>Tools &amp; meta</h3>
 <p>Search, data quality, network statistics, update calendar. No extra map layer (except the quality panel).</p>
@@ -282,7 +308,8 @@
 <ul>
 <li><strong>OSM</strong> (roads, cycle routes, municipalities, construction) — twice-weekly update (GitHub workflow).</li>
 <li><strong>External</strong> (counts, Bison Futé) — every 3 h.</li>
-<li><strong>Incubator</strong> (OSM bridges) — twice weekly (Mon. &amp; Thu.).</li>
+<li><strong>Signage &amp; structures</strong> (bridges, signs) — twice weekly (Mon. &amp; Thu.).</li>
+<li><strong>Territory</strong> (CD84 maintenance sectors) — recomputed with the OSM extracts.</li>
 <li><strong>Weather</strong> — live in browser, ~10 min.</li>
 <li><strong>Static</strong> (84 boundary, 2019-2024 crashes) — versioned snapshot, manual update.</li>
 </ul>

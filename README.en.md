@@ -11,13 +11,14 @@ This demonstrator, incubated within the Road Information Bureau (Vaucluse Depart
 
 - The Vaucluse departmental road network, with a simple hierarchy: regional, territorial and local networks.
 - The department boundary and the municipalities, to put roads in their territorial context.
+- A territorial scale that narrows the displayed network to one sector (issues #21 and #37): road agency, maintenance centre, canton, intercommunality or municipality. The maintenance sectors come from the operating limits the Department publishes on DataSud, which are attached to road sections rather than drawn as areas — 57 municipalities are served by more than one centre, so no polygon exists to overlay. The selection is carried in the URL, so a centre manager or a partner municipality can open straight onto its own perimeter.
 - CD84 traffic counting stations, classified by traffic level.
 - Multi-year accident data (BAAC, 2019-2024) rendered as a cloud: colour by recency, severity shown by a black ring (hospitalised and fatal), with a per-year histogram and a year slider to explore the trend.
 - Roads under construction or planned, from the OSM cache.
 - Roadside stopping areas along departmental roads (issue #7): car-pooling areas, rest areas and park-and-ride from OpenStreetMap, with an OSM completeness indicator and nearby street-level photos (Mapillary / Panoramax).
 - Current weather over Avignon, useful as a quick operational signal.
 - Community Waze traffic (jams and incidents): a native layer (coloured jam lines + incident markers) when the *Waze for Cities* partner feed is configured, otherwise the embedded Waze Live Map as a fallback.
-- An "Events (OEDB)" incubator layer: Bison Futé accidents, roadworks and jams, plus curated cultural events (e.g. the Jeudis d'Orange night markets), served by our static [OpenEventDatabase](https://github.com/openeventdatabase/backend) instance [oedb-rs](https://github.com/thepriben/oedb-rs) (Rust + GitHub Pages, rebuilt every 3 hours).
+- An "Events (OEDB)" real-time layer: Bison Futé accidents, roadworks and jams, plus curated cultural events (e.g. the Jeudis d'Orange night markets), served by our static [OpenEventDatabase](https://github.com/openeventdatabase/backend) instance [oedb-rs](https://github.com/thepriben/oedb-rs) (Rust + GitHub Pages, rebuilt every 3 hours).
 - An OSM quality panel to spot road sections that do or do not have a usable OSM relation.
 
 ## Value for CD84

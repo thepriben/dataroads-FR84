@@ -5,6 +5,24 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.18.0] - 2026-09-24
+
+### Added
+
+- **The network can now be narrowed to one sector, at five scales** (issues #21 and #37): road agency, maintenance centre, canton, intercommunality, municipality. Pick the scale, pick the unit, and only that sector's departmental roads remain on the map, framed on it; above twelve units a filter field appears, which is what makes 150 municipalities usable. The choice is carried in the page URL, so a centre manager or a partner municipality can be sent straight to its own perimeter. The filter acts on visibility rather than styling, which is why it composes with the Limitations mode, the hierarchy levels and the labels without any of them knowing about it.
+- **The two datasets the issue proposed turned out to be empty**: neither "Zones de compétences des centres routiers" nor "Zones de compétences des agences routières" on DataSud exposes any resource. A third layer on the same portal, `limites-exploitation-voirie-departementale`, carries the information — 2,543 road sections, each attributed to its agency, centre and canton. Reconstituting areas from municipal boundaries does not work either: 57 of 167 municipalities are served by more than one centre, and 36 by more than one agency. The operating limits are genuinely linear, which is probably why the two "competence zone" records have no data behind them.
+- **The attribution is computed offline and ships as a table of indices**, 260 kB where the departmental geometry alone would be 5.6 MB. Matching by road reference looked safer but its tail is poor — OSM's D118 and the Department's are 1.8 km apart — so the sector is read from the nearest section, since it is a property of the place and not of the number; the reference only breaks ties at dense junctions. Half the sections match within 1.1 m, nine in ten within 7 m. Municipalities are resolved instead by inclusion in the OSM municipal boundaries, a dataset the project had been extracting for months without ever using, which also yields the INSEE code the intercommunality is derived from.
+
+### Changed
+
+- **The Incubator was a drawer of nine unrelated layers, and is now three.** Bridges, stop/give-way signs, direction signposts and town-entry signs were mature — several thousand features each, refreshed by the regular OSM pipeline, documented — so they now form their own family, **Signage & structures**. Webcams and OEDB events are live feeds and have joined **Real time**. What stays in the Incubator is what genuinely has not settled: the watch on OSM edits, whose form issue #34 is still discussing, and two environmental layers the Department manages although they are not about roads.
+- **The department boundary has moved into a new Territory family**, together with the scale selector. It carries no layer to switch on, which is the point: it defines the perimeter the other families draw within, so it comes first in the sidebar.
+
+### Fixed
+
+- **Route labels no longer float over a neighbouring sector.** A road crossing the selected sector on a single section still placed its number anywhere along its full length, because labels were positioned from the route's whole geometry rather than from the sections on screen.
+- **A missing favicon was logging a 404 on every visit**, sitting in the console next to real errors. The CD84 logo mark was already in the repository.
+
 ## [0.17.17] - 2026-09-24
 
 ### Fixed

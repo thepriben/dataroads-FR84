@@ -12,7 +12,7 @@ repo_url: https://github.com/thepriben/dataroads-FR84
 
   Syntaxe utile (style MediaWiki) :
   - == Titre {#ancre} ==              → section principale
-  - === [family:code] Titre ===       → rubrique (factual, stats, realtime, incubator, tools)
+  - === [family:code] Titre ===       → rubrique (territory, factual, signage, stats, realtime, incubator, tools)
   - ==== [layer:id] Titre ====        → couche dans une rubrique
   - {{include:fichier.svg|Légende}}   → figure SVG (chemin depuis la racine du dépôt)
   - {{hint|Texte d'astuce}}           → encadré gris italique
@@ -58,13 +58,27 @@ Cliquez sur le '''nom de la rubrique''' ou le chevron pour déplier / replier le
 
 == Rubriques et couches {#familles} ==
 
-=== [family:factual] Cartographie factuelle ===
+=== [family:territory] Territoire ===
 
-Réseau, territoire et aménagements de base issus surtout d'OpenStreetMap.
+Emprise du département et découpage administratif. Cette rubrique ne porte pas de couche à allumer : elle définit le périmètre que les autres affichent.
 
 ==== [layer:layer-territoire] Territoire — Limite du Vaucluse (84) ====
 
 Toujours affichée. Contour en pointillés du département ; repère pour le cadrage.
+
+==== [layer:layer-echelle] Échelle territoriale ====
+
+Restreint le réseau affiché à un secteur, à cinq échelles : '''agence routière''' (4), '''centre d'exploitation''' (11), '''canton''' (17), '''intercommunalité''' (14), '''commune''' (150).
+
+'''Comment :''' choisir l'échelle, puis l'unité dans la liste — un second clic rend la vue au département entier. Au-delà de douze unités un champ de filtre apparaît. La carte se recadre sur le secteur, et le lien de la page garde le choix (paramètre <code>terr</code>) : il se partage tel quel.
+
+Les secteurs d'exploitation viennent des '''limites d'exploitation de la voirie départementale''' publiées par le Département sur DataSud, attribuées au tronçon et non en emprises — 57 communes relèvent de plusieurs centres, il n'existe donc pas de polygone à plaquer. L'appartenance de chaque tronçon OSM est calculée hors ligne par proximité ; la commune, elle, est déterminée par inclusion dans les limites communales OSM, et l'intercommunalité déduite du code INSEE via l'API Géo.
+
+{{hint|Le filtre agit sur la visibilité, pas sur le style : il se combine au mode Limitations, aux niveaux de hiérarchie et aux étiquettes.}}
+
+=== [family:factual] Cartographie factuelle ===
+
+Le réseau départemental et les aménagements de base, issus surtout d'OpenStreetMap.
 
 ==== [layer:layer-hierarchie] Hiérarchie du réseau ====
 
@@ -111,47 +125,9 @@ Quand l'aire est cartographiée comme surface dans OSM — que ce soit un contou
 
 '''Comment :''' activer la couche « Aires d'arrêt & covoiturage » ; chaque type a une pastille distincte et un compteur dans la légende. Cliquez sa ligne pour le masquer ou le réafficher indépendamment. Cliquez un marqueur (ou l'emprise) pour la fiche : type, capacité, gestion, accès, un indicateur de '''complétude OSM''' (attributs présents / manquants), le lien '''Wikidata''' s'il existe (sinon signalé « aucun lien »), et les '''photos de rue à proximité''' Mapillary et Panoramax quand une couverture existe — cliquer une vignette ouvre la photo source dans un nouvel onglet. Liens ''voir'' / ''compléter'' sur OpenStreetMap.
 
-=== [family:stats] Données statistiques ===
+=== [family:signage] Signalisation & ouvrages ===
 
-Données historiques ou agrégées — à charger à la demande pour ne pas surcharger la carte.
-
-==== [layer:layer-accidents] Accidentologie ====
-
-Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel :
-* '''Couleur = ancienneté''' — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre.
-* '''Gravité''' — les accidents '''mortels sortent du dégradé''' : pastille '''noire''' cerclée de blanc, un peu plus grosse, repérable d'un coup d'œil quelle que soit l'année. Les '''blessés hospitalisés''' gardent la couleur d'ancienneté avec un '''anneau noir''' ; les '''blessés légers''' n'ont qu'un fin liseré blanc.
-
-La légende embarque une '''dataviz temporelle''' : l'échelle de couleur ancien → récent, un '''mini-histogramme''' du nombre d'accidents par année, et un '''curseur de plage d'années''' (de / à) pour filtrer le nuage.
-
-'''Comment :''' activer la couche ; jouez avec le curseur d'années pour voir l'évolution dans le temps ; cliquez un point pour le détail (année, victimes, date, commune, adresse). ''Note : la géolocalisation BAAC des années les plus anciennes est plus lacunaire, d'où un nuage plus dense sur les millésimes récents.''
-
-==== [layer:layer-comptages] Stations de comptage ====
-
-Stations CD84 (data.gouv.fr / DataSud), classées par trafic selon une gamme '''rouge cerise''' (élevé, > 20 k véh/j) → '''rose clair''' (faible). Chaque pastille affiche le '''trafic moyen arrondi''' en son centre (ex. {{{22k}}} pour 22 136 véh/j), lisible quelle que soit la couleur.
-
-'''Comment :''' activer dans la légende ''ou'' via le bouton '''Comptages''' sur la carte (les deux restent synchronisés). Clic sur une station : fiche détaillée avec la '''MJA''' (tous véhicules), la part et le débit poids lourds, et un '''graphe d'évolution du trafic''' sur tous les millésimes disponibles (1996–2025) avec la tendance premier → dernier millésime.
-
-Le clic '''met aussi en évidence l'axe routier concerné''' — un tracé '''indigo''' distinct des pastilles de comptage — et affiche les informations de l'axe (longueur, communes traversées…) dans le panneau ''Informations Route'', sans déplacer la vue.
-
-=== [family:realtime] Temps réel ===
-
-Signaux récents : météo et trafic annoncé.
-
-==== [layer:layer-meteo-stations] Stations météo ====
-
-Quelques stations du département (Open-Meteo). Données courantes : température, vent, humidité.
-
-'''Comment :''' activer la couche ; cliquer un marqueur pour la fiche. Une station est aussi tirée au hasard dans l'en-tête.
-
-==== [layer:layer-bison] Événements routiers (Bison Futé) ====
-
-Travaux, bouchons, accidents en cours (flux DATEX II / Info Routière), filtrés sur la zone.
-
-'''Comment :''' activer la couche ; icônes sur la carte, popup au clic.
-
-=== [family:incubator] Incubateur ===
-
-Couches expérimentales : ouvrages d'art, signalisation, environnement, biodiversité, webcams recensées. Seule la '''couche ponts''' affiche une pastille d'actualisation (bi-hebdo, lun. & jeu.).
+Mobilier et ouvrages relevés dans OpenStreetMap, rafraîchis avec les autres extraits (bi-hebdo, lun. & jeu.).
 
 ==== [layer:layer-ponts] Couche ponts ====
 
@@ -204,6 +180,68 @@ Mâts directionnels issus d'OpenStreetMap (nœuds <code>information=guidepost</c
 
 '''Photos du panneau.''' Beaucoup de mâts portent dans OSM une ou plusieurs photos du panneau lui-même (tags <code>panoramax</code>, <code>mapillary</code>, <code>wikimedia_commons</code>, <code>image</code>) — environ 1 450 des 2 170 mâts du Vaucluse. Elles s'affichent alors dans le popup ; au-delà d'une photo, le bloc devient un '''carrousel''' (flèches ‹ › et compteur), car un même mât en cumule jusqu'à huit — une par lame, par orientation ou par millésime. La légende de chaque vue reprend la provenance et le suffixe du tag quand il en porte un (<code>panoramax:N</code> → « vers le nord », <code>mapillary:2017</code> → l'année). Cliquer la photo ouvre l'original chez le fournisseur. Une '''pastille violette''' sur le mât signale ce cas. À défaut de photo référencée, on retombe sur la recherche d'une '''photo Mapillary à proximité''' (pastille verte), qui montre l'environnement plutôt que le panneau.
 
+==== [layer:layer-city-limits] Panneaux d'agglomération ====
+
+Entrées et sorties de village issues d'OpenStreetMap (nœuds <code>traffic_sign=city_limit</code>, 468 en Vaucluse dont 446 nommés) : les panneaux EB10 / EB20 qui marquent le basculement du régime de vitesse en traversée. Complément naturel du mode ''Limitations''.
+
+'''Comment :''' activer la couche. Au dézoom, les points sont regroupés en '''grappes rouges''' (cliquer = zoomer) ; à partir du '''zoom ≥ 13''', chaque panneau s'affiche sous la forme de la '''plaque réelle''' — nom de la localité sur fond blanc bordé de rouge. Une plaque '''barrée d'une diagonale rouge''' correspond à une '''sortie''' d'agglomération (<code>city_limit=end</code>). Le popup donne le sens, les noms alternatifs (dont l'occitan), la référence et le gestionnaire quand ils existent, les '''photos du panneau''' référencées dans OSM, et un lien '''OpenStreetMap''' (''voir'' / ''compléter'' dans l'éditeur iD) pour corriger le panneau depuis la carte.
+
+=== [family:stats] Données statistiques ===
+
+Données historiques ou agrégées — à charger à la demande pour ne pas surcharger la carte.
+
+==== [layer:layer-accidents] Accidentologie ====
+
+Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel :
+* '''Couleur = ancienneté''' — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre.
+* '''Gravité''' — les accidents '''mortels sortent du dégradé''' : pastille '''noire''' cerclée de blanc, un peu plus grosse, repérable d'un coup d'œil quelle que soit l'année. Les '''blessés hospitalisés''' gardent la couleur d'ancienneté avec un '''anneau noir''' ; les '''blessés légers''' n'ont qu'un fin liseré blanc.
+
+La légende embarque une '''dataviz temporelle''' : l'échelle de couleur ancien → récent, un '''mini-histogramme''' du nombre d'accidents par année, et un '''curseur de plage d'années''' (de / à) pour filtrer le nuage.
+
+'''Comment :''' activer la couche ; jouez avec le curseur d'années pour voir l'évolution dans le temps ; cliquez un point pour le détail (année, victimes, date, commune, adresse). ''Note : la géolocalisation BAAC des années les plus anciennes est plus lacunaire, d'où un nuage plus dense sur les millésimes récents.''
+
+==== [layer:layer-comptages] Stations de comptage ====
+
+Stations CD84 (data.gouv.fr / DataSud), classées par trafic selon une gamme '''rouge cerise''' (élevé, > 20 k véh/j) → '''rose clair''' (faible). Chaque pastille affiche le '''trafic moyen arrondi''' en son centre (ex. {{{22k}}} pour 22 136 véh/j), lisible quelle que soit la couleur.
+
+'''Comment :''' activer dans la légende ''ou'' via le bouton '''Comptages''' sur la carte (les deux restent synchronisés). Clic sur une station : fiche détaillée avec la '''MJA''' (tous véhicules), la part et le débit poids lourds, et un '''graphe d'évolution du trafic''' sur tous les millésimes disponibles (1996–2025) avec la tendance premier → dernier millésime.
+
+Le clic '''met aussi en évidence l'axe routier concerné''' — un tracé '''indigo''' distinct des pastilles de comptage — et affiche les informations de l'axe (longueur, communes traversées…) dans le panneau ''Informations Route'', sans déplacer la vue.
+
+=== [family:realtime] Temps réel ===
+
+Signaux récents : météo et trafic annoncé.
+
+==== [layer:layer-meteo-stations] Stations météo ====
+
+Quelques stations du département (Open-Meteo). Données courantes : température, vent, humidité.
+
+'''Comment :''' activer la couche ; cliquer un marqueur pour la fiche. Une station est aussi tirée au hasard dans l'en-tête.
+
+==== [layer:layer-bison] Événements routiers (Bison Futé) ====
+
+Travaux, bouchons, accidents en cours (flux DATEX II / Info Routière), filtrés sur la zone.
+
+'''Comment :''' activer la couche ; icônes sur la carte, popup au clic.
+
+==== [layer:layer-webcams] Webcams ====
+
+4 webcams trafic CD84 (Bonpas) et Mont Serein (Vision-Environnement).
+
+'''Comment :''' activer la couche ; cliquer un marqueur pour lancer le flux vidéo live dans la popup.
+
+'''Caméras groupées.''' Deux caméras d'un même giratoire (Bonpas, site 2) ne sont séparées que de douze mètres : elles se superposent jusqu'au zoom maximal, et la seconde était alors inatteignable. Les marqueurs trop proches sont donc réunis en un seul, marqué du '''nombre de caméras'''. Son popup sert de sélecteur : choisir une caméra lance son flux, le bouton ''‹ N caméras'' revient à la liste. Le groupe se défait tout seul dès que le zoom sépare suffisamment les points.
+
+==== [layer:layer-oedb] Événements (OEDB) ====
+
+Événements du Vaucluse servis par notre instance [https://github.com/openeventdatabase/backend OpenEventDatabase] statique : le dépôt [https://github.com/thepriben/oedb-rs oedb-rs] (Rust) régénère toutes les 3 h une API compatible OEDB sur GitHub Pages, à partir du flux Bison Futé DATEX II filtré Vaucluse (accidents, travaux, bouchons) et d'une curation manuelle (ex. les Jeudis d'Orange, catégorie {{{culture.market.night}}}). Les événements expirés sont purgés à chaque build.
+
+'''Comment :''' activer la couche ; cliquer une ligne de la légende (Accidents, Travaux, Bouchons, Culture, Autres) pour masquer / afficher la catégorie ; cliquer un marqueur pour le libellé, les dates, le lieu et la source.
+
+=== [family:incubator] Incubateur ===
+
+Ce qui n'a pas encore trouvé sa place : la veille sur les modifications OSM, dont la forme reste à arrêter, et deux couches environnementales que le Département gère sans qu'elles relèvent de la route.
+
 ==== [layer:layer-latest-changes] Derniers changements OSM ====
 
 Les contributions récentes sur la '''voirie''' du Vaucluse, reprises du principe de l'outil ''OSM Latest Changes''. Sept jours glissants, de l'ordre du millier de tronçons créés, modifiés ou supprimés selon l'activité de la semaine.
@@ -222,12 +260,6 @@ Les recalages de '''moins d'un mètre''' sont écartés : à cette distance l'an
 
 '''Pourquoi ce n'est pas du direct.''' L'''augmented diff'' d'Overpass reconstitue l'état de toute l'emprise à deux dates puis compare : filtrer sur <code>highway</code> allège ce qui est renvoyé, mais pas le calcul. Comptez une quarantaine de secondes pour une semaine sur le département — sans le filtre, le serveur abandonne, à court de mémoire. La requête tourne donc '''toutes les heures''' dans un workflow GitHub Actions, et le navigateur ne lit qu'un GeoJSON de 900 ko comme pour les autres couches. La boîte englobante nécessaire à l'''augmented diff'' débordant sur le Gard, la Drôme et les Bouches-du-Rhône, les tronçons hors département sont écartés au passage (environ un quart des changements bruts).
 
-==== [layer:layer-city-limits] Panneaux d'agglomération ====
-
-Entrées et sorties de village issues d'OpenStreetMap (nœuds <code>traffic_sign=city_limit</code>, 468 en Vaucluse dont 446 nommés) : les panneaux EB10 / EB20 qui marquent le basculement du régime de vitesse en traversée. Complément naturel du mode ''Limitations''.
-
-'''Comment :''' activer la couche. Au dézoom, les points sont regroupés en '''grappes rouges''' (cliquer = zoomer) ; à partir du '''zoom ≥ 13''', chaque panneau s'affiche sous la forme de la '''plaque réelle''' — nom de la localité sur fond blanc bordé de rouge. Une plaque '''barrée d'une diagonale rouge''' correspond à une '''sortie''' d'agglomération (<code>city_limit=end</code>). Le popup donne le sens, les noms alternatifs (dont l'occitan), la référence et le gestionnaire quand ils existent, les '''photos du panneau''' référencées dans OSM, et un lien '''OpenStreetMap''' (''voir'' / ''compléter'' dans l'éditeur iD) pour corriger le panneau depuis la carte.
-
 ==== [layer:layer-ens] Espaces naturels sensibles (ENS) ====
 
 Polygones CD84 (DataSud). Superficie, communes, gestionnaire.
@@ -239,20 +271,6 @@ Polygones CD84 (DataSud). Superficie, communes, gestionnaire.
 Observations filtrées par intersection avec les ENS du 84.
 
 '''Comment :''' activer la couche ; cliquer le cercle coloré (zone de clic élargie) pour espèce, date, lien iNaturalist. Compatible avec la couche ENS affichée en même temps.
-
-==== [layer:layer-webcams] Webcams ====
-
-4 webcams trafic CD84 (Bonpas) et Mont Serein (Vision-Environnement).
-
-'''Comment :''' activer la couche ; cliquer un marqueur pour lancer le flux vidéo live dans la popup.
-
-'''Caméras groupées.''' Deux caméras d'un même giratoire (Bonpas, site 2) ne sont séparées que de douze mètres : elles se superposent jusqu'au zoom maximal, et la seconde était alors inatteignable. Les marqueurs trop proches sont donc réunis en un seul, marqué du '''nombre de caméras'''. Son popup sert de sélecteur : choisir une caméra lance son flux, le bouton ''‹ N caméras'' revient à la liste. Le groupe se défait tout seul dès que le zoom sépare suffisamment les points.
-
-==== [layer:layer-oedb] Événements (OEDB) ====
-
-Événements du Vaucluse servis par notre instance [https://github.com/openeventdatabase/backend OpenEventDatabase] statique : le dépôt [https://github.com/thepriben/oedb-rs oedb-rs] (Rust) régénère toutes les 3 h une API compatible OEDB sur GitHub Pages, à partir du flux Bison Futé DATEX II filtré Vaucluse (accidents, travaux, bouchons) et d'une curation manuelle (ex. les Jeudis d'Orange, catégorie {{{culture.market.night}}}). Les événements expirés sont purgés à chaque build.
-
-'''Comment :''' activer la couche ; cliquer une ligne de la légende (Accidents, Travaux, Bouchons, Culture, Autres) pour masquer / afficher la catégorie ; cliquer un marqueur pour le libellé, les dates, le lieu et la source.
 
 === [family:tools] Outils & méta ===
 
@@ -320,7 +338,8 @@ Sous la plupart des couches, une pastille indique quand les données ont été g
 
 * '''OSM''' (routes, véloroutes, communes, constructions) — mise à jour bi-hebdomadaire (workflow GitHub).
 * '''Externe''' (comptages, Bison Futé) — toutes les 3 h.
-* '''Incubateur''' (ponts OSM) — bi-hebdo (lun. & jeu.).
+* '''Signalisation & ouvrages''' (ponts, panneaux) — bi-hebdo (lun. & jeu.).
+* '''Territoire''' (secteurs d'exploitation CD84) — recalculé avec les extraits OSM.
 * '''Météo''' — live navigateur, ~10 min.
 * '''Statique''' (limite 84, accidents 2019-2024) — snapshot versionné, mise à jour manuelle.
 

@@ -463,36 +463,41 @@
                         ensureLayerOff(trafficVisible, window.toggleTraffic);
                     }
                     break;
-                case 'realtime':
-                    if (targetVisible) {
-                        ensureLayerToggle(bisonFuteVisible, window.toggleBisonFute);
-                        ensureLayerToggle(weatherStationsVisible, window.toggleWeatherStations);
-                    } else {
-                        ensureLayerOff(bisonFuteVisible, window.toggleBisonFute);
-                        ensureLayerOff(weatherStationsVisible, window.toggleWeatherStations);
-                    }
-                    break;
-                case 'incubator':
+                case 'signage':
                     if (targetVisible) {
                         ensureLayerToggle(bridgeVisible, window.toggleBridges);
                         ensureLayerToggle(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerToggle(guidepostsVisible, window.toggleGuideposts);
                         ensureLayerToggle(cityLimitsVisible, window.toggleCityLimits);
-                        ensureLayerToggle(latestChangesVisible, window.toggleLatestChanges);
-                        ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
-                        ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
-                        ensureLayerToggle(webcamsVisible, window.toggleWebcams);
-                        ensureLayerToggle(oedbEventsVisible, window.toggleOedbEvents);
                     } else {
                         ensureLayerOff(bridgeVisible, window.toggleBridges);
                         ensureLayerOff(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerOff(guidepostsVisible, window.toggleGuideposts);
                         ensureLayerOff(cityLimitsVisible, window.toggleCityLimits);
+                    }
+                    break;
+                case 'realtime':
+                    if (targetVisible) {
+                        ensureLayerToggle(bisonFuteVisible, window.toggleBisonFute);
+                        ensureLayerToggle(weatherStationsVisible, window.toggleWeatherStations);
+                        ensureLayerToggle(webcamsVisible, window.toggleWebcams);
+                        ensureLayerToggle(oedbEventsVisible, window.toggleOedbEvents);
+                    } else {
+                        ensureLayerOff(bisonFuteVisible, window.toggleBisonFute);
+                        ensureLayerOff(weatherStationsVisible, window.toggleWeatherStations);
+                        ensureLayerOff(webcamsVisible, window.toggleWebcams);
+                        ensureLayerOff(oedbEventsVisible, window.toggleOedbEvents);
+                    }
+                    break;
+                case 'incubator':
+                    if (targetVisible) {
+                        ensureLayerToggle(latestChangesVisible, window.toggleLatestChanges);
+                        ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
+                        ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
+                    } else {
                         ensureLayerOff(latestChangesVisible, window.toggleLatestChanges);
                         ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
-                        ensureLayerOff(webcamsVisible, window.toggleWebcams);
-                        ensureLayerOff(oedbEventsVisible, window.toggleOedbEvents);
                     }
                     break;
                 default:
@@ -508,7 +513,7 @@
             setFamilyVisibility(familyId, counts.visible === 0);
         }
 
-        const LAYER_FAMILIES = ['factual', 'stats', 'realtime', 'incubator'];
+        const LAYER_FAMILIES = ['factual', 'signage', 'stats', 'realtime', 'incubator'];
 
         function expandLegendFamily(familyId) {
             const fam = document.querySelector(`.legend-family[data-family="${familyId}"]`);
@@ -1473,7 +1478,7 @@
             hl: 'local'
         };
 
-        const APP_URL_FAMILY_IDS = ['factual', 'stats', 'realtime', 'incubator'];
+        const APP_URL_FAMILY_IDS = ['factual', 'signage', 'stats', 'realtime', 'incubator'];
 
         const DEFAULT_MAP_VIEW = Object.freeze({
             lat: 44.06,
@@ -1564,7 +1569,15 @@
                     .filter(id => APP_URL_FAMILY_IDS.includes(id));
             }
 
-            if (!state.view && !state.layersExplicit && !state.families.length) return null;
+            // « ceer:ceer-de-carpentras » : un chef de centre partage son secteur
+            // par un lien. Le secteur est désigné par son nom et non par son rang
+            // dans la liste, qui bouge à chaque rafraîchissement du découpage.
+            const terr = params.get('terr');
+            if (terr && terr.includes(':')) state.territory = terr.trim();
+
+            if (!state.view && !state.layersExplicit && !state.families.length && !state.territory) {
+                return null;
+            }
             return state;
         }
 
@@ -1650,6 +1663,9 @@
 
                 const families = collectActiveAppUrlFamilies();
                 if (families.length) params.set('fam', families.join(','));
+
+                const territory = territorialStateForUrl();
+                if (territory) params.set('terr', territory);
 
                 const query = params.toString();
                 const next = query
@@ -1908,25 +1924,30 @@
                     if (trafficVisible) visible++;
                     return { visible, total };
                 }
-                case 'realtime': {
+                case 'signage': {
                     let visible = 0;
-                    const total = 2;
-                    if (bisonFuteVisible) visible++;
-                    if (weatherStationsVisible) visible++;
-                    return { visible, total };
-                }
-                case 'incubator': {
-                    let visible = 0;
-                    const total = 9;
+                    const total = 4;
                     if (bridgeVisible) visible++;
                     if (roadSignsVisible) visible++;
                     if (guidepostsVisible) visible++;
                     if (cityLimitsVisible) visible++;
+                    return { visible, total };
+                }
+                case 'realtime': {
+                    let visible = 0;
+                    const total = 4;
+                    if (bisonFuteVisible) visible++;
+                    if (weatherStationsVisible) visible++;
+                    if (webcamsVisible) visible++;
+                    if (oedbEventsVisible) visible++;
+                    return { visible, total };
+                }
+                case 'incubator': {
+                    let visible = 0;
+                    const total = 3;
                     if (latestChangesVisible) visible++;
                     if (sensitiveZonesVisible) visible++;
                     if (inaturalistSensitivesVisible) visible++;
-                    if (webcamsVisible) visible++;
-                    if (oedbEventsVisible) visible++;
                     return { visible, total };
                 }
                 default:
@@ -6636,6 +6657,202 @@
             console.log(`${hierarchyVisibility[hierarchy] ? '✓' : '✗'} ${label} ${hierarchyVisibility[hierarchy] ? 'affiché' : 'masqué'}`);
         };
 
+        // ========== ÉCHELLE TERRITORIALE ==========
+        // Un chef de centre, un élu de canton, une commune partenaire ne
+        // regardent pas le même réseau. Le Département publie ses limites
+        // d'exploitation au tronçon et non en emprises — 57 communes relèvent de
+        // plusieurs CEER, il n'y a donc pas de polygone à plaquer. La jointure
+        // est faite hors ligne par scripts/update_territorial_units.py : ne reste
+        // ici qu'une table d'indices, cinq numéros d'unité par tronçon OSM.
+
+        let territorialData = null;
+        let territorialScale = 'ceer';
+        let territorialUnit = null;
+        let territorialColumn = -1;
+        let territorialPendingSlug = null;
+
+        function territorialSlug(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '');
+        }
+
+        function territorialUnits(scale) {
+            return territorialData?.scales?.[scale]?.units || [];
+        }
+
+        function territorialCurrentUnit() {
+            if (territorialUnit === null) return null;
+            return territorialUnits(territorialScale)[territorialUnit] || null;
+        }
+
+        // Le prédicat que consulte l'affichage de la hiérarchie. Filtrer par
+        // visibilité plutôt que par style laisse le mode Limitations et les
+        // étiquettes fonctionner sans rien savoir du découpage territorial.
+        function passesTerritorialFilter(polyline) {
+            if (territorialUnit === null || !territorialData) return true;
+            const row = territorialData.ways[String(polyline.options.wayId)];
+            if (!row) return false;
+            return row[territorialColumn] === territorialUnit;
+        }
+        window.passesTerritorialFilter = passesTerritorialFilter;
+
+        function renderTerritoryScales() {
+            const host = document.getElementById('territoryScales');
+            if (!host) return;
+            if (!territorialData) {
+                host.innerHTML = '<div class="territory-empty">Découpage indisponible.</div>';
+                return;
+            }
+            host.innerHTML = territorialData.order.map(scale => {
+                const definition = territorialData.scales[scale];
+                const count = definition.units.length;
+                const active = scale === territorialScale;
+                return `<button type="button" class="territory-scale${active ? ' is-active' : ''}"
+                    data-territory-scale="${scale}" aria-pressed="${active ? 'true' : 'false'}"
+                    title="${definition.label} — ${count} unités">${definition.label}</button>`;
+            }).join('');
+        }
+
+        function renderTerritoryList() {
+            const list = document.getElementById('territoryList');
+            const search = document.getElementById('territorySearch');
+            const hint = document.getElementById('territoryHint');
+            if (!list) return;
+
+            const units = territorialUnits(territorialScale);
+            // Chercher parmi cent cinquante communes à l'œil n'est pas tenable ;
+            // parmi quatre agences, le champ de saisie n'est qu'un encombrement.
+            if (search) search.hidden = units.length <= 12;
+            const needle = territorialSlug(search && !search.hidden ? search.value : '');
+
+            const rows = units
+                .map((unit, index) => ({ unit, index }))
+                .filter(({ unit }) => !needle || territorialSlug(unit.name).includes(needle));
+
+            list.innerHTML = rows.length
+                ? rows.map(({ unit, index }) => {
+                    const active = index === territorialUnit;
+                    return `<button type="button" class="territory-unit${active ? ' is-active' : ''}"
+                        data-territory-unit="${index}" aria-pressed="${active ? 'true' : 'false'}"
+                        title="${unit.name} — ${unit.ways} tronçons, ${unit.refs.length} routes">
+                        <span class="territory-unit-name">${unit.name}</span>
+                        <span class="territory-unit-km">${unit.km.toFixed(0)} km</span>
+                    </button>`;
+                }).join('')
+                : '<div class="territory-empty">Aucune unité ne correspond.</div>';
+
+            if (hint) {
+                const unit = territorialCurrentUnit();
+                hint.innerHTML = unit
+                    ? `<strong>${unit.name}</strong> · ${unit.ways} tronçons · ${unit.refs.length} routes
+                       <button type="button" class="territory-clear" data-territory-unit="all">Tout le département</button>`
+                    : `${units.length} unités · cliquer pour n'afficher que ce secteur`;
+            }
+        }
+
+        function applyTerritorialFilter() {
+            if (typeof window.updateHierarchyDisplay === 'function') window.updateHierarchyDisplay();
+            const unit = territorialCurrentUnit();
+            if (unit && Array.isArray(unit.bounds) && window.map) {
+                window.map.fitBounds(
+                    L.latLngBounds([unit.bounds[1], unit.bounds[0]], [unit.bounds[3], unit.bounds[2]]),
+                    { padding: [30, 30], animate: true }
+                );
+            }
+            renderTerritoryScales();
+            renderTerritoryList();
+            scheduleAppUrlSync();
+        }
+
+        window.selectTerritorialScale = function(scale) {
+            if (!territorialData?.scales?.[scale]) return;
+            territorialScale = scale;
+            territorialColumn = territorialData.order.indexOf(scale);
+            // Un secteur de l'échelle précédente n'a pas d'équivalent dans la
+            // nouvelle : changer d'échelle rend la vue au département entier.
+            territorialUnit = null;
+            const search = document.getElementById('territorySearch');
+            if (search) search.value = '';
+            applyTerritorialFilter();
+        };
+
+        window.selectTerritorialUnit = function(index) {
+            if (!territorialData) return;
+            const next = index === null || index === 'all' ? null : Number(index);
+            territorialUnit = (next === territorialUnit || next === null) ? null : next;
+            if (territorialUnit !== null) ensureHierarchyVisibility(true);
+            applyTerritorialFilter();
+        };
+
+        function territorialStateForUrl() {
+            const unit = territorialCurrentUnit();
+            return unit ? `${territorialScale}:${territorialSlug(unit.name)}` : '';
+        }
+
+        function applyTerritorialStateFromUrl(value) {
+            const [scale, slug] = String(value || '').split(':');
+            if (!scale || !slug) return;
+            if (!territorialData?.scales?.[scale]) {
+                territorialPendingSlug = value;
+                return;
+            }
+            territorialScale = scale;
+            territorialColumn = territorialData.order.indexOf(scale);
+            const position = territorialUnits(scale)
+                .findIndex(unit => territorialSlug(unit.name) === slug);
+            territorialUnit = position >= 0 ? position : null;
+            if (territorialUnit !== null) ensureHierarchyVisibility(true);
+            applyTerritorialFilter();
+        }
+
+        async function initTerritorialUnits() {
+            const path = window.APP_CONFIG?.data?.json?.['territorial-units'];
+            if (!path) return;
+            try {
+                territorialData = await window.InforouteApi.fetchJson(path, { cache: 'no-cache' });
+                territorialColumn = territorialData.order.indexOf(territorialScale);
+                if (territorialColumn < 0) {
+                    territorialScale = territorialData.order[0];
+                    territorialColumn = 0;
+                }
+                renderFreshnessBadge(document.getElementById('freshness-territorial-units'), {
+                    generatedAt: territorialData._cache?.generated_at,
+                    scheduleKey: 'external'
+                });
+            } catch (error) {
+                console.warn('Découpage territorial indisponible:', error);
+                territorialData = null;
+            }
+            renderTerritoryScales();
+            renderTerritoryList();
+
+            const wanted = territorialPendingSlug || INITIAL_APP_URL_STATE?.territory;
+            if (wanted) {
+                territorialPendingSlug = null;
+                applyTerritorialStateFromUrl(wanted);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const section = document.getElementById('territorySection');
+            if (!section) return;
+            section.addEventListener('click', event => {
+                const scaleButton = event.target.closest('[data-territory-scale]');
+                if (scaleButton) {
+                    window.selectTerritorialScale(scaleButton.dataset.territoryScale);
+                    return;
+                }
+                const unitButton = event.target.closest('[data-territory-unit]');
+                if (unitButton) window.selectTerritorialUnit(unitButton.dataset.territoryUnit);
+            });
+            const search = document.getElementById('territorySearch');
+            search?.addEventListener('input', renderTerritoryList);
+        });
+
         // Update route display according to hierarchy
         window.updateHierarchyDisplay = function() {
             if (!window.map || !window.routePolylines) return; // Wait until the map is ready
@@ -6646,7 +6863,7 @@
                 polylines.forEach(polyline => {
                     const hierarchy = polyline.options.roadHierarchy;
                     
-                    if (hierarchyVisibility[hierarchy]) {
+                    if (hierarchyVisibility[hierarchy] && passesTerritorialFilter(polyline)) {
                         // Show route
                         if (!window.map.hasLayer(polyline)) {
                             polyline.addTo(window.map);
@@ -7355,7 +7572,8 @@
                                     wayId: way.id
                                 });
 
-                                if (hierarchyVisibility[hierarchy]) {
+                                if (hierarchyVisibility[hierarchy]
+                                    && window.passesTerritorialFilter(polyline)) {
                                     polyline.addTo(window.map);
                                 }
 
@@ -7658,6 +7876,11 @@
                         updateWikidataSummary();
                         updateNetworkStats();
                     }
+
+                    // Le découpage territorial s'applique aux tronçons : il ne
+                    // sert à rien avant qu'ils existent, et un lien pointant sur
+                    // un secteur doit pouvoir le retrouver à l'arrivée.
+                    initTerritorialUnits();
                 }
             } catch (error) {
                 console.error('Erreur lors du chargement des routes:', error);
@@ -7711,7 +7934,12 @@
         function getRouteLabelCandidates(route, bounds) {
             const inView = [];
             if (!route.ways) return inView;
+            // Sous filtre territorial, une route qui ne traverse le secteur que
+            // sur un tronçon posait quand même son numéro n'importe où le long de
+            // son tracé complet, donc au-dessus du voisin.
+            const shown = shownWayIds();
             for (const way of route.ways) {
+                if (shown && !shown.has(String(way.id))) continue;
                 const geometry = way.geometry;
                 if (!geometry || geometry.length === 0) continue;
                 for (let i = 0; i < geometry.length; i += ROUTE_LABEL_POINT_STRIDE) {
@@ -7781,6 +8009,31 @@
             ROUTE_LABEL_SPIRAL_STEP_PX
         );
 
+        function routeHasVisibleSegment(ref) {
+            if (territorialUnit === null) return true;
+            const polylines = window.routePolylines?.[ref];
+            return Array.isArray(polylines) && polylines.some(p => window.map.hasLayer(p));
+        }
+
+        // Les identifiants des tronçons retenus par le filtre territorial, ou
+        // `null` quand tout le département est affiché — auquel cas il n'y a rien
+        // à restreindre et rien à recalculer.
+        let shownWayIdsCache = { unit: undefined, scale: '', ids: null };
+
+        function shownWayIds() {
+            if (territorialUnit === null || !territorialData) return null;
+            if (shownWayIdsCache.unit === territorialUnit
+                && shownWayIdsCache.scale === territorialScale) {
+                return shownWayIdsCache.ids;
+            }
+            const ids = new Set();
+            Object.entries(territorialData.ways).forEach(([wayId, row]) => {
+                if (row[territorialColumn] === territorialUnit) ids.add(wayId);
+            });
+            shownWayIdsCache = { unit: territorialUnit, scale: territorialScale, ids };
+            return ids;
+        }
+
         function collectVisibleRouteLabels(zoom) {
             const entries = [];
             const bounds = map.getBounds().pad(ROUTE_LABEL_VIEWPORT_PADDING);
@@ -7789,6 +8042,9 @@
                 const opacity = getRouteLabelZoomOpacity(hierarchy, zoom);
                 if (opacity <= 0) return;
                 routesByHierarchy[hierarchy].forEach(route => {
+                    // Une route dont plus aucun tronçon n'est à l'écran garderait
+                    // son numéro flottant au-dessus du secteur voisin.
+                    if (!routeHasVisibleSegment(route.ref)) return;
                     const candidates = getRouteLabelCandidates(route, bounds);
                     if (candidates.length === 0) return;
                     entries.push({

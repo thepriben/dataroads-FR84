@@ -5977,6 +5977,151 @@
             margin-top: 10px;
         }
 
+        /* ========== ÉCHELLE TERRITORIALE ========== */
+
+        /* Cinq échelles sur deux rangs : les intitulés vont de « Canton » à
+           « Centre d'exploitation », une grille régulière les tronquerait. */
+        .territory-scales {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 6px 0 8px;
+        }
+
+        .territory-scale {
+            flex: 1 1 auto;
+            padding: 4px 8px;
+            border: 1px solid #d5dee5;
+            border-radius: 12px;
+            background: #fff;
+            color: #7f8c8d;
+            font-family: inherit;
+            font-size: 0.66rem;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .territory-scale:hover {
+            color: #2C3E50;
+            border-color: #9fb0bd;
+        }
+
+        .territory-scale.is-active {
+            background: #2C3E50;
+            border-color: #2C3E50;
+            color: #fff;
+        }
+
+        .territory-search {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 5px 8px;
+            margin-bottom: 6px;
+            border: 1px solid #d5dee5;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.72rem;
+            color: #2C3E50;
+        }
+
+        .territory-search:focus {
+            outline: none;
+            border-color: #3498DB;
+        }
+
+        /* Cent cinquante communes ne tiennent pas dans une barre latérale :
+           la liste défile, comme celle des routes sans Wikidata. */
+        .territory-list {
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1px solid #edf1f4;
+            border-radius: 4px;
+        }
+
+        .territory-unit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 5px 8px;
+            border: none;
+            border-bottom: 1px solid #f4f7f9;
+            background: #fff;
+            font-family: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.12s ease;
+        }
+
+        .territory-unit:last-child {
+            border-bottom: none;
+        }
+
+        .territory-unit:hover {
+            background: #f4f7f9;
+        }
+
+        .territory-unit.is-active {
+            background: #eaf2f8;
+            box-shadow: inset 3px 0 0 #3498DB;
+        }
+
+        .territory-unit-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #2C3E50;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .territory-unit-km {
+            flex: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: #95a5a6;
+        }
+
+        .territory-hint {
+            margin-top: 6px;
+            font-size: 0.66rem;
+            line-height: 1.4;
+            color: #7f8c8d;
+        }
+
+        .territory-hint strong {
+            color: #2C3E50;
+        }
+
+        .territory-clear {
+            display: block;
+            margin-top: 4px;
+            padding: 2px 8px;
+            border: 1px solid #d5dee5;
+            border-radius: 10px;
+            background: #fff;
+            color: #7f8c8d;
+            font-family: inherit;
+            font-size: 0.62rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .territory-clear:hover {
+            color: #2C3E50;
+            border-color: #9fb0bd;
+        }
+
+        .territory-empty {
+            padding: 8px;
+            font-size: 0.68rem;
+            color: #95a5a6;
+        }
+
         /* Rappel du cercle pointillé des vitesses implicites. */
         .limitations-legend-implicit {
             display: flex;

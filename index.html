@@ -11,6 +11,9 @@
     <meta name="description" content="Interactive map of the Vaucluse departmental road network: hierarchy, traffic counts, 2024 crash data, bicycle routes, construction projects, and OSM quality checks. CD84 road-information prototype.">
     <meta name="application-name" content="dataroads-FR84">
     <link rel="canonical" href="https://thepriben.github.io/dataroads-FR84/">
+    <!-- Sans cette ligne, chaque visite réclamait un /favicon.ico absent et le
+         404 s'affichait dans la console à côté des vraies erreurs. -->
+    <link rel="icon" href="assets/cd84-logo-mark.svg" type="image/svg+xml">
     <meta property="og:type" content="website">
     <meta property="og:title" content="dataroads-FR84 — Vaucluse departmental road network">
     <meta property="og:description" content="Browser-only map prototype for CD84: departmental roads, traffic counts, crash data, véloroutes, and OpenStreetMap quality panel.">
@@ -32,7 +35,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260924-1">
+    <link rel="stylesheet" href="css/styles.css?v=20260924-5">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -76,6 +79,42 @@
                     </button>
                 </div>
                 <div class="sidebar-scroll">
+                <section class="legend-family" data-family="territory" data-expanded="false">
+                    <div class="legend-family-header">
+                        <button class="legend-family-expand" type="button" aria-expanded="false">
+                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 21V6l-6-3v15l-6 3V6"/><path d="M15 6l6-3v15l-6 3"/></svg></span>
+                            <span class="legend-family-label">Territoire</span>
+                        </button>
+                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
+                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
+                        </button>
+                    </div>
+                    <div class="legend-family-body">
+                <div class="legend-section">
+                    <div class="legend-title">Emprise départementale</div>
+                    <span class="freshness-badge" id="freshness-boundary" data-schedule-key="static"></span>
+
+                    <div class="legend-item" style="pointer-events: none;">
+                        <div class="legend-color" style="background: transparent; border: 2px dashed #2C3E50; height: 0px; width: 40px;"></div>
+                        <div class="legend-label">Limite du Vaucluse (84)</div>
+                        <div class="legend-count"></div>
+                    </div>
+                </div>
+
+                <div class="legend-section" id="territorySection">
+                    <div class="legend-title">Échelle territoriale</div>
+                    <span class="freshness-badge" id="freshness-territorial-units" data-schedule-key="external"></span>
+
+                    <div class="territory-scales" id="territoryScales"></div>
+                    <input type="search" class="territory-search" id="territorySearch"
+                           placeholder="Filtrer les unités…" aria-label="Filtrer les unités territoriales" hidden>
+                    <div class="territory-list" id="territoryList"></div>
+                    <div class="territory-hint" id="territoryHint"></div>
+                    <div class="sensitive-zones-hint">Limites d'exploitation CD84 · <code>DataSud</code> · EPCI <code>API Géo</code></div>
+                </div>
+                    </div>
+                </section>
+
                 <section class="legend-family" data-family="factual" data-expanded="false">
                     <div class="legend-family-header">
                         <button class="legend-family-expand" type="button" aria-expanded="false">
@@ -91,17 +130,6 @@
                         </button>
                     </div>
                     <div class="legend-family-body">
-                <div class="legend-section">
-                    <div class="legend-title">Territoire</div>
-                    <span class="freshness-badge" id="freshness-boundary" data-schedule-key="static"></span>
-                    
-                    <div class="legend-item" style="pointer-events: none;">
-                        <div class="legend-color" style="background: transparent; border: 2px dashed #2C3E50; height: 0px; width: 40px;"></div>
-                        <div class="legend-label">Limite du Vaucluse (84)</div>
-                        <div class="legend-count"></div>
-                    </div>
-                </div>
-
                 <div class="legend-section">
                     <div class="legend-title" onclick="toggleAllHierarchy()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
                         <span>Hiérarchie du Réseau</span>
@@ -238,6 +266,90 @@
                 <div class="legend-section" id="limitationsLegend" style="display:none;">
                     <div class="legend-title">Limitations & Restrictions</div>
                     <!-- Contenu généré dynamiquement par updateLimitationsLegend() -->
+                </div>
+                    </div>
+                </section>
+
+                <section class="legend-family" data-family="signage" data-expanded="false">
+                    <div class="legend-family-header">
+                        <button class="legend-family-expand" type="button" aria-expanded="false">
+                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 22V12"/><path d="M5 12V7a7 7 0 0 1 14 0v5"/><rect x="3" y="12" width="18" height="5" rx="1"/></svg></span>
+                            <span class="legend-family-label">Signalisation &amp; ouvrages</span>
+                        </button>
+                        <button class="legend-family-vis" type="button" aria-label="Visibilité de la rubrique">
+                            <span class="family-eye-icon toggle-icon"></span>
+                            <span class="family-vis-count"></span>
+                        </button>
+                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
+                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
+                        </button>
+                    </div>
+                    <div class="legend-family-body">
+<div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleBridges && window.toggleBridges();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Couche ponts</span>
+                        <span id="bridgesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-bridges" data-schedule-key="incubator"></span>
+
+                    <div class="legend-item legend-item-summary" data-bridge="total" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color" style="background: rgba(44, 62, 80, 0.12); border: 2px solid #2C3E50; height: 13px; width: 24px; border-radius: 3px;"></div>
+                        <div class="legend-label">Ponts OSM</div>
+                        <div class="legend-count" id="count-bridges-total">-</div>
+                    </div>
+                </div>
+
+                <div class="bridge-zoom-hint" id="bridgeZoomHint" hidden></div>
+
+<div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleRoadSigns && window.toggleRoadSigns();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Panneaux (stop / cédez)</span>
+                        <span id="roadSignsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-road-signs" data-schedule-key="incubator"></span>
+
+                    <div class="legend-item" data-road-sign="stop" style="opacity: 0.5;">
+                        <div class="legend-color road-sign-swatch road-sign-swatch--stop"></div>
+                        <div class="legend-label">Stop</div>
+                        <div class="legend-count" id="count-road-signs-stop">-</div>
+                    </div>
+                    <div class="legend-item" data-road-sign="yield" style="opacity: 0.5;">
+                        <div class="legend-color road-sign-swatch road-sign-swatch--yield"></div>
+                        <div class="legend-label">Cédez le passage</div>
+                        <div class="legend-count" id="count-road-signs-yield">-</div>
+                    </div>
+                    <div class="sensitive-zones-hint"><code>highway=stop</code> / <code>give_way</code></div>
+                </div>
+
+<div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleGuideposts && window.toggleGuideposts();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Panneaux<small class="legend-title-sub">directionnels</small></span>
+                        <span id="guidepostsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-guideposts" data-schedule-key="incubator"></span>
+
+                    <div class="legend-item" data-guidepost="guidepost" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color guidepost-swatch"></div>
+                        <div class="legend-label">Mâts directionnels (rando, vélo…)</div>
+                        <div class="legend-count" id="count-guideposts">-</div>
+                    </div>
+                    <div class="guidepost-usages" id="guidepostUsages" data-guidepost="guidepost" style="pointer-events: none; opacity: 0.5;"></div>
+                    <div class="sensitive-zones-hint"><code>information=guidepost</code></div>
+                </div>
+
+<div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleCityLimits && window.toggleCityLimits();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Panneaux<small class="legend-title-sub">d'agglomération</small></span>
+                        <span id="cityLimitsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-city-limits" data-schedule-key="incubator"></span>
+
+                    <div class="legend-item" data-city-limit="city_limit" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color city-limit-swatch" aria-hidden="true">EB10</div>
+                        <div class="legend-label">Entrées / sorties de village</div>
+                        <div class="legend-count" id="count-city-limits">-</div>
+                    </div>
+                    <div class="sensitive-zones-hint"><code>traffic_sign=city_limit</code></div>
                 </div>
                     </div>
                 </section>
@@ -390,138 +502,7 @@
                     </div>
 
                 </div>
-                    </div>
-                </section>
-
-                <section class="legend-family" data-family="incubator" data-expanded="false">
-                    <div class="legend-family-header">
-                        <button class="legend-family-expand" type="button" aria-expanded="false">
-                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg></span>
-                            <span class="legend-family-label">Incubateur</span>
-                        </button>
-                        <button class="legend-family-vis" type="button" aria-label="Visibilité de la rubrique">
-                            <span class="family-eye-icon toggle-icon"></span>
-                            <span class="family-vis-count"></span>
-                        </button>
-                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
-                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
-                        </button>
-                    </div>
-                    <div class="legend-family-body">
-                <div class="legend-section">
-                    <div class="legend-title" onclick="window.toggleBridges && window.toggleBridges();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                        <span>Couche ponts</span>
-                        <span id="bridgesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
-                    </div>
-                    <span class="freshness-badge" id="freshness-bridges" data-schedule-key="incubator"></span>
-
-                    <div class="legend-item legend-item-summary" data-bridge="total" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color" style="background: rgba(44, 62, 80, 0.12); border: 2px solid #2C3E50; height: 13px; width: 24px; border-radius: 3px;"></div>
-                        <div class="legend-label">Ponts OSM</div>
-                        <div class="legend-count" id="count-bridges-total">-</div>
-                    </div>
-                </div>
-
-                <div class="bridge-zoom-hint" id="bridgeZoomHint" hidden></div>
-
-                <div class="legend-section">
-                    <div class="legend-title" onclick="window.toggleRoadSigns && window.toggleRoadSigns();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                        <span>Panneaux (stop / cédez)</span>
-                        <span id="roadSignsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
-                    </div>
-                    <span class="freshness-badge" id="freshness-road-signs" data-schedule-key="incubator"></span>
-
-                    <div class="legend-item" data-road-sign="stop" style="opacity: 0.5;">
-                        <div class="legend-color road-sign-swatch road-sign-swatch--stop"></div>
-                        <div class="legend-label">Stop</div>
-                        <div class="legend-count" id="count-road-signs-stop">-</div>
-                    </div>
-                    <div class="legend-item" data-road-sign="yield" style="opacity: 0.5;">
-                        <div class="legend-color road-sign-swatch road-sign-swatch--yield"></div>
-                        <div class="legend-label">Cédez le passage</div>
-                        <div class="legend-count" id="count-road-signs-yield">-</div>
-                    </div>
-                    <div class="sensitive-zones-hint"><code>highway=stop</code> / <code>give_way</code></div>
-                </div>
-
-                <div class="legend-section">
-                    <div class="legend-title" onclick="window.toggleGuideposts && window.toggleGuideposts();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                        <span class="legend-title-stacked">Panneaux<small class="legend-title-sub">directionnels</small></span>
-                        <span id="guidepostsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
-                    </div>
-                    <span class="freshness-badge" id="freshness-guideposts" data-schedule-key="incubator"></span>
-
-                    <div class="legend-item" data-guidepost="guidepost" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color guidepost-swatch"></div>
-                        <div class="legend-label">Mâts directionnels (rando, vélo…)</div>
-                        <div class="legend-count" id="count-guideposts">-</div>
-                    </div>
-                    <div class="guidepost-usages" id="guidepostUsages" data-guidepost="guidepost" style="pointer-events: none; opacity: 0.5;"></div>
-                    <div class="sensitive-zones-hint"><code>information=guidepost</code></div>
-                </div>
-
-                <div class="legend-section">
-                    <div class="legend-title" onclick="window.toggleLatestChanges && window.toggleLatestChanges();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                        <span class="legend-title-stacked">Derniers<small class="legend-title-sub">changements OSM</small></span>
-                        <span id="latestChangesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
-                    </div>
-                    <span class="freshness-badge" id="freshness-latest-changes" data-schedule-key="hourly"></span>
-
-                    <div class="legend-item" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color latest-change-swatch"></div>
-                        <div class="legend-label">Voirie modifiée · <span id="latest-changes-window">3 derniers jours</span></div>
-                        <div class="legend-count" id="count-latest-changes">-</div>
-                    </div>
-                    <div class="latest-change-actions" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;">
-                        <span class="latest-change-key"><i style="background:#1E8449;"></i>Créé</span>
-                        <span class="latest-change-key"><i style="background:#B9770E;"></i>Modifié</span>
-                        <span class="latest-change-key"><i style="background:#922B21;"></i>Supprimé</span>
-                        <span class="latest-change-key"><i class="is-ghost"></i>Tracé précédent</span>
-                    </div>
-                    <div class="latest-change-axes" id="latestChangesAxes" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;"></div>
-                    <div class="sensitive-zones-hint"><code>adiff</code> Overpass · <code>way[highway]</code></div>
-                </div>
-
-                <div class="legend-section">
-                    <div class="legend-title" onclick="window.toggleCityLimits && window.toggleCityLimits();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                        <span class="legend-title-stacked">Panneaux<small class="legend-title-sub">d'agglomération</small></span>
-                        <span id="cityLimitsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
-                    </div>
-                    <span class="freshness-badge" id="freshness-city-limits" data-schedule-key="incubator"></span>
-
-                    <div class="legend-item" data-city-limit="city_limit" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color city-limit-swatch" aria-hidden="true">EB10</div>
-                        <div class="legend-label">Entrées / sorties de village</div>
-                        <div class="legend-count" id="count-city-limits">-</div>
-                    </div>
-                    <div class="sensitive-zones-hint"><code>traffic_sign=city_limit</code></div>
-                </div>
-
-                <div class="legend-section">
-                    <div class="legend-title" onclick="window.toggleSensitiveZones && window.toggleSensitiveZones();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                        <span>Espaces naturels sensibles</span>
-                        <span id="sensitiveZonesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
-                    </div>
-                    <div class="legend-item" data-sensitive-zone="ens" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color sensitive-zone-swatch"></div>
-                        <div class="legend-label">ENS CD84 (polygones)</div>
-                        <div class="legend-count" id="count-sensitive-zones">-</div>
-                    </div>
-                </div>
-
-                <div class="legend-section">
-                    <div class="legend-title" onclick="window.toggleInaturalistSensitives && window.toggleInaturalistSensitives();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-                        <span>Observations iNaturalist</span>
-                        <span id="inaturalistSensitivesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
-                    </div>
-                    <div class="legend-item" data-inaturalist="observation" style="pointer-events: none; opacity: 0.5;">
-                        <div class="legend-color inaturalist-swatch"></div>
-                        <div class="legend-label">Dans les ENS</div>
-                        <div class="legend-count" id="count-inaturalist-sensitive">-</div>
-                    </div>
-                </div>
-
-                <div class="legend-section">
+<div class="legend-section">
                     <div class="legend-title" onclick="window.toggleWebcams && window.toggleWebcams();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
                         <span>Webcams</span>
                         <span id="webcamsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
@@ -538,7 +519,7 @@
                     </div>
                 </div>
 
-                <div class="legend-section">
+<div class="legend-section">
                     <div class="legend-title" onclick="window.toggleOedbEvents && window.toggleOedbEvents();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
                         <span>Événements (OEDB)</span>
                         <span id="oedbEventsToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
@@ -579,6 +560,76 @@
                     </div>
                 </div>
                     </div>
+                </section>
+
+                <section class="legend-family" data-family="incubator" data-expanded="false">
+                    <div class="legend-family-header">
+                        <button class="legend-family-expand" type="button" aria-expanded="false">
+                            <span class="legend-family-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg></span>
+                            <span class="legend-family-label">Incubateur</span>
+                        </button>
+                        <button class="legend-family-vis" type="button" aria-label="Visibilité de la rubrique">
+                            <span class="family-eye-icon toggle-icon"></span>
+                            <span class="family-vis-count"></span>
+                        </button>
+                        <button class="legend-family-chevron-btn" type="button" aria-label="Déplier la rubrique" aria-expanded="false">
+                            <span class="legend-family-chevron"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="6 9 12 15 18 9"/></svg></span>
+                        </button>
+                    </div>
+                    <div class="legend-family-body">
+                
+
+                
+                
+                <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleLatestChanges && window.toggleLatestChanges();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Derniers<small class="legend-title-sub">changements OSM</small></span>
+                        <span id="latestChangesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-latest-changes" data-schedule-key="hourly"></span>
+
+                    <div class="legend-item" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color latest-change-swatch"></div>
+                        <div class="legend-label">Voirie modifiée · <span id="latest-changes-window">3 derniers jours</span></div>
+                        <div class="legend-count" id="count-latest-changes">-</div>
+                    </div>
+                    <div class="latest-change-actions" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;">
+                        <span class="latest-change-key"><i style="background:#1E8449;"></i>Créé</span>
+                        <span class="latest-change-key"><i style="background:#B9770E;"></i>Modifié</span>
+                        <span class="latest-change-key"><i style="background:#922B21;"></i>Supprimé</span>
+                        <span class="latest-change-key"><i class="is-ghost"></i>Tracé précédent</span>
+                    </div>
+                    <div class="latest-change-axes" id="latestChangesAxes" data-latest-change="latest-change" style="pointer-events: none; opacity: 0.5;"></div>
+                    <div class="sensitive-zones-hint"><code>adiff</code> Overpass · <code>way[highway]</code></div>
+                </div>
+
+                
+                <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleSensitiveZones && window.toggleSensitiveZones();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Espaces naturels sensibles</span>
+                        <span id="sensitiveZonesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <div class="legend-item" data-sensitive-zone="ens" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color sensitive-zone-swatch"></div>
+                        <div class="legend-label">ENS CD84 (polygones)</div>
+                        <div class="legend-count" id="count-sensitive-zones">-</div>
+                    </div>
+                </div>
+
+                <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleInaturalistSensitives && window.toggleInaturalistSensitives();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span>Observations iNaturalist</span>
+                        <span id="inaturalistSensitivesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <div class="legend-item" data-inaturalist="observation" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color inaturalist-swatch"></div>
+                        <div class="legend-label">Dans les ENS</div>
+                        <div class="legend-count" id="count-inaturalist-sensitive">-</div>
+                    </div>
+                </div>
+
+                
+                                    </div>
                 </section>
 
                 <section class="legend-family" data-family="tools" data-expanded="false">
@@ -895,7 +946,7 @@
 
     </div>
 
-    <script src="js/config.js?v=20260924-3"></script>
+    <script src="js/config.js?v=20260924-5"></script>
     <script>
         (function () {
             var el = document.getElementById('siteVersion');
@@ -906,7 +957,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260825-2"></script>
-    <script src="js/app.js?v=20260924-3"></script>
+    <script src="js/app.js?v=20260924-5"></script>
     <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260826-4"></script>
 </body>

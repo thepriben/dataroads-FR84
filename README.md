@@ -11,6 +11,7 @@ Ce démonstrateur, incubé au sein du Bureau de l'Information Routière (Conseil
 
 - Le réseau départemental du Vaucluse, avec une hiérarchie simple : réseau régional, territorial et local.
 - La limite du département et les communes, pour replacer les routes dans leur contexte territorial.
+- Une échelle territoriale qui restreint le réseau affiché à un secteur (issues #21 et #37) : agence routière, centre d'exploitation, canton, intercommunalité ou commune. Les secteurs d'exploitation viennent des limites d'exploitation publiées par le Département sur DataSud, qui sont attribuées au tronçon et non en emprises — 57 communes relèvent de plusieurs centres, il n'existe donc aucun polygone à plaquer. Le choix se partage par l'URL, ce qui permet à un chef de centre ou à une commune partenaire d'ouvrir directement son périmètre.
 - Les stations de comptage CD84, classées par niveau de trafic.
 - L'accidentologie multi-millésimes (BAAC, 2019-2024) sous forme de nuage : couleur selon l'ancienneté, gravité signalée par un anneau noir (blessés hospitalisés et mortels), histogramme et curseur d'années pour explorer l'évolution.
 - Les routes en construction ou en projet issues du cache OSM.
@@ -40,6 +41,8 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 - Donnée rafraîchie toutes les heures : les derniers changements OSM sur la voirie, produits par un *augmented diff* Overpass en intégration continue.
 - Donnée dynamique directe : météo Open-Meteo, demandée par le navigateur au chargement puis toutes les 10 minutes.
 - Overpass API : jamais appelé par le navigateur. Il sert uniquement dans les scripts d'actualisation OSM — d'autant plus nécessaire pour l'*augmented diff*, qui demande une trentaine de secondes par requête.
+
+- Donnée dérivée : l'appartenance territoriale des tronçons, recalculée dans la foulée de chaque extraction OSM. Elle joint les limites d'exploitation CD84 (DataSud) aux tronçons OSM par proximité, et n'embarque que des indices — 260 Ko, là où la géométrie départementale complète en pèserait 5,6 Mo.
 
 Les caches OSM (et leurs liens Wikidata) sont actualisés les lundis et jeudis.
 Chaque fin de workflow de données déclenche une publication GitHub Pages, y compris

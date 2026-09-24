@@ -85,13 +85,24 @@ Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte 
         </section>
         <section class="guide-section" id="familles">
             <h2>Rubriques et couches</h2>
-<article class="guide-family" data-family="factual" id="factual">
-<h3>Cartographie factuelle</h3>
-<p>Réseau, territoire et aménagements de base issus surtout d'OpenStreetMap.</p>
+<article class="guide-family" data-family="territory" id="territory">
+<h3>Territoire</h3>
+<p>Emprise du département et découpage administratif. Cette rubrique ne porte pas de couche à allumer : elle définit le périmètre que les autres affichent.</p>
 <div class="guide-layer" id="layer-territoire">
 <h4>Territoire — Limite du Vaucluse (84)</h4>
 <p>Toujours affichée. Contour en pointillés du département ; repère pour le cadrage.</p>
-</div><div class="guide-layer" id="layer-hierarchie">
+</div><div class="guide-layer" id="layer-echelle">
+<h4>Échelle territoriale</h4>
+<p>Restreint le réseau affiché à un secteur, à cinq échelles : <strong>agence routière</strong> (4), '''centre d'exploitation<strong> (11), </strong>canton<strong> (17), </strong>intercommunalité<strong> (14), </strong>commune''' (150).</p>
+<p><strong>Comment :</strong> choisir l'échelle, puis l'unité dans la liste — un second clic rend la vue au département entier. Au-delà de douze unités un champ de filtre apparaît. La carte se recadre sur le secteur, et le lien de la page garde le choix (paramètre <code>terr</code>) : il se partage tel quel.</p>
+<p>Les secteurs d'exploitation viennent des '''limites d'exploitation de la voirie départementale''' publiées par le Département sur DataSud, attribuées au tronçon et non en emprises — 57 communes relèvent de plusieurs centres, il n'existe donc pas de polygone à plaquer. L'appartenance de chaque tronçon OSM est calculée hors ligne par proximité ; la commune, elle, est déterminée par inclusion dans les limites communales OSM, et l'intercommunalité déduite du code INSEE via l'API Géo.</p>
+<p class="guide-hint">Le filtre agit sur la visibilité, pas sur le style : il se combine au mode Limitations, aux niveaux de hiérarchie et aux étiquettes.</p>
+</div>
+</article>
+<article class="guide-family" data-family="factual" id="factual">
+<h3>Cartographie factuelle</h3>
+<p>Le réseau départemental et les aménagements de base, issus surtout d'OpenStreetMap.</p>
+<div class="guide-layer" id="layer-hierarchie">
 <h4>Hiérarchie du réseau</h4>
 <p>Trois niveaux de routes départementales, chacun avec une couleur :</p>
 <ul>
@@ -127,37 +138,9 @@ Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte 
 <p><strong>Comment :</strong> activer la couche « Aires d'arrêt &amp; covoiturage » ; chaque type a une pastille distincte et un compteur dans la légende. Cliquez sa ligne pour le masquer ou le réafficher indépendamment. Cliquez un marqueur (ou l'emprise) pour la fiche : type, capacité, gestion, accès, un indicateur de <strong>complétude OSM</strong> (attributs présents / manquants), le lien <strong>Wikidata</strong> s'il existe (sinon signalé « aucun lien »), et les <strong>photos de rue à proximité</strong> Mapillary et Panoramax quand une couverture existe — cliquer une vignette ouvre la photo source dans un nouvel onglet. Liens <em>voir</em> / <em>compléter</em> sur OpenStreetMap.</p>
 </div>
 </article>
-<article class="guide-family" data-family="stats" id="stats">
-<h3>Données statistiques</h3>
-<p>Données historiques ou agrégées — à charger à la demande pour ne pas surcharger la carte.</p>
-<div class="guide-layer" id="layer-accidents">
-<h4>Accidentologie</h4>
-<p>Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel : * <strong>Couleur = ancienneté</strong> — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre. * <strong>Gravité</strong> — les accidents <strong>mortels sortent du dégradé</strong> : pastille <strong>noire</strong> cerclée de blanc, un peu plus grosse, repérable d'un coup d'œil quelle que soit l'année. Les <strong>blessés hospitalisés</strong> gardent la couleur d'ancienneté avec un <strong>anneau noir</strong> ; les <strong>blessés légers</strong> n'ont qu'un fin liseré blanc.</p>
-<p>La légende embarque une <strong>dataviz temporelle</strong> : l'échelle de couleur ancien → récent, un <strong>mini-histogramme</strong> du nombre d'accidents par année, et un '''curseur de plage d'années''' (de / à) pour filtrer le nuage.</p>
-<p><strong>Comment :</strong> activer la couche ; jouez avec le curseur d'années pour voir l'évolution dans le temps ; cliquez un point pour le détail (année, victimes, date, commune, adresse). ''Note : la géolocalisation BAAC des années les plus anciennes est plus lacunaire, d'où un nuage plus dense sur les millésimes récents.''</p>
-</div><div class="guide-layer" id="layer-comptages">
-<h4>Stations de comptage</h4>
-<p>Stations CD84 (data.gouv.fr / DataSud), classées par trafic selon une gamme <strong>rouge cerise</strong> (élevé, &gt; 20 k véh/j) → <strong>rose clair</strong> (faible). Chaque pastille affiche le <strong>trafic moyen arrondi</strong> en son centre (ex. <code>22k</code> pour 22 136 véh/j), lisible quelle que soit la couleur.</p>
-<p><strong>Comment :</strong> activer dans la légende <em>ou</em> via le bouton <strong>Comptages</strong> sur la carte (les deux restent synchronisés). Clic sur une station : fiche détaillée avec la <strong>MJA</strong> (tous véhicules), la part et le débit poids lourds, et un '''graphe d'évolution du trafic''' sur tous les millésimes disponibles (1996–2025) avec la tendance premier → dernier millésime.</p>
-<p>Le clic '''met aussi en évidence l'axe routier concerné<strong> — un tracé </strong>indigo''' distinct des pastilles de comptage — et affiche les informations de l'axe (longueur, communes traversées…) dans le panneau <em>Informations Route</em>, sans déplacer la vue.</p>
-</div>
-</article>
-<article class="guide-family" data-family="realtime" id="realtime">
-<h3>Temps réel</h3>
-<p>Signaux récents : météo et trafic annoncé.</p>
-<div class="guide-layer" id="layer-meteo-stations">
-<h4>Stations météo</h4>
-<p>Quelques stations du département (Open-Meteo). Données courantes : température, vent, humidité.</p>
-<p><strong>Comment :</strong> activer la couche ; cliquer un marqueur pour la fiche. Une station est aussi tirée au hasard dans l'en-tête.</p>
-</div><div class="guide-layer" id="layer-bison">
-<h4>Événements routiers (Bison Futé)</h4>
-<p>Travaux, bouchons, accidents en cours (flux DATEX II / Info Routière), filtrés sur la zone.</p>
-<p><strong>Comment :</strong> activer la couche ; icônes sur la carte, popup au clic.</p>
-</div>
-</article>
-<article class="guide-family" data-family="incubator" id="incubator">
-<h3>Incubateur</h3>
-<p>Couches expérimentales : ouvrages d'art, signalisation, environnement, biodiversité, webcams recensées. Seule la <strong>couche ponts</strong> affiche une pastille d'actualisation (bi-hebdo, lun. &amp; jeu.).</p>
+<article class="guide-family" data-family="signage" id="signage">
+<h3>Signalisation &amp; ouvrages</h3>
+<p>Mobilier et ouvrages relevés dans OpenStreetMap, rafraîchis avec les autres extraits (bi-hebdo, lun. &amp; jeu.).</p>
 <div class="guide-layer" id="layer-ponts">
 <h4>Couche ponts</h4>
 <p>Ouvrages d'art OSM du département. Affichage adapté au zoom :</p>
@@ -193,28 +176,38 @@ Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte 
 <p><strong>Comment :</strong> activer la couche. Au dézoom, les points sont regroupés en <strong>grappes</strong> (cliquer = zoomer) ; au <strong>zoom ≥ 15</strong>, un pictogramme <strong>mât directionnel</strong> (poteau + lames bleue/verte) s'affiche. Le popup liste les destinations et se termine par un lien <strong>OpenStreetMap</strong> : <em>voir</em> la fiche du nœud, ou <em>compléter</em> pour l'ouvrir directement dans l'éditeur iD.</p>
 <p><strong>Trier par usage.</strong> Un mât de randonnée et un mât de véloroute ne servent pas la même lecture de la carte. Chaque mât porte donc au pied de son poteau une '''pastille d'usage''' — 🚶 randonnée (<code>hiking</code>), 🚲 vélo (<code>bicycle</code>), 🚵 VTT, 🐴 équestre — et la légende propose un <strong>filtre par usage</strong> avec le décompte de chacun (1 575 randonnée, 120 vélo, 509 sans usage déclaré en Vaucluse). Couper « Randonnée » ne laisse que le reste à l'écran ; un mât qui cumule deux usages reste visible tant que l'un d'eux est actif. Seuls les usages réellement présents dans la donnée sont proposés.</p>
 <p><strong>Photos du panneau.</strong> Beaucoup de mâts portent dans OSM une ou plusieurs photos du panneau lui-même (tags <code>panoramax</code>, <code>mapillary</code>, <code>wikimedia_commons</code>, <code>image</code>) — environ 1 450 des 2 170 mâts du Vaucluse. Elles s'affichent alors dans le popup ; au-delà d'une photo, le bloc devient un <strong>carrousel</strong> (flèches ‹ › et compteur), car un même mât en cumule jusqu'à huit — une par lame, par orientation ou par millésime. La légende de chaque vue reprend la provenance et le suffixe du tag quand il en porte un (<code>panoramax:N</code> → « vers le nord », <code>mapillary:2017</code> → l'année). Cliquer la photo ouvre l'original chez le fournisseur. Une <strong>pastille violette</strong> sur le mât signale ce cas. À défaut de photo référencée, on retombe sur la recherche d'une <strong>photo Mapillary à proximité</strong> (pastille verte), qui montre l'environnement plutôt que le panneau.</p>
-</div><div class="guide-layer" id="layer-latest-changes">
-<h4>Derniers changements OSM</h4>
-<p>Les contributions récentes sur la <strong>voirie</strong> du Vaucluse, reprises du principe de l'outil <em>OSM Latest Changes</em>. Sept jours glissants, de l'ordre du millier de tronçons créés, modifiés ou supprimés selon l'activité de la semaine.</p>
-<p><strong>Comment :</strong> activer la couche. Chaque tronçon est coloré selon ce qui lui est arrivé — <strong>vert</strong> créé, <strong>orange</strong> modifié, <strong>rouge</strong> supprimé (son dernier tracé connu est alors affiché). Quand une modification a <strong>déplacé</strong> le tracé, l'ancien apparaît en <strong>pointillé gris</strong> à côté du nouveau : c'est la façon la plus directe de voir un redressement de virage ou un recalage sur imagerie. L'épaisseur du trait suit l'importance de la voie.</p>
-<p>'''Filtrer par type d'axe.<strong> La légende propose une case par classe — </strong>axes principaux''' (<code>motorway</code>, <code>trunk</code>, <code>primary</code>), <strong>axes secondaires</strong> (<code>secondary</code>, <code>tertiary</code>), <strong>desserte locale</strong> (<code>residential</code>, <code>unclassified</code>, <code>service</code>), <strong>chemins et modes doux</strong> (<code>track</code>, <code>path</code>, <code>footway</code>, <code>cycleway</code>) et <strong>travaux</strong> (<code>construction</code>, <code>proposed</code>) — avec le décompte de chacune. Décocher les chemins et la desserte locale ne laisse que le réseau structurant, là où se jouent les changements qui intéressent un gestionnaire de voirie. Seules les classes réellement présentes dans la fenêtre sont proposées.</p>
-<p><strong>Le récapitulatif de la vue.</strong> Un millier de segments colorés dit qu'il s'est passé quelque chose, pas sur quelles routes ni par qui. Une <strong>fenêtre en bas à droite</strong> répond aux deux pour la seule emprise à l'écran : les <strong>voies les plus touchées</strong>, les axes structurants d'abord puis par nombre de changements, chacune avec son décompte, l'<em>ancienneté du changement le plus récent</em> (survoler donne la date exacte) et les <strong>contributeurs</strong> qui y sont intervenus, liens vers leurs profils OSM compris. Elle suit la carte à chaque déplacement et obéit aux filtres d'axes. '''Cliquer le nom d'une voie<strong> cadre la carte sur ses changements et les fait ressortir quelques secondes, le temps de les repérer parmi les autres. Une départementale est regroupée sous sa </strong>référence''' plutôt que sous les noms de rue qu'elle prend en traversant les communes, faute de quoi elle paraîtrait plusieurs routes distinctes ; les voies sans référence ni nom sont comptées en pied de liste. Le × la referme jusqu'à la prochaine activation de la couche.</p>
-<p>'''La fiche d'un changement''' donne l'auteur (lien vers son profil), la date et l'ancienneté, la version de l'objet, puis le <strong>détail des attributs</strong> modifiés : ancienne valeur barrée en rouge, nouvelle en vert, et la mention <em>absent</em> ou <em>retiré</em> quand le tag apparaît ou disparaît. Trois liens ferment la fiche : l'<em>objet</em> dans OpenStreetMap, le <strong>changeset</strong> qui l'a produit, et l'<em>historique</em> complet dans OSM Deep History.</p>
-<p><strong>Le cas particulier du tracé déplacé.</strong> Une voie change aussi de forme sans être elle-même rouverte : il suffit qu'un de ses <strong>sommets</strong> ait été déplacé. Elle porte alors le badge <strong>Tracé déplacé</strong>, annonce de combien elle a bougé, et crédite l'auteur du déplacement du sommet — pas celui de la dernière édition de la voie, qui peut remonter à 2018 sur une départementale stable. L'<em>augmented diff</em> ne livrant aucune métadonnée sur les sommets d'une voie, le script identifie les sommets qui ont bougé puis interroge Overpass à part pour savoir qui les a déplacés ; quand un sommet ne peut pas être résolu, la fiche le dit plutôt que d'attribuer le changement à quelqu'un qui n'y est pour rien.</p>
-<p>Les recalages de '''moins d'un mètre''' sont écartés : à cette distance l'ancien tracé se confond avec le nouveau à l'écran, et les signaler ne ferait que noyer les déplacements qui se voient. Il en reste une centaine par semaine, de 1 à 44 mètres, médiane 3 mètres. Le seuil se règle par <code>LATEST_CHANGES_MIN_MOVE</code>.</p>
-<p>'''Pourquoi ce n'est pas du direct.<strong> L</strong>augmented diff'' d'Overpass reconstitue l'état de toute l'emprise à deux dates puis compare : filtrer sur <code>highway</code> allège ce qui est renvoyé, mais pas le calcul. Comptez une quarantaine de secondes pour une semaine sur le département — sans le filtre, le serveur abandonne, à court de mémoire. La requête tourne donc <strong>toutes les heures</strong> dans un workflow GitHub Actions, et le navigateur ne lit qu'un GeoJSON de 900 ko comme pour les autres couches. La boîte englobante nécessaire à l'<em>augmented diff</em> débordant sur le Gard, la Drôme et les Bouches-du-Rhône, les tronçons hors département sont écartés au passage (environ un quart des changements bruts).</p>
 </div><div class="guide-layer" id="layer-city-limits">
 <h4>Panneaux d&#x27;agglomération</h4>
 <p>Entrées et sorties de village issues d'OpenStreetMap (nœuds <code>traffic_sign=city_limit</code>, 468 en Vaucluse dont 446 nommés) : les panneaux EB10 / EB20 qui marquent le basculement du régime de vitesse en traversée. Complément naturel du mode <em>Limitations</em>.</p>
 <p><strong>Comment :</strong> activer la couche. Au dézoom, les points sont regroupés en <strong>grappes rouges</strong> (cliquer = zoomer) ; à partir du <strong>zoom ≥ 13</strong>, chaque panneau s'affiche sous la forme de la <strong>plaque réelle</strong> — nom de la localité sur fond blanc bordé de rouge. Une plaque '''barrée d'une diagonale rouge<strong> correspond à une </strong>sortie''' d'agglomération (<code>city_limit=end</code>). Le popup donne le sens, les noms alternatifs (dont l'occitan), la référence et le gestionnaire quand ils existent, les <strong>photos du panneau</strong> référencées dans OSM, et un lien <strong>OpenStreetMap</strong> (<em>voir</em> / <em>compléter</em> dans l'éditeur iD) pour corriger le panneau depuis la carte.</p>
-</div><div class="guide-layer" id="layer-ens">
-<h4>Espaces naturels sensibles (ENS)</h4>
-<p>Polygones CD84 (DataSud). Superficie, communes, gestionnaire.</p>
-<p><strong>Comment :</strong> activer la couche ; cliquer un polygone pour la fiche.</p>
-</div><div class="guide-layer" id="layer-inat">
-<h4>Observations iNaturalist</h4>
-<p>Observations filtrées par intersection avec les ENS du 84.</p>
-<p><strong>Comment :</strong> activer la couche ; cliquer le cercle coloré (zone de clic élargie) pour espèce, date, lien iNaturalist. Compatible avec la couche ENS affichée en même temps.</p>
+</div>
+</article>
+<article class="guide-family" data-family="stats" id="stats">
+<h3>Données statistiques</h3>
+<p>Données historiques ou agrégées — à charger à la demande pour ne pas surcharger la carte.</p>
+<div class="guide-layer" id="layer-accidents">
+<h4>Accidentologie</h4>
+<p>Nuage d'accidents corporels multi-millésimes (BAAC / ONISR, 2019 → 2024) géolocalisés dans le Vaucluse. Double encodage visuel : * <strong>Couleur = ancienneté</strong> — les accidents récents ressortent en orange vif/saturé, les plus anciens en rouge sombre. * <strong>Gravité</strong> — les accidents <strong>mortels sortent du dégradé</strong> : pastille <strong>noire</strong> cerclée de blanc, un peu plus grosse, repérable d'un coup d'œil quelle que soit l'année. Les <strong>blessés hospitalisés</strong> gardent la couleur d'ancienneté avec un <strong>anneau noir</strong> ; les <strong>blessés légers</strong> n'ont qu'un fin liseré blanc.</p>
+<p>La légende embarque une <strong>dataviz temporelle</strong> : l'échelle de couleur ancien → récent, un <strong>mini-histogramme</strong> du nombre d'accidents par année, et un '''curseur de plage d'années''' (de / à) pour filtrer le nuage.</p>
+<p><strong>Comment :</strong> activer la couche ; jouez avec le curseur d'années pour voir l'évolution dans le temps ; cliquez un point pour le détail (année, victimes, date, commune, adresse). ''Note : la géolocalisation BAAC des années les plus anciennes est plus lacunaire, d'où un nuage plus dense sur les millésimes récents.''</p>
+</div><div class="guide-layer" id="layer-comptages">
+<h4>Stations de comptage</h4>
+<p>Stations CD84 (data.gouv.fr / DataSud), classées par trafic selon une gamme <strong>rouge cerise</strong> (élevé, &gt; 20 k véh/j) → <strong>rose clair</strong> (faible). Chaque pastille affiche le <strong>trafic moyen arrondi</strong> en son centre (ex. <code>22k</code> pour 22 136 véh/j), lisible quelle que soit la couleur.</p>
+<p><strong>Comment :</strong> activer dans la légende <em>ou</em> via le bouton <strong>Comptages</strong> sur la carte (les deux restent synchronisés). Clic sur une station : fiche détaillée avec la <strong>MJA</strong> (tous véhicules), la part et le débit poids lourds, et un '''graphe d'évolution du trafic''' sur tous les millésimes disponibles (1996–2025) avec la tendance premier → dernier millésime.</p>
+<p>Le clic '''met aussi en évidence l'axe routier concerné<strong> — un tracé </strong>indigo''' distinct des pastilles de comptage — et affiche les informations de l'axe (longueur, communes traversées…) dans le panneau <em>Informations Route</em>, sans déplacer la vue.</p>
+</div>
+</article>
+<article class="guide-family" data-family="realtime" id="realtime">
+<h3>Temps réel</h3>
+<p>Signaux récents : météo et trafic annoncé.</p>
+<div class="guide-layer" id="layer-meteo-stations">
+<h4>Stations météo</h4>
+<p>Quelques stations du département (Open-Meteo). Données courantes : température, vent, humidité.</p>
+<p><strong>Comment :</strong> activer la couche ; cliquer un marqueur pour la fiche. Une station est aussi tirée au hasard dans l'en-tête.</p>
+</div><div class="guide-layer" id="layer-bison">
+<h4>Événements routiers (Bison Futé)</h4>
+<p>Travaux, bouchons, accidents en cours (flux DATEX II / Info Routière), filtrés sur la zone.</p>
+<p><strong>Comment :</strong> activer la couche ; icônes sur la carte, popup au clic.</p>
 </div><div class="guide-layer" id="layer-webcams">
 <h4>Webcams</h4>
 <p>4 webcams trafic CD84 (Bonpas) et Mont Serein (Vision-Environnement).</p>
@@ -224,6 +217,29 @@ Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte 
 <h4>Événements (OEDB)</h4>
 <p>Événements du Vaucluse servis par notre instance [https://github.com/openeventdatabase/backend OpenEventDatabase] statique : le dépôt [https://github.com/thepriben/oedb-rs oedb-rs] (Rust) régénère toutes les 3 h une API compatible OEDB sur GitHub Pages, à partir du flux Bison Futé DATEX II filtré Vaucluse (accidents, travaux, bouchons) et d'une curation manuelle (ex. les Jeudis d'Orange, catégorie <code>culture.market.night</code>). Les événements expirés sont purgés à chaque build.</p>
 <p><strong>Comment :</strong> activer la couche ; cliquer une ligne de la légende (Accidents, Travaux, Bouchons, Culture, Autres) pour masquer / afficher la catégorie ; cliquer un marqueur pour le libellé, les dates, le lieu et la source.</p>
+</div>
+</article>
+<article class="guide-family" data-family="incubator" id="incubator">
+<h3>Incubateur</h3>
+<p>Ce qui n'a pas encore trouvé sa place : la veille sur les modifications OSM, dont la forme reste à arrêter, et deux couches environnementales que le Département gère sans qu'elles relèvent de la route.</p>
+<div class="guide-layer" id="layer-latest-changes">
+<h4>Derniers changements OSM</h4>
+<p>Les contributions récentes sur la <strong>voirie</strong> du Vaucluse, reprises du principe de l'outil <em>OSM Latest Changes</em>. Sept jours glissants, de l'ordre du millier de tronçons créés, modifiés ou supprimés selon l'activité de la semaine.</p>
+<p><strong>Comment :</strong> activer la couche. Chaque tronçon est coloré selon ce qui lui est arrivé — <strong>vert</strong> créé, <strong>orange</strong> modifié, <strong>rouge</strong> supprimé (son dernier tracé connu est alors affiché). Quand une modification a <strong>déplacé</strong> le tracé, l'ancien apparaît en <strong>pointillé gris</strong> à côté du nouveau : c'est la façon la plus directe de voir un redressement de virage ou un recalage sur imagerie. L'épaisseur du trait suit l'importance de la voie.</p>
+<p>'''Filtrer par type d'axe.<strong> La légende propose une case par classe — </strong>axes principaux''' (<code>motorway</code>, <code>trunk</code>, <code>primary</code>), <strong>axes secondaires</strong> (<code>secondary</code>, <code>tertiary</code>), <strong>desserte locale</strong> (<code>residential</code>, <code>unclassified</code>, <code>service</code>), <strong>chemins et modes doux</strong> (<code>track</code>, <code>path</code>, <code>footway</code>, <code>cycleway</code>) et <strong>travaux</strong> (<code>construction</code>, <code>proposed</code>) — avec le décompte de chacune. Décocher les chemins et la desserte locale ne laisse que le réseau structurant, là où se jouent les changements qui intéressent un gestionnaire de voirie. Seules les classes réellement présentes dans la fenêtre sont proposées.</p>
+<p><strong>Le récapitulatif de la vue.</strong> Un millier de segments colorés dit qu'il s'est passé quelque chose, pas sur quelles routes ni par qui. Une <strong>fenêtre en bas à droite</strong> répond aux deux pour la seule emprise à l'écran : les <strong>voies les plus touchées</strong>, les axes structurants d'abord puis par nombre de changements, chacune avec son décompte, l'<em>ancienneté du changement le plus récent</em> (survoler donne la date exacte) et les <strong>contributeurs</strong> qui y sont intervenus, liens vers leurs profils OSM compris. Elle suit la carte à chaque déplacement et obéit aux filtres d'axes. '''Cliquer le nom d'une voie<strong> cadre la carte sur ses changements et les fait ressortir quelques secondes, le temps de les repérer parmi les autres. Une départementale est regroupée sous sa </strong>référence''' plutôt que sous les noms de rue qu'elle prend en traversant les communes, faute de quoi elle paraîtrait plusieurs routes distinctes ; les voies sans référence ni nom sont comptées en pied de liste. Le × la referme jusqu'à la prochaine activation de la couche.</p>
+<p>'''La fiche d'un changement''' donne l'auteur (lien vers son profil), la date et l'ancienneté, la version de l'objet, puis le <strong>détail des attributs</strong> modifiés : ancienne valeur barrée en rouge, nouvelle en vert, et la mention <em>absent</em> ou <em>retiré</em> quand le tag apparaît ou disparaît. Trois liens ferment la fiche : l'<em>objet</em> dans OpenStreetMap, le <strong>changeset</strong> qui l'a produit, et l'<em>historique</em> complet dans OSM Deep History.</p>
+<p><strong>Le cas particulier du tracé déplacé.</strong> Une voie change aussi de forme sans être elle-même rouverte : il suffit qu'un de ses <strong>sommets</strong> ait été déplacé. Elle porte alors le badge <strong>Tracé déplacé</strong>, annonce de combien elle a bougé, et crédite l'auteur du déplacement du sommet — pas celui de la dernière édition de la voie, qui peut remonter à 2018 sur une départementale stable. L'<em>augmented diff</em> ne livrant aucune métadonnée sur les sommets d'une voie, le script identifie les sommets qui ont bougé puis interroge Overpass à part pour savoir qui les a déplacés ; quand un sommet ne peut pas être résolu, la fiche le dit plutôt que d'attribuer le changement à quelqu'un qui n'y est pour rien.</p>
+<p>Les recalages de '''moins d'un mètre''' sont écartés : à cette distance l'ancien tracé se confond avec le nouveau à l'écran, et les signaler ne ferait que noyer les déplacements qui se voient. Il en reste une centaine par semaine, de 1 à 44 mètres, médiane 3 mètres. Le seuil se règle par <code>LATEST_CHANGES_MIN_MOVE</code>.</p>
+<p>'''Pourquoi ce n'est pas du direct.<strong> L</strong>augmented diff'' d'Overpass reconstitue l'état de toute l'emprise à deux dates puis compare : filtrer sur <code>highway</code> allège ce qui est renvoyé, mais pas le calcul. Comptez une quarantaine de secondes pour une semaine sur le département — sans le filtre, le serveur abandonne, à court de mémoire. La requête tourne donc <strong>toutes les heures</strong> dans un workflow GitHub Actions, et le navigateur ne lit qu'un GeoJSON de 900 ko comme pour les autres couches. La boîte englobante nécessaire à l'<em>augmented diff</em> débordant sur le Gard, la Drôme et les Bouches-du-Rhône, les tronçons hors département sont écartés au passage (environ un quart des changements bruts).</p>
+</div><div class="guide-layer" id="layer-ens">
+<h4>Espaces naturels sensibles (ENS)</h4>
+<p>Polygones CD84 (DataSud). Superficie, communes, gestionnaire.</p>
+<p><strong>Comment :</strong> activer la couche ; cliquer un polygone pour la fiche.</p>
+</div><div class="guide-layer" id="layer-inat">
+<h4>Observations iNaturalist</h4>
+<p>Observations filtrées par intersection avec les ENS du 84.</p>
+<p><strong>Comment :</strong> activer la couche ; cliquer le cercle coloré (zone de clic élargie) pour espèce, date, lien iNaturalist. Compatible avec la couche ENS affichée en même temps.</p>
 </div>
 </article>
 <article class="guide-family" data-family="tools" id="tools">
@@ -283,7 +299,8 @@ Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte 
 <ul>
 <li><strong>OSM</strong> (routes, véloroutes, communes, constructions) — mise à jour bi-hebdomadaire (workflow GitHub).</li>
 <li><strong>Externe</strong> (comptages, Bison Futé) — toutes les 3 h.</li>
-<li><strong>Incubateur</strong> (ponts OSM) — bi-hebdo (lun. &amp; jeu.).</li>
+<li><strong>Signalisation &amp; ouvrages</strong> (ponts, panneaux) — bi-hebdo (lun. &amp; jeu.).</li>
+<li><strong>Territoire</strong> (secteurs d'exploitation CD84) — recalculé avec les extraits OSM.</li>
 <li><strong>Météo</strong> — live navigateur, ~10 min.</li>
 <li><strong>Statique</strong> (limite 84, accidents 2019-2024) — snapshot versionné, mise à jour manuelle.</li>
 </ul>
