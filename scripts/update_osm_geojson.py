@@ -57,6 +57,17 @@ QUERIES = {
         relation(area.dept)["boundary"="administrative"]["admin_level"="8"];
         out geom;
     """,
+    # Les cantons ne sont pas des limites administratives mais un découpage
+    # électoral : ils portent boundary=political et non boundary=administrative.
+    # On les filtre sur leur propre code INSEE plutôt que par appartenance au
+    # département, car area["ref:INSEE"="84"] désigne la région
+    # Auvergne-Rhône-Alpes et non le Vaucluse.
+    "cantons-vaucluse": """
+        [out:json][timeout:60];
+        relation["boundary"="political"]["political_division"="canton"]
+                ["ref:INSEE"~"^84[0-9][0-9]$"];
+        out geom;
+    """,
     "bicycle-routes": """
         [out:json][timeout:120];
         area["ISO3166-2"="FR-84"]->.dept;
@@ -725,6 +736,7 @@ CONVERTERS = {
     "departmental-roads": departmental_roads_to_geojson,
     "construction-roads": construction_roads_to_geojson,
     "communes-vaucluse": communes_to_geojson,
+    "cantons-vaucluse": communes_to_geojson,
     "bicycle-routes": bicycle_routes_to_geojson,
     "bridges": bridge_features_to_geojson,
     "road-signs": road_signs_to_geojson,

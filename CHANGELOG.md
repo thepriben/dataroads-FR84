@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.19.0] - 2026-09-24
+
+### Added
+
+- **The selected sector is now outlined on the map**, wherever an outline honestly exists. Cantons, intercommunalities and municipalities are constituencies and have an exact perimeter; it is drawn in the same dark blue as the department boundary but solid where that one is dashed, so the two read as one language at two levels. A road agency or a maintenance centre has no perimeter to show — the Department draws those limits section by section, and 57 municipalities are served by more than one centre — so nothing is drawn and the panel says why, rather than leaving the absence to be interpreted.
+- **Intercommunality outlines are computed rather than downloaded.** OpenStreetMap does not carry French EPCI, and no portal publishes them for Vaucluse, but an intercommunality is a grouping of whole municipalities: collecting the edges of its members and dropping those that appear twice leaves the outer ring, because two adjacent municipalities rest on the same OSM ways and therefore on the same vertices. No edge appears more than twice across the fourteen groupings, and the resulting areas total 3,578 km² against the department's 3,567 — the 0.3 % being the cost of simplification.
+- **Six of the fourteen intercommunalities extend beyond Vaucluse**, so their outline stops at the department boundary. The panel says so for each of them. That is also what the filter itself does: only Vaucluse departmental roads are on the map, so an outline covering the Drôme or the Gard would enclose an emptiness the map cannot account for.
+
+### Changed
+
+- **Cantons are now attributed geographically instead of inherited from the Department's dataset.** The CD84 layer does carry a `CANTON` attribute, but per road section and not per municipality: 53 of 159 municipalities appear under several cantons, Caromb under three, where only Avignon is genuinely divided. The 2015 electoral division is instead read from OpenStreetMap, sourced from the Journal officiel, which has the further merit of having a perimeter. The two sources agree on 97.8 % of sections, and every disagreement sits on a canton edge — Avignon-2 against Avignon-3, Pernes against Carpentras — which is exactly where testing the location beats copying a neighbouring section's label.
+- The outlines ship as a second file of 398 kB, read only when a sector is first selected, so a map opened on the whole department never pays for them.
+
 ## [0.18.0] - 2026-09-24
 
 ### Added

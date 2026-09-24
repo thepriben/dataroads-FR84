@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Attribuer chaque tronçon OSM à ses unités territoriales.
+"""Attribuer chaque tronçon OSM à ses unités territoriales, et tracer celles
+qui ont une emprise.
 
 Le Département publie ses limites d'exploitation sur DataSud sous forme
-linéaire — un tronçon de voirie par entité, portant son agence routière, son
-centre d'exploitation et son canton. Les fiches « zones de compétences » du
-même portail sont vides : ces emprises surfaciques n'existent pas, et ne se
-reconstituent pas depuis les communes puisque 57 d'entre elles relèvent de
-plusieurs CEER.
+linéaire — un tronçon de voirie par entité, portant son agence routière et son
+centre d'exploitation. Les fiches « zones de compétences » du même portail sont
+vides : ces emprises surfaciques n'existent pas, et ne se reconstituent pas
+depuis les communes puisque 57 d'entre elles relèvent de plusieurs CEER.
 
 Plutôt que d'embarquer les 5,6 Mo de géométrie départementale à côté des
 tracés OSM que l'application dessine déjà, ce script fait la jointure une fois
@@ -15,20 +15,33 @@ cinq numéros d'unité.
 
 Trois appariements, selon la nature de l'information cherchée :
 
-- L'agence, le centre et le canton se lisent sur la section CD84 la plus
-  proche. Apparier d'abord par référence de route paraissait plus sûr, mais sa
-  queue de distribution est mauvaise — la D118 d'OSM et celle du CD84 sont à
-  1,8 km l'une de l'autre. Or le secteur d'exploitation est une propriété du
-  lieu et non du numéro : le centre de la voirie départementale la plus proche
-  est la meilleure réponse disponible. La référence ne sert qu'à départager
-  deux sections également proches, dans les carrefours denses.
+- L'agence et le centre se lisent sur la section CD84 la plus proche. Apparier
+  d'abord par référence de route paraissait plus sûr, mais sa queue de
+  distribution est mauvaise — la D118 d'OSM et celle du CD84 sont à 1,8 km
+  l'une de l'autre. Or le secteur d'exploitation est une propriété du lieu et
+  non du numéro : le centre de la voirie départementale la plus proche est la
+  meilleure réponse disponible. La référence ne sert qu'à départager deux
+  sections également proches, dans les carrefours denses.
 
-- La commune se lit par inclusion dans les limites communales, que
-  l'application extrait déjà d'OSM sans les avoir jamais exploitées. Le
-  résultat est exact et porte le code INSEE.
+- La commune et le canton se lisent par inclusion dans leurs limites, que
+  l'application extrait d'OSM. Le résultat est exact et porte le code INSEE.
+  Le CD84 porte bien un attribut CANTON, mais par section et non par commune :
+  53 communes sur 159 y apparaissent sous plusieurs cantons, dont Caromb sous
+  trois, alors que seule Avignon est réellement partagée. Le découpage
+  électoral d'OSM, daté de 2015 et sourcé du Journal officiel, est le seul à
+  pouvoir être rattaché à une emprise.
 
-- L'EPCI se déduit de ce code INSEE via l'API Découpage administratif de
-  l'État. Aucune géométrie supplémentaire n'est nécessaire.
+- L'EPCI se déduit du code INSEE de la commune via l'API Découpage
+  administratif de l'État. Aucune géométrie supplémentaire n'est nécessaire.
+
+Le second fichier produit porte les emprises, pour les seules échelles qui en
+ont une. Communes et cantons livrent la leur directement. Celle d'un EPCI se
+calcule : un groupement rassemble des communes entières, il suffit donc de
+recoller leurs limites. Les arêtes intérieures, partagées par deux communes
+voisines, apparaissent exactement deux fois dans le jeu OSM puisque les deux
+polygones s'appuient sur les mêmes chemins ; les annuler laisse le contour
+extérieur. L'agence et le centre d'exploitation, eux, n'ont aucune emprise à
+montrer : leurs limites se découpent au tronçon.
 """
 
 from __future__ import annotations
@@ -63,11 +76,21 @@ WFS_PAGE = ("https://www.datasud.fr/explorer/fr/jeux-de-donnees/"
 
 EPCI_URL = ("https://geo.api.gouv.fr/departements/84/communes"
             "?fields=nom,code,codeEpci,epci&format=json")
+# Six des quatorze intercommunalités débordent du Vaucluse. Leur contour, recollé
+# depuis les seules communes vauclusiennes, s'arrête alors à la limite du
+# département : il faut le dire plutôt que de laisser lire une frontière qui
+# n'existe pas.
+EPCI_EXTENT_URL = "https://geo.api.gouv.fr/epcis?fields=code,codesDepartements"
 EPCI_SOURCE = "Découpage administratif — API Géo (Etalab)"
+DEPARTMENT = "84"
+
+CANTONS_SOURCE = "Découpage électoral départemental 2015 — OpenStreetMap (source JORF)"
 
 ROADS = ROOT / "data" / "osm" / "departmental-roads.geojson"
 COMMUNES = ROOT / "data" / "osm" / "communes-vaucluse.geojson"
+CANTONS = ROOT / "data" / "osm" / "cantons-vaucluse.geojson"
 OUTPUT = ROOT / "data" / "external" / "territorial-units.json"
+BOUNDARIES = ROOT / "data" / "external" / "territorial-boundaries.json"
 
 # Du plus large au plus fin. `field` désigne l'attribut CD84 à lire, doublé
 # parce que le jeu porte deux millésimes de la même information ; `None` marque
@@ -75,11 +98,23 @@ OUTPUT = ROOT / "data" / "external" / "territorial-units.json"
 SCALES: list[tuple[str, str, tuple[str, ...] | None]] = [
     ("ard", "Agence routière", ("ARD_EXPL", "AGENC_2024")),
     ("ceer", "Centre d'exploitation", ("CEER_EXPL", "CENTR_2024")),
-    ("canton", "Canton", ("CANTON",)),
+    ("canton", "Canton", None),
     ("epci", "Intercommunalité", None),
     ("commune", "Commune", None),
 ]
 CD84_SCALES = [key for key, _, field in SCALES if field]
+
+# Les échelles dont on sait tracer l'emprise. L'ordre n'a pas d'importance :
+# l'application cherche par échelle puis par nom.
+SURFACE_SCALES = ("canton", "epci", "commune")
+
+# Une limite territoriale se regarde à l'échelle d'un secteur, où le pixel vaut
+# une trentaine de mètres : garder les sommets distants de moins de vingt mètres
+# quadruple le poids du fichier sans rien ajouter à l'écran.
+SIMPLIFY_METERS = 20.0
+
+# Un mètre de précision suffit pour un contour simplifié à vingt.
+COORD_DIGITS = 5
 
 # Une section CD84 plus éloignée que cela du tronçon n'apprend plus rien de son
 # secteur. Le 98e centile des distances mesurées est à 1,1 km.
@@ -130,6 +165,21 @@ def normalize_name(value: Any) -> str:
 
 
 NORMALIZED_PLACEHOLDERS = {normalize_name(p) for p in PLACEHOLDERS}
+ASCII_SLUG_CHARS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789")
+
+
+def slugify(value: Any) -> str:
+    """La clé sous laquelle l'application retrouve une emprise.
+
+    Doit reproduire exactement `territorialSlug` de js/app.js : c'est elle qui
+    désigne une unité dans une URL partagée, et c'est elle qui relie une unité à
+    son contour.
+    """
+    decomposed = unicodedata.normalize("NFD", str(value or ""))
+    without_marks = "".join(c for c in decomposed
+                            if not unicodedata.combining(c)).lower()
+    out = "".join(c if c in ASCII_SLUG_CHARS else "-" for c in without_marks)
+    return "-".join(part for part in out.split("-") if part)
 
 
 def first_attribute(props: dict[str, Any], keys: tuple[str, ...]) -> str:
@@ -263,23 +313,46 @@ class SectionIndex:
         return best
 
 
-class CommuneIndex:
-    """Limites communales OSM, interrogées par inclusion du point."""
+def polygon_rings(geometry: dict[str, Any] | None) -> list[list[tuple[float, float]]]:
+    """Réduit Polygon et MultiPolygon à une liste d'anneaux (lon, lat)."""
+    geometry = geometry or {}
+    kind = geometry.get("type")
+    raw = geometry.get("coordinates") or []
+    polygons = [raw] if kind == "Polygon" else raw if kind == "MultiPolygon" else []
+    return [
+        [(float(p[0]), float(p[1])) for p in ring
+         if isinstance(p, (list, tuple)) and len(p) >= 2]
+        for polygon in polygons for ring in polygon
+    ]
+
+
+def point_in_ring(point: tuple[float, float],
+                  ring: list[tuple[float, float]]) -> bool:
+    x, y = point
+    inside = False
+    count = len(ring)
+    for index in range(count):
+        x1, y1 = ring[index]
+        x2, y2 = ring[(index + 1) % count]
+        if (y1 > y) != (y2 > y) and y2 != y1:
+            if x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+                inside = not inside
+    return inside
+
+
+class AreaIndex:
+    """Limites surfaciques OSM, interrogées par inclusion du point.
+
+    Sert les communes et les cantons, qui portent les mêmes attributs : un nom
+    et un code INSEE.
+    """
 
     def __init__(self, features: list[dict[str, Any]]) -> None:
         self.entries: list[tuple[list[list[tuple[float, float]]],
                                  tuple[float, float, float, float],
                                  str, str]] = []
         for feature in features:
-            geometry = feature.get("geometry") or {}
-            kind = geometry.get("type")
-            raw = geometry.get("coordinates") or []
-            polygons = [raw] if kind == "Polygon" else raw if kind == "MultiPolygon" else []
-            rings: list[list[tuple[float, float]]] = []
-            for polygon in polygons:
-                for ring in polygon:
-                    rings.append([(float(p[0]), float(p[1])) for p in ring
-                                  if isinstance(p, (list, tuple)) and len(p) >= 2])
+            rings = polygon_rings(feature.get("geometry"))
             if not rings:
                 continue
             lons = [p[0] for ring in rings for p in ring]
@@ -292,30 +365,150 @@ class CommuneIndex:
                 str(props.get("ref:INSEE") or ""),
             ))
 
-    @staticmethod
-    def _in_ring(point: tuple[float, float], ring: list[tuple[float, float]]) -> bool:
-        x, y = point
-        inside = False
-        count = len(ring)
-        for index in range(count):
-            x1, y1 = ring[index]
-            x2, y2 = ring[(index + 1) % count]
-            if (y1 > y) != (y2 > y):
-                if y2 != y1 and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
-                    inside = not inside
-        return inside
-
     def locate(self, point: tuple[float, float]) -> tuple[str, str] | None:
         for rings, (minx, miny, maxx, maxy), name, insee in self.entries:
             if not (minx <= point[0] <= maxx and miny <= point[1] <= maxy):
                 continue
             # Le premier anneau porte le contour, les suivants les enclaves.
-            if not self._in_ring(point, rings[0]):
+            if not point_in_ring(point, rings[0]):
                 continue
-            if any(self._in_ring(point, hole) for hole in rings[1:]):
+            if any(point_in_ring(point, hole) for hole in rings[1:]):
                 continue
             return name, insee
         return None
+
+
+def simplify_ring(points: list[tuple[float, float]],
+                  tolerance: float) -> list[tuple[float, float]]:
+    """Douglas-Peucker, la tolérance exprimée en mètres."""
+    if len(points) < 3:
+        return points
+    scale = lon_meters(points[0][1])
+
+    def deviation(point: tuple[float, float],
+                  start: tuple[float, float],
+                  end: tuple[float, float]) -> float:
+        px = (point[0] - start[0]) * scale
+        py = (point[1] - start[1]) * LAT_METERS
+        ex = (end[0] - start[0]) * scale
+        ey = (end[1] - start[1]) * LAT_METERS
+        norm = ex * ex + ey * ey
+        if norm == 0.0:
+            return math.hypot(px, py)
+        t = max(0.0, min(1.0, (px * ex + py * ey) / norm))
+        return math.hypot(px - t * ex, py - t * ey)
+
+    keep = [False] * len(points)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(points) - 1)]
+    while stack:
+        first, last = stack.pop()
+        if last - first < 2:
+            continue
+        worst, position = -1.0, first
+        for index in range(first + 1, last):
+            offset = deviation(points[index], points[first], points[last])
+            if offset > worst:
+                worst, position = offset, index
+        if worst > tolerance:
+            keep[position] = True
+            stack.append((first, position))
+            stack.append((position, last))
+    return [point for point, kept in zip(points, keep) if kept]
+
+
+def dissolve(features: list[dict[str, Any]]) -> list[list[tuple[float, float]]]:
+    """Le contour extérieur d'un groupe de polygones jointifs.
+
+    Deux communes voisines s'appuient sur les mêmes chemins OSM, donc sur les
+    mêmes sommets : une arête intérieure se présente deux fois, une arête de
+    bordure une seule. Compter puis ne garder que les uniques suffit ; aucune
+    intersection géométrique n'est nécessaire, et sur les quatorze EPCI du
+    Vaucluse aucune arête n'apparaît plus de deux fois.
+    """
+    counts: dict[frozenset[tuple[float, float]], int] = {}
+    for feature in features:
+        for ring in polygon_rings(feature.get("geometry")):
+            rounded = [(round(lon, 7), round(lat, 7)) for lon, lat in ring]
+            for start, end in zip(rounded, rounded[1:]):
+                if start != end:
+                    edge = frozenset((start, end))
+                    counts[edge] = counts.get(edge, 0) + 1
+    border = [tuple(edge) for edge, seen in counts.items() if seen == 1]
+    return stitch(border)
+
+
+def stitch(edges: list[tuple[tuple[float, float], tuple[float, float]]]
+           ) -> list[list[tuple[float, float]]]:
+    """Recolle des arêtes non orientées en anneaux fermés."""
+    neighbours: dict[tuple[float, float], list[tuple[float, float]]] = {}
+    for start, end in edges:
+        neighbours.setdefault(start, []).append(end)
+        neighbours.setdefault(end, []).append(start)
+
+    rings: list[list[tuple[float, float]]] = []
+    walked: set[frozenset[tuple[float, float]]] = set()
+    for start, end in edges:
+        if frozenset((start, end)) in walked:
+            continue
+        walked.add(frozenset((start, end)))
+        ring = [start, end]
+        while True:
+            current = ring[-1]
+            step = None
+            for candidate in neighbours.get(current, ()):
+                edge = frozenset((current, candidate))
+                if edge not in walked:
+                    walked.add(edge)
+                    step = candidate
+                    break
+            if step is None:
+                break
+            ring.append(step)
+            if step == ring[0]:
+                break
+        if len(ring) >= 4:
+            if ring[0] != ring[-1]:
+                ring.append(ring[0])
+            rings.append(ring)
+    return rings
+
+
+def rings_to_geometry(rings: list[list[tuple[float, float]]]) -> dict[str, Any] | None:
+    """Range des anneaux simplifiés en géométrie GeoJSON.
+
+    Un anneau contenu dans un autre est son enclave, un anneau libre est une
+    partie à part entière. La distinction compte : la CC Vaison Ventoux, coupée
+    en deux par la Drôme, a deux morceaux disjoints et non un trou — les
+    confondre remplirait l'un et percerait l'autre.
+    """
+    simplified = []
+    for ring in rings:
+        reduced = simplify_ring(ring, SIMPLIFY_METERS)
+        if len(reduced) >= 4:
+            simplified.append(reduced)
+    if not simplified:
+        return None
+    # Du plus grand au plus petit : un contenant précède toujours son contenu.
+    simplified.sort(key=len, reverse=True)
+
+    polygons: list[list[list[tuple[float, float]]]] = []
+    for ring in simplified:
+        host = next((polygon for polygon in polygons
+                     if point_in_ring(ring[0], polygon[0])), None)
+        if host is None:
+            polygons.append([ring])
+        else:
+            host.append(ring)
+
+    def encode(polygon: list[list[tuple[float, float]]]) -> list[list[list[float]]]:
+        return [[[round(lon, COORD_DIGITS), round(lat, COORD_DIGITS)]
+                 for lon, lat in ring] for ring in polygon]
+
+    if len(polygons) == 1:
+        return {"type": "Polygon", "coordinates": encode(polygons[0])}
+    return {"type": "MultiPolygon",
+            "coordinates": [encode(polygon) for polygon in polygons]}
 
 
 class ScaleBuilder:
@@ -376,15 +569,18 @@ class ScaleBuilder:
         return {"label": self.label, "units": [built[i] for i in order]}, remap
 
 
-def build(wfs: dict[str, Any], roads: dict[str, Any],
-          communes: dict[str, Any], epci_by_insee: dict[str, dict[str, str]]) -> dict[str, Any]:
+def build(wfs: dict[str, Any], roads: dict[str, Any], communes: dict[str, Any],
+          cantons: dict[str, Any],
+          epci_by_insee: dict[str, dict[str, str]],
+          epci_clipped: set[str]) -> dict[str, Any]:
     sections = SectionIndex(wfs.get("features") or [])
-    towns = CommuneIndex(communes.get("features") or [])
+    towns = AreaIndex(communes.get("features") or [])
+    districts = AreaIndex(cantons.get("features") or [])
     builders = {key: ScaleBuilder(key, label) for key, label, _ in SCALES}
     order = [key for key, _, _ in SCALES]
 
     ways: dict[str, list[int | None]] = {}
-    stats = {"total": 0, "cd84": 0, "commune": 0, "epci": 0}
+    stats = {"total": 0, "cd84": 0, "commune": 0, "epci": 0, "canton": 0}
     distances: list[float] = []
 
     for feature in roads.get("features") or []:
@@ -417,6 +613,11 @@ def build(wfs: dict[str, Any], roads: dict[str, Any],
                 labels["epci"] = (epci["nom"], epci["code"])
                 stats["epci"] += 1
 
+        district = districts.locate(centre)
+        if district is not None:
+            labels["canton"] = district
+            stats["canton"] += 1
+
         row: list[int | None] = []
         for key in order:
             name, code = labels.get(key, ("", ""))
@@ -431,6 +632,10 @@ def build(wfs: dict[str, Any], roads: dict[str, Any],
     remaps: dict[str, dict[int, int]] = {}
     for key in order:
         scales[key], remaps[key] = builders[key].finish()
+
+    for unit in scales["epci"]["units"]:
+        if unit.get("code") in epci_clipped:
+            unit["clipped"] = True
 
     # Les unités ont été reclassées par linéaire : les indices des tronçons
     # doivent suivre, sinon chacun désignerait le voisin de son secteur.
@@ -454,17 +659,92 @@ def build(wfs: dict[str, Any], roads: dict[str, Any],
             "source_service": f"{WFS_BASE}?service=WFS&typeNames={WFS_LAYER}",
             "epci_source_name": EPCI_SOURCE,
             "epci_source_url": EPCI_URL,
+            "cantons_source_name": CANTONS_SOURCE,
             "user_agent": USER_AGENT,
             "cd84_sections": len(sections.lines),
             "osm_ways": stats["total"],
             "matched_cd84": stats["cd84"],
             "matched_commune": stats["commune"],
             "matched_epci": stats["epci"],
+            "matched_canton": stats["canton"],
             "match_distance_m": {"p50": centile(50), "p90": centile(90), "p99": centile(99)},
         },
         "order": order,
         "scales": scales,
         "ways": ways,
+    }
+
+
+def build_boundaries(units: dict[str, Any], communes: dict[str, Any],
+                     cantons: dict[str, Any],
+                     epci_by_insee: dict[str, dict[str, str]]) -> dict[str, Any]:
+    """Les emprises des échelles qui en ont une, rangées par échelle et par slug.
+
+    On ne trace que les unités qui portent effectivement du réseau : une commune
+    sans route départementale n'apparaît pas dans la liste, son contour n'a donc
+    personne à qui se montrer.
+    """
+    wanted = {
+        scale: {slugify(unit["name"]) for unit in units["scales"][scale]["units"]}
+        for scale in SURFACE_SCALES if scale in units["scales"]
+    }
+
+    by_insee = {str((f.get("properties") or {}).get("ref:INSEE") or ""): f
+                for f in communes.get("features") or []}
+    members: dict[str, list[dict[str, Any]]] = {}
+    for insee, feature in by_insee.items():
+        epci = epci_by_insee.get(insee)
+        if epci:
+            members.setdefault(slugify(epci["nom"]), []).append(feature)
+
+    scales: dict[str, dict[str, list[list[list[float]]]]] = {}
+
+    def outlines_of(sources: dict[str, list[list[tuple[float, float]]]],
+                    scale: str) -> dict[str, dict[str, Any]]:
+        return {
+            slug: geometry
+            for slug, rings in sources.items()
+            if slug in wanted[scale]
+            for geometry in [rings_to_geometry(rings)]
+            if geometry
+        }
+
+    if "commune" in wanted:
+        scales["commune"] = outlines_of(
+            {slugify((f.get("properties") or {}).get("name")):
+             polygon_rings(f.get("geometry")) for f in by_insee.values()},
+            "commune")
+
+    if "canton" in wanted:
+        scales["canton"] = outlines_of(
+            {slugify((f.get("properties") or {}).get("name")):
+             polygon_rings(f.get("geometry"))
+             for f in cantons.get("features") or []},
+            "canton")
+
+    if "epci" in wanted:
+        scales["epci"] = outlines_of(
+            {slug: dissolve(features) for slug, features in members.items()},
+            "epci")
+
+    def ring_count(geometry: dict[str, Any]) -> int:
+        if geometry["type"] == "Polygon":
+            return sum(len(ring) for ring in geometry["coordinates"])
+        return sum(len(ring) for polygon in geometry["coordinates"] for ring in polygon)
+
+    points = sum(ring_count(geometry) for scale in scales.values()
+                 for geometry in scale.values())
+    return {
+        "_cache": {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "commune_source_name": "Limites communales — OpenStreetMap",
+            "cantons_source_name": CANTONS_SOURCE,
+            "epci_source_name": EPCI_SOURCE,
+            "user_agent": USER_AGENT,
+            "simplify_meters": SIMPLIFY_METERS,
+            "points": points,
+        },
+        "scales": scales,
     }
 
 
@@ -478,7 +758,7 @@ def write_json_if_changed(path: Path, data: dict[str, Any]) -> bool:
 
 
 def main() -> int:
-    for required in (ROADS, COMMUNES):
+    for required in (ROADS, COMMUNES, CANTONS):
         if not required.exists():
             print(f"Jeu OSM absent : {required}", file=sys.stderr)
             return 1
@@ -491,6 +771,7 @@ def main() -> int:
         return 0 if OUTPUT.exists() else 1
 
     epci_by_insee: dict[str, dict[str, str]] = {}
+    epci_clipped: set[str] = set()
     try:
         for entry in fetch_json(EPCI_URL, timeout=60):
             epci = entry.get("epci") or {}
@@ -499,6 +780,10 @@ def main() -> int:
                     "nom": str(epci["nom"]),
                     "code": str(epci.get("code") or ""),
                 }
+        for entry in fetch_json(EPCI_EXTENT_URL, timeout=60):
+            departments = entry.get("codesDepartements") or []
+            if entry.get("code") and set(departments) - {DEPARTMENT}:
+                epci_clipped.add(str(entry["code"]))
     except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as error:
         # Une échelle en moins vaut mieux qu'un jeu absent : les quatre autres
         # ne dépendent pas de l'API Géo.
@@ -506,14 +791,17 @@ def main() -> int:
 
     roads = json.loads(ROADS.read_text(encoding="utf-8"))
     communes = json.loads(COMMUNES.read_text(encoding="utf-8"))
-    payload = build(wfs, roads, communes, epci_by_insee)
+    cantons = json.loads(CANTONS.read_text(encoding="utf-8"))
+    payload = build(wfs, roads, communes, cantons, epci_by_insee, epci_clipped)
 
     cache = payload["_cache"]
     if cache["matched_cd84"] == 0 and cache["matched_commune"] == 0:
         print("Aucun tronçon apparié : jointure abandonnée.", file=sys.stderr)
         return 1
 
+    outlines = build_boundaries(payload, communes, cantons, epci_by_insee)
     changed = write_json_if_changed(OUTPUT, payload)
+    changed = write_json_if_changed(BOUNDARIES, outlines) or changed
     total = max(cache["osm_ways"], 1)
     print(f"{OUTPUT.relative_to(ROOT)} : {cache['osm_ways']} tronçons, "
           f"{cache['cd84_sections']} sections CD84")
@@ -526,8 +814,15 @@ def main() -> int:
           f"({100.0 * cache['matched_commune'] / total:.1f} %)")
     print(f"   EPCI        {cache['matched_epci']:5d} "
           f"({100.0 * cache['matched_epci'] / total:.1f} %)")
+    print(f"   canton      {cache['matched_canton']:5d} "
+          f"({100.0 * cache['matched_canton'] / total:.1f} %)")
     for key, _, _ in SCALES:
-        print(f"   {key:8s} {len(payload['scales'][key]['units']):4d} unités")
+        outlines_count = len(outlines["scales"].get(key, {}))
+        drawn = f", {outlines_count} emprises" if outlines_count else ", sans emprise"
+        print(f"   {key:8s} {len(payload['scales'][key]['units']):4d} unités{drawn}")
+    print(f"{BOUNDARIES.relative_to(ROOT)} : "
+          f"{outlines['_cache']['points']} sommets, "
+          f"simplifiés à {SIMPLIFY_METERS:.0f} m")
     print("inchangé" if not changed else "écrit")
     return 0
 

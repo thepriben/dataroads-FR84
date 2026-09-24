@@ -34,13 +34,13 @@ jobs:
         # le disque du runner ne servirait personne.
         if: always()
         run: |
-          if git diff --quiet -- data/osm data/external/territorial-units.json; then
+          if git diff --quiet -- data/osm data/external/territorial-units.json data/external/territorial-boundaries.json; then
             echo "No GeoJSON changes."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/osm data/external/territorial-units.json
+          git add data/osm data/external/territorial-units.json data/external/territorial-boundaries.json
           git commit -m "Update OSM GeoJSON"
           for attempt in 1 2 3; do
             # These files are regenerated wholesale, so when the branch has

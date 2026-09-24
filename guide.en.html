@@ -94,12 +94,13 @@
 <p>The department's extent and its administrative divisions. This family carries no layer to switch on: it defines the perimeter the others draw within.</p>
 <div class="guide-layer" id="layer-territoire">
 <h4>Territory — Vaucluse boundary (84)</h4>
-<p>Always shown. Dashed outline of the department; a reference for framing.</p>
+<p>Always shown. Dashed outline of the department; a reference for framing. A solid line in the same colour marks the outline of the sector selected at the territorial scale.</p>
 </div><div class="guide-layer" id="layer-echelle">
 <h4>Territorial scale</h4>
 <p>Narrows the displayed network to one sector, at five scales: <strong>road agency</strong> (4), <strong>maintenance centre</strong> (11), <strong>canton</strong> (17), <strong>intercommunality</strong> (14), <strong>municipality</strong> (150).</p>
 <p><strong>How:</strong> pick the scale, then the unit in the list — clicking it again restores the whole department. Above twelve units a filter field appears. The map reframes on the sector, and the page URL keeps the choice (<code>terr</code> parameter), so it can be shared as is.</p>
-<p>Maintenance sectors come from the <strong>operating limits of the departmental road network</strong> published by the Department on DataSud, attached to road sections rather than drawn as areas — 57 municipalities are served by more than one centre, so no polygon exists to overlay. Each OSM section's sector is computed offline by proximity; the municipality is determined by inclusion in the OSM municipal boundaries, and the intercommunality derived from the INSEE code via the État's API Géo.</p>
+<p>Maintenance sectors come from the <strong>operating limits of the departmental road network</strong> published by the Department on DataSud, attached to road sections rather than drawn as areas — 57 municipalities are served by more than one centre, so no polygon exists to overlay. Each OSM section's sector is computed offline by proximity; the municipality and the canton are determined by inclusion in the OSM boundaries, and the intercommunality derived from the INSEE code via the État's API Géo.</p>
+<p><strong>The sector's outline</strong> is drawn as a solid dark blue line, where one exists. Canton, intercommunality and municipality are constituencies and have an exact perimeter. A road agency or a maintenance centre has none: the panel says so rather than leaving the absence to be interpreted. An intercommunality's outline is reassembled from the boundaries of its member municipalities, no source publishing it, and stops at the department boundary for the six that extend beyond it — which the panel also states, since it is what the filter does too.</p>
 <p class="guide-hint">The filter acts on visibility, not on styling: it combines with the Limitations mode, the hierarchy levels and the labels.</p>
 </div>
 </article>

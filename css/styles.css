@@ -6063,9 +6063,11 @@
             background: #f4f7f9;
         }
 
+        /* Même bleu nuit que le contour tracé sur la carte : la ligne du secteur
+           et sa ligne dans la liste doivent se reconnaître. */
         .territory-unit.is-active {
             background: #eaf2f8;
-            box-shadow: inset 3px 0 0 #3498DB;
+            box-shadow: inset 3px 0 0 #2C3E50;
         }
 
         .territory-unit-name {

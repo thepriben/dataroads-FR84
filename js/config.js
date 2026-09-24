@@ -13,7 +13,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.18.0',
+        version: '0.19.0',
         repository,
         basemap: {
             // Le Plan IGN de la Géoplateforme, en tuiles raster : libre, sans clé
@@ -83,9 +83,11 @@
             },
             // Jeux qui ne sont pas des FeatureCollection : la table du découpage
             // territorial ne porte que des indices, la géométrie restant celle
-            // des tronçons déjà chargés.
+            // des tronçons déjà chargés ; les emprises sont rangées par échelle
+            // puis par nom d'unité, et non en liste de features.
             json: {
-                'territorial-units': 'data/external/territorial-units.json'
+                'territorial-units': 'data/external/territorial-units.json',
+                'territorial-boundaries': 'data/external/territorial-boundaries.json'
             }
         },
         live: {

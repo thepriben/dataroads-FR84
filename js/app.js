@@ -6749,13 +6749,100 @@
                 const unit = territorialCurrentUnit();
                 hint.innerHTML = unit
                     ? `<strong>${unit.name}</strong> · ${unit.ways} tronçons · ${unit.refs.length} routes
+                       ${outlineNote(unit)}
                        <button type="button" class="territory-clear" data-territory-unit="all">Tout le département</button>`
                     : `${units.length} unités · cliquer pour n'afficher que ce secteur`;
             }
         }
 
+        // Un contour tracé se lit comme une frontière : quand ce n'en est pas
+        // une, ou qu'il s'arrête avant la vraie, le dire vaut mieux que laisser
+        // conclure.
+        function outlineNote(unit) {
+            if (!TERRITORY_OUTLINE_SCALES.includes(territorialScale)) {
+                return '<br>Pas d\'emprise : ce découpage s\'établit au tronçon.';
+            }
+            if (unit.clipped) {
+                return '<br>Contour arrêté à la limite du département.';
+            }
+            return '';
+        }
+
+        // Les échelles qui ont une emprise à montrer. L'agence routière et le
+        // centre d'exploitation n'en ont pas : le Département découpe ses
+        // secteurs au tronçon, 57 communes relèvent de plusieurs CEER, et il
+        // n'existe aucun polygone à plaquer. Les trois autres sont des
+        // circonscriptions : leur contour est exact.
+        const TERRITORY_OUTLINE_SCALES = ['canton', 'epci', 'commune'];
+
+        // Quatre cents kilo-octets de contours n'ont rien à faire dans le
+        // chargement initial d'une carte qu'on ouvre sur le département entier :
+        // le fichier n'est lu qu'au premier secteur sélectionné.
+        let territorialOutlines = null;
+        let territorialOutlinesRequest = null;
+        let territorialOutlineLayer = null;
+
+        function loadTerritorialOutlines() {
+            const path = window.APP_CONFIG?.data?.json?.['territorial-boundaries'];
+            if (!path) return Promise.resolve(null);
+            if (!territorialOutlinesRequest) {
+                territorialOutlinesRequest = window.InforouteApi
+                    .fetchJson(path, { cache: 'no-cache' })
+                    .then(data => (territorialOutlines = data))
+                    .catch(error => {
+                        console.warn('Emprises territoriales indisponibles:', error);
+                        // Une seconde sélection doit pouvoir réessayer : un échec
+                        // réseau n'est pas une absence définitive de données.
+                        territorialOutlinesRequest = null;
+                        return null;
+                    });
+            }
+            return territorialOutlinesRequest;
+        }
+
+        function clearTerritorialOutline() {
+            if (!territorialOutlineLayer) return;
+            window.map?.removeLayer(territorialOutlineLayer);
+            territorialOutlineLayer = null;
+        }
+
+        async function drawTerritorialOutline() {
+            const unit = territorialCurrentUnit();
+            const scale = territorialScale;
+            if (!unit || !TERRITORY_OUTLINE_SCALES.includes(scale)) {
+                clearTerritorialOutline();
+                return;
+            }
+            const data = territorialOutlines || await loadTerritorialOutlines();
+            // Le secteur a pu changer pendant la lecture du fichier : ne tracer
+            // que si la demande est toujours celle de l'utilisateur.
+            if (territorialCurrentUnit() !== unit || territorialScale !== scale) return;
+            clearTerritorialOutline();
+            const geometry = data?.scales?.[scale]?.[territorialSlug(unit.name)];
+            if (!geometry || !window.map) return;
+            // Même bleu nuit que la limite du Vaucluse, mais trait plein là où
+            // elle est pointillée : une seule écriture pour les frontières, deux
+            // niveaux de lecture. Les couleurs des réseaux — rouge, orange,
+            // bleu — sont exclues, un contour ne doit pas se lire comme une
+            // route, et le violet dit déjà « en projet ».
+            territorialOutlineLayer = L.geoJSON(geometry, {
+                style: {
+                    color: '#2C3E50',
+                    weight: 3,
+                    opacity: 0.95,
+                    fillColor: '#2C3E50',
+                    fillOpacity: 0.04
+                },
+                interactive: false
+            }).addTo(window.map);
+            // Sous les tracés : le contour situe le secteur, il ne doit pas
+            // passer devant les routes qu'on est venu regarder.
+            territorialOutlineLayer.bringToBack();
+        }
+
         function applyTerritorialFilter() {
             if (typeof window.updateHierarchyDisplay === 'function') window.updateHierarchyDisplay();
+            drawTerritorialOutline();
             const unit = territorialCurrentUnit();
             if (unit && Array.isArray(unit.bounds) && window.map) {
                 window.map.fitBounds(
