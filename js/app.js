@@ -6802,9 +6802,30 @@
         let territorialMeshLayer = null;
         let territorialHitLayer = null;
         let territorialMeshScale = '';
-        let territorialFillLayer = null;
+        let territorialVeilLayer = null;
 
         const TERRITORY_HIT_WEIGHT = 12;
+
+        // Mettre un secteur en relief, c'est éteindre le reste : un voile qui
+        // couvre le monde, percé à la forme exacte de l'emprise. Assez opaque
+        // pour que l'œil sache où regarder, assez transparent pour qu'on
+        // reconnaisse encore ce qu'il y a autour.
+        const TERRITORY_VEIL_COLOR = '#FFFFFF';
+        const TERRITORY_VEIL_OPACITY = 0.62;
+        const TERRITORY_VEIL_RING = [[-85, -179.9], [-85, 179.9], [85, 179.9], [85, -179.9]];
+
+        // Tous les anneaux de l'unité sont versés dans le même polygone : le
+        // remplissage pair-impair rallume une partie détachée et rééteint le
+        // trou qu'elle contiendrait, sans qu'on ait à les distinguer.
+        function territorialVeilRings(geometry) {
+            const polygons = geometry.type === 'MultiPolygon' ? geometry.coordinates
+                : geometry.type === 'Polygon' ? [geometry.coordinates]
+                : [];
+            const rings = [TERRITORY_VEIL_RING];
+            polygons.forEach(polygon => polygon.forEach(
+                ring => rings.push(ring.map(([lng, lat]) => [lat, lng]))));
+            return rings;
+        }
 
         function loadTerritorialOutlines() {
             const path = window.APP_CONFIG?.data?.json?.['territorial-boundaries'];
@@ -6832,12 +6853,12 @@
         }
 
         function clearTerritorialOutlines() {
-            [territorialMeshLayer, territorialHitLayer, territorialFillLayer]
+            [territorialMeshLayer, territorialHitLayer, territorialVeilLayer]
                 .forEach(layer => { if (layer) window.map?.removeLayer(layer); });
             territorialMeshLayer = null;
             territorialHitLayer = null;
             territorialMeshScale = '';
-            territorialFillLayer = null;
+            territorialVeilLayer = null;
         }
 
         function territorialIndexOfSlug(scale, slug) {
@@ -6932,18 +6953,23 @@
                     feature => territorialMeshStyle(feature.properties.slug));
             }
 
-            if (territorialFillLayer) {
-                window.map.removeLayer(territorialFillLayer);
-                territorialFillLayer = null;
+            if (territorialVeilLayer) {
+                window.map.removeLayer(territorialVeilLayer);
+                territorialVeilLayer = null;
             }
             const unit = territorialCurrentUnit();
             const geometry = unit && outlines[territorialSlug(unit.name)];
             if (!geometry) return;
-            territorialFillLayer = L.geoJSON(geometry, {
-                style: { stroke: false, fillColor: TERRITORY_OUTLINE_COLOR, fillOpacity: 0.04 },
+            territorialVeilLayer = L.polygon(territorialVeilRings(geometry), {
+                stroke: false,
+                fillColor: TERRITORY_VEIL_COLOR,
+                fillOpacity: TERRITORY_VEIL_OPACITY,
+                fillRule: 'evenodd',
                 interactive: false
             }).addTo(window.map);
-            territorialFillLayer.bringToBack();
+            // Tout au fond : le voile éteint le fond de carte, pas le maillage
+            // qui situe le secteur ni les routes qu'on est venu regarder.
+            territorialVeilLayer.bringToBack();
         }
 
         function applyTerritorialFilter() {
@@ -8486,7 +8512,14 @@
             });
         }
 
+        // Le placement attend deux images pour mesurer les marqueurs, or ils sont
+        // déjà sur la carte : sans numéro de série, deux appels rapprochés — ce
+        // que produit un recadrage — laissaient les premiers marqueurs orphelins,
+        // plus personne ne les tenant pour les retirer.
+        let routeLabelGeneration = 0;
+
         function updateRouteLabels() {
+            const generation = ++routeLabelGeneration;
             roadLabels.forEach(label => map.removeLayer(label));
             roadLabels = [];
 
@@ -8507,9 +8540,11 @@
                 };
                 return placed;
             });
+            roadLabels = placedEntries.map(entry => entry.marker);
 
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
+                    if (generation !== routeLabelGeneration) return;
                     resolveRouteLabelCollisions(placedEntries);
                     const overlapGroups = findRouteLabelOverlapGroups(placedEntries);
                     if (overlapGroups.length > 0) {

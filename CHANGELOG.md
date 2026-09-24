@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.23.0] - 2026-09-24
+
+### Added
+
+- **Everything outside the selected sector fades away.** A veil covers the map, pierced to the exact shape of the perimeter, so the sector stands out without being tinted or outlined more heavily. It is translucent rather than opaque: the surroundings stay recognisable, which is what tells you where the sector sits. All the rings of the unit go into the same shape and the fill is even-odd, so a detached part lights up and a hole inside it goes dark again without being treated as a special case — the Vaison-la-Romaine intercommunality and its outlying part come out right on their own. The veil sits at the very back, so the neighbouring outlines still say what you would be clicking, and the roads keep their full contrast.
+
+### Fixed
+
+- **Road number badges were being stranded on the map.** Placement measures the markers, so it waits two frames — but the markers are already on the map by then, and only recorded afterwards. Two calls in quick succession, which is exactly what reframing on a sector produces, left the first batch with nobody holding it: the numbers stayed put, outside the sector, over roads that were no longer displayed. Four ghosts survived on a typical maintenance centre. The markers are now recorded as soon as they are created, and a stale placement pass gives up instead of resurrecting them.
+
 ## [0.22.0] - 2026-09-24
 
 ### Changed
