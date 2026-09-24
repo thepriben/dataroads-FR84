@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.17.17] - 2026-09-24
+
+### Fixed
+
+- **The Limitations tool painted nothing, because it only ever repaints.** The mode recolours the departmental network that is already drawn; the map opens with every layer off, so pressing the button restyled nine thousand polylines that were not on the map. The legend appeared, the map did not move. Switching the mode on now brings the network up first, the way the key-figures shortcuts do.
+- **Showing or hiding a hierarchy level undid the speed filters.** Making a level visible resets its segments to opacity 0.8, which is exactly the presence the mode withdraws from the speed bands you have unchecked — so unchecking 90 km/h and then toggling the local roads brought all the 90s back. The gradient is now reapplied after any change of level.
+
 ## [0.17.16] - 2026-09-24
 
 ### Fixed

@@ -6691,6 +6691,12 @@
                 }
             });
             
+            // Rendre un niveau visible le repasse à l'opacité 0.8, ce qui rend
+            // aux vitesses décochées la présence que le mode leur retire. Le
+            // dégradé se réapplique donc après coup, sinon filtrer puis afficher
+            // un niveau suffisait à défaire le filtre.
+            if (limitationsMode) window.applySpeedGradient?.();
+
             // Update global icon according to state
             const icon = document.getElementById('hierarchyToggleIcon');
             const title = document.querySelector('.legend-section:has([id="hierarchyToggleIcon"]) .legend-title');
@@ -11736,6 +11742,9 @@
             });
         }
 
+        // Reachable from updateHierarchyDisplay, which lives outside DOMContentLoaded.
+        window.applySpeedGradient = applySpeedGradient;
+
         // Inverse of applySpeedGradient: restore normal hierarchy colors.
         function restoreHierarchyStyles() {
             Object.keys(window.routePolylines).forEach(ref => {
@@ -12455,6 +12464,11 @@
             console.log(`🚦 Mode Limitations : ${limitationsMode ? 'ON' : 'OFF'}`);
 
             if (limitationsMode) {
+                // Le mode ne peint rien de neuf : il recolore le réseau déjà
+                // tracé. La carte s'ouvrant vide, l'appuyer d'entrée revenait à
+                // restyler neuf mille polylignes absentes de la carte — légende
+                // affichée, fond de carte inchangé, aucun signe de vie.
+                ensureHierarchyVisibility(true);
                 applySpeedGradient();
                 speedPictoLayer.addTo(window.map);
                 restrictionLayer.addTo(window.map);
