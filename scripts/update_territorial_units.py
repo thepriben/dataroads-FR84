@@ -34,14 +34,24 @@ Trois appariements, selon la nature de l'information cherchée :
 - L'EPCI se déduit du code INSEE de la commune via l'API Découpage
   administratif de l'État. Aucune géométrie supplémentaire n'est nécessaire.
 
-Le second fichier produit porte les emprises, pour les seules échelles qui en
-ont une. Communes et cantons livrent la leur directement. Celle d'un EPCI se
-calcule : un groupement rassemble des communes entières, il suffit donc de
-recoller leurs limites. Les arêtes intérieures, partagées par deux communes
-voisines, apparaissent exactement deux fois dans le jeu OSM puisque les deux
-polygones s'appuient sur les mêmes chemins ; les annuler laisse le contour
-extérieur. L'agence et le centre d'exploitation, eux, n'ont aucune emprise à
-montrer : leurs limites se découpent au tronçon.
+Le second fichier produit porte les emprises. Communes et cantons livrent la
+leur directement. Celle d'un EPCI se calcule : un groupement rassemble des
+communes entières, il suffit donc de recoller leurs limites. Les arêtes
+intérieures, partagées par deux communes voisines, apparaissent exactement deux
+fois dans le jeu OSM puisque les deux polygones s'appuient sur les mêmes
+chemins ; les annuler laisse le contour extérieur.
+
+L'agence et le centre d'exploitation n'ont aucune limite officielle : le
+Département les établit au tronçon. Mais un secteur d'exploitation se lit en
+communes, et c'est ainsi qu'il est reconstitué ici : chaque commune est
+rattachée au secteur qui y entretient le plus de linéaire, puis les limites
+communales sont recollées comme pour un EPCI. Le contour suit donc des limites
+reconnaissables, au prix d'une approximation qui est mesurée et annoncée — 1,9 %
+du linéaire départemental pour les agences, 5,6 % pour les centres, relève d'un
+secteur autre que celui de sa commune. Un partage au plus proche, calculé sur
+une grille, était plus fidèle de trois points mais traçait des courbes à travers
+la campagne, que personne ne peut situer. Ces emprises-là sont tracées en
+pointillé, pour ne pas se lire comme une frontière.
 """
 
 from __future__ import annotations
@@ -104,9 +114,13 @@ SCALES: list[tuple[str, str, tuple[str, ...] | None]] = [
 ]
 CD84_SCALES = [key for key, _, field in SCALES if field]
 
-# Les échelles dont on sait tracer l'emprise. L'ordre n'a pas d'importance :
+# Les circonscriptions, dont l'emprise est exacte. L'ordre n'a pas d'importance :
 # l'application cherche par échelle puis par nom.
 SURFACE_SCALES = ("canton", "epci", "commune")
+
+# Les échelles d'exploitation, dont l'emprise est reconstituée en agrégeant des
+# communes entières et n'est donc pas officielle.
+DERIVED_SCALES = ("ard", "ceer")
 
 # Une limite territoriale se regarde à l'échelle d'un secteur, où le pixel vaut
 # une trentaine de mètres : garder les sommets distants de moins de vingt mètres
@@ -474,7 +488,8 @@ def stitch(edges: list[tuple[tuple[float, float], tuple[float, float]]]
     return rings
 
 
-def rings_to_geometry(rings: list[list[tuple[float, float]]]) -> dict[str, Any] | None:
+def rings_to_geometry(rings: list[list[tuple[float, float]]],
+                      tolerance: float = SIMPLIFY_METERS) -> dict[str, Any] | None:
     """Range des anneaux simplifiés en géométrie GeoJSON.
 
     Un anneau contenu dans un autre est son enclave, un anneau libre est une
@@ -484,7 +499,7 @@ def rings_to_geometry(rings: list[list[tuple[float, float]]]) -> dict[str, Any] 
     """
     simplified = []
     for ring in rings:
-        reduced = simplify_ring(ring, SIMPLIFY_METERS)
+        reduced = simplify_ring(ring, tolerance)
         if len(reduced) >= 4:
             simplified.append(reduced)
     if not simplified:
@@ -572,7 +587,7 @@ class ScaleBuilder:
 def build(wfs: dict[str, Any], roads: dict[str, Any], communes: dict[str, Any],
           cantons: dict[str, Any],
           epci_by_insee: dict[str, dict[str, str]],
-          epci_clipped: set[str]) -> dict[str, Any]:
+          epci_clipped: set[str]) -> tuple[dict[str, Any], dict[str, dict[str, str]]]:
     sections = SectionIndex(wfs.get("features") or [])
     towns = AreaIndex(communes.get("features") or [])
     districts = AreaIndex(cantons.get("features") or [])
@@ -582,6 +597,9 @@ def build(wfs: dict[str, Any], roads: dict[str, Any], communes: dict[str, Any],
     ways: dict[str, list[int | None]] = {}
     stats = {"total": 0, "cd84": 0, "commune": 0, "epci": 0, "canton": 0}
     distances: list[float] = []
+    # Linéaire de chaque commune par secteur d'exploitation : de quoi rattacher
+    # ensuite chaque commune au secteur qui y entretient le plus de route.
+    tally: dict[str, dict[str, dict[str, float]]] = {key: {} for key in DERIVED_SCALES}
 
     for feature in roads.get("features") or []:
         props = feature.get("properties") or {}
@@ -618,6 +636,14 @@ def build(wfs: dict[str, Any], roads: dict[str, Any], communes: dict[str, Any],
             labels["canton"] = district
             stats["canton"] += 1
 
+        commune_name = labels.get("commune", ("", ""))[0]
+        if commune_name:
+            for key in DERIVED_SCALES:
+                sector = labels.get(key, ("", ""))[0]
+                if sector:
+                    sectors = tally[key].setdefault(commune_name, {})
+                    sectors[sector] = sectors.get(sector, 0.0) + meters
+
         row: list[int | None] = []
         for key in order:
             name, code = labels.get(key, ("", ""))
@@ -637,6 +663,23 @@ def build(wfs: dict[str, Any], roads: dict[str, Any], communes: dict[str, Any],
         if unit.get("code") in epci_clipped:
             unit["clipped"] = True
 
+    # Le secteur majoritaire de chaque commune, et la part de linéaire que ce
+    # raccourci déplace. Annoncer le chiffre est ce qui rend l'emprise lisible
+    # sans la faire passer pour une frontière.
+    majority: dict[str, dict[str, str]] = {}
+    offset: dict[str, float] = {}
+    for key in DERIVED_SCALES:
+        kept = moved = 0.0
+        mapping: dict[str, str] = {}
+        for commune, sectors in tally[key].items():
+            # Le nom départage les ex æquo, pour que deux exécutions concordent.
+            winner, best = max(sectors.items(), key=lambda pair: (pair[1], pair[0]))
+            mapping[commune] = winner
+            kept += best
+            moved += sum(sectors.values()) - best
+        majority[key] = mapping
+        offset[key] = round(100.0 * moved / (kept + moved), 1) if kept + moved else 0.0
+
     # Les unités ont été reclassées par linéaire : les indices des tronçons
     # doivent suivre, sinon chacun désignerait le voisin de son secteur.
     for way_id, row in ways.items():
@@ -651,7 +694,7 @@ def build(wfs: dict[str, Any], roads: dict[str, Any], communes: dict[str, Any],
             return 0.0
         return round(distances[min(len(distances) - 1, int(len(distances) * value / 100))], 1)
 
-    return {
+    payload = {
         "_cache": {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "source_name": WFS_SOURCE,
@@ -668,17 +711,24 @@ def build(wfs: dict[str, Any], roads: dict[str, Any], communes: dict[str, Any],
             "matched_epci": stats["epci"],
             "matched_canton": stats["canton"],
             "match_distance_m": {"p50": centile(50), "p90": centile(90), "p99": centile(99)},
+            # Part du linéaire qui relève d'un autre secteur que celui de sa
+            # commune : le prix exact de l'emprise reconstituée.
+            "derived_offset_percent": offset,
         },
         "order": order,
         "scales": scales,
         "ways": ways,
     }
+    # Le rattachement des communes ne sert qu'à tracer les emprises : il n'a rien
+    # à faire dans le fichier que l'application charge au démarrage.
+    return payload, majority
 
 
 def build_boundaries(units: dict[str, Any], communes: dict[str, Any],
                      cantons: dict[str, Any],
+                     majority: dict[str, dict[str, str]],
                      epci_by_insee: dict[str, dict[str, str]]) -> dict[str, Any]:
-    """Les emprises des échelles qui en ont une, rangées par échelle et par slug.
+    """Les emprises de chaque échelle, rangées par échelle et par slug.
 
     On ne trace que les unités qui portent effectivement du réseau : une commune
     sans route départementale n'apparaît pas dans la liste, son contour n'a donc
@@ -686,7 +736,7 @@ def build_boundaries(units: dict[str, Any], communes: dict[str, Any],
     """
     wanted = {
         scale: {slugify(unit["name"]) for unit in units["scales"][scale]["units"]}
-        for scale in SURFACE_SCALES if scale in units["scales"]
+        for scale in SURFACE_SCALES + DERIVED_SCALES if scale in units["scales"]
     }
 
     by_insee = {str((f.get("properties") or {}).get("ref:INSEE") or ""): f
@@ -727,6 +777,22 @@ def build_boundaries(units: dict[str, Any], communes: dict[str, Any],
             {slug: dissolve(features) for slug, features in members.items()},
             "epci")
 
+    # Les secteurs d'exploitation, agrégés de communes entières.
+    derived: list[str] = []
+    by_name = {slugify((f.get("properties") or {}).get("name")): f
+               for f in communes.get("features") or []}
+    for scale in DERIVED_SCALES:
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for commune, sector in majority.get(scale, {}).items():
+            feature = by_name.get(slugify(commune))
+            if feature is not None:
+                grouped.setdefault(slugify(sector), []).append(feature)
+        found = outlines_of({slug: dissolve(features)
+                             for slug, features in grouped.items()}, scale)
+        if found:
+            scales[scale] = found
+            derived.append(scale)
+
     def ring_count(geometry: dict[str, Any]) -> int:
         if geometry["type"] == "Polygon":
             return sum(len(ring) for ring in geometry["coordinates"])
@@ -743,6 +809,10 @@ def build_boundaries(units: dict[str, Any], communes: dict[str, Any],
             "user_agent": USER_AGENT,
             "simplify_meters": SIMPLIFY_METERS,
             "points": points,
+            # Les échelles dont l'emprise est reconstituée et non administrative :
+            # l'application les trace autrement, un agrégat de communes ne se lit
+            # pas comme une frontière.
+            "derived": derived,
         },
         "scales": scales,
     }
@@ -792,14 +862,15 @@ def main() -> int:
     roads = json.loads(ROADS.read_text(encoding="utf-8"))
     communes = json.loads(COMMUNES.read_text(encoding="utf-8"))
     cantons = json.loads(CANTONS.read_text(encoding="utf-8"))
-    payload = build(wfs, roads, communes, cantons, epci_by_insee, epci_clipped)
+    payload, majority = build(wfs, roads, communes, cantons,
+                              epci_by_insee, epci_clipped)
 
     cache = payload["_cache"]
     if cache["matched_cd84"] == 0 and cache["matched_commune"] == 0:
         print("Aucun tronçon apparié : jointure abandonnée.", file=sys.stderr)
         return 1
 
-    outlines = build_boundaries(payload, communes, cantons, epci_by_insee)
+    outlines = build_boundaries(payload, communes, cantons, majority, epci_by_insee)
     changed = write_json_if_changed(OUTPUT, payload)
     changed = write_json_if_changed(BOUNDARIES, outlines) or changed
     total = max(cache["osm_ways"], 1)
@@ -817,9 +888,16 @@ def main() -> int:
     print(f"   canton      {cache['matched_canton']:5d} "
           f"({100.0 * cache['matched_canton'] / total:.1f} %)")
     for key, _, _ in SCALES:
-        outlines_count = len(outlines["scales"].get(key, {}))
-        drawn = f", {outlines_count} emprises" if outlines_count else ", sans emprise"
-        print(f"   {key:8s} {len(payload['scales'][key]['units']):4d} unités{drawn}")
+        drawn = outlines["scales"].get(key, {})
+        # Une unité sans emprise passerait inaperçue : l'application n'en
+        # tracerait simplement aucune, sans rien signaler.
+        orphans = [unit["name"] for unit in payload["scales"][key]["units"]
+                   if slugify(unit["name"]) not in drawn]
+        kind = " déduites" if key in outlines["_cache"]["derived"] else ""
+        state = f", {len(drawn)} emprises{kind}" if drawn else ", sans emprise"
+        if drawn and orphans:
+            state += f" — SANS CONTOUR : {', '.join(orphans)}"
+        print(f"   {key:8s} {len(payload['scales'][key]['units']):4d} unités{state}")
     print(f"{BOUNDARIES.relative_to(ROOT)} : "
           f"{outlines['_cache']['points']} sommets, "
           f"simplifiés à {SIMPLIFY_METERS:.0f} m")

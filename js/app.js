@@ -6761,8 +6761,12 @@
         // une, ou qu'il s'arrête avant la vraie, le dire vaut mieux que laisser
         // conclure.
         function outlineNote(unit) {
-            if (!TERRITORY_OUTLINE_SCALES.includes(territorialScale)) {
-                return '<br>Pas d\'emprise : ce découpage s\'établit au tronçon.';
+            if (territorialScaleIsDerived(territorialScale)) {
+                const gap = territorialData?._cache
+                    ?.derived_offset_percent?.[territorialScale];
+                return `<br>Emprise reconstituée en communes entières, non
+                        officielle${gap ? ` : ${gap} % du linéaire relève d'un
+                        secteur voisin` : ''}.`;
             }
             if (unit.clipped) {
                 return '<br>Contour arrêté à la limite du département.';
@@ -6770,25 +6774,37 @@
             return '';
         }
 
-        // Les échelles qui ont une emprise à montrer. L'agence routière et le
-        // centre d'exploitation n'en ont pas : le Département découpe ses
-        // secteurs au tronçon, 57 communes relèvent de plusieurs CEER, et il
-        // n'existe aucun polygone à plaquer. Les trois autres sont des
-        // circonscriptions : leur contour est exact.
-        const TERRITORY_OUTLINE_SCALES = ['canton', 'epci', 'commune'];
+        // Toutes les échelles ont une emprise, mais pas de la même nature. Canton,
+        // intercommunalité et commune sont des circonscriptions : leur contour est
+        // exact. L'agence routière et le centre d'exploitation n'ont aucune limite
+        // officielle — le Département les établit au tronçon — et la leur est
+        // reconstituée en rattachant chaque commune au secteur qui y entretient le
+        // plus de linéaire. Le fichier dit lesquelles sont ainsi déduites ; elles
+        // gardent la couleur des autres, seule la trame change.
+        const TERRITORY_OUTLINE_SCALES = ['ard', 'ceer', 'canton', 'epci', 'commune'];
+        const TERRITORY_OUTLINE_COLOR = '#2C3E50';
+
+        function territorialScaleIsDerived(scale) {
+            return (territorialOutlines?._cache?.derived || []).includes(scale);
+        }
 
         // Quatre cents kilo-octets de contours n'ont rien à faire dans le
         // chargement initial d'une carte qu'on ouvre sur le département entier :
         // le fichier n'est lu qu'à la première échelle qui a des emprises.
         let territorialOutlines = null;
         let territorialOutlinesRequest = null;
-        // Le maillage entier de l'échelle courante, en traits fins cliquables,
-        // et l'aplat du secteur choisi. Deux couches et non une : l'aplat doit
-        // laisser passer les clics vers les routes qu'il recouvre, les traits
-        // doivent au contraire les recevoir.
+        // Trois couches, chacune pour une raison. Le maillage porte le trait
+        // visible. Une bande large et transparente porte les clics, parce qu'un
+        // trait d'un pixel et demi ne se vise pas ; elle est rangée tout au fond,
+        // donc les routes, dessinées par-dessus, gardent la priorité sur leurs
+        // propres fiches. L'aplat du secteur choisi, lui, doit rester inerte pour
+        // laisser passer les clics vers les routes qu'il recouvre.
         let territorialMeshLayer = null;
+        let territorialHitLayer = null;
         let territorialMeshScale = '';
         let territorialFillLayer = null;
+
+        const TERRITORY_HIT_WEIGHT = 12;
 
         function loadTerritorialOutlines() {
             const path = window.APP_CONFIG?.data?.json?.['territorial-boundaries'];
@@ -6796,7 +6812,14 @@
             if (!territorialOutlinesRequest) {
                 territorialOutlinesRequest = window.InforouteApi
                     .fetchJson(path, { cache: 'no-cache' })
-                    .then(data => (territorialOutlines = data))
+                    .then(data => {
+                        territorialOutlines = data;
+                        // C'est ce fichier qui dit quelles emprises sont
+                        // reconstituées : la mention ne peut être écrite qu'une
+                        // fois lu, et la liste a déjà été rendue sans elle.
+                        renderTerritoryList();
+                        return data;
+                    })
                     .catch(error => {
                         console.warn('Emprises territoriales indisponibles:', error);
                         // Une seconde sélection doit pouvoir réessayer : un échec
@@ -6809,10 +6832,10 @@
         }
 
         function clearTerritorialOutlines() {
-            [territorialMeshLayer, territorialFillLayer].forEach(layer => {
-                if (layer) window.map?.removeLayer(layer);
-            });
+            [territorialMeshLayer, territorialHitLayer, territorialFillLayer]
+                .forEach(layer => { if (layer) window.map?.removeLayer(layer); });
             territorialMeshLayer = null;
+            territorialHitLayer = null;
             territorialMeshScale = '';
             territorialFillLayer = null;
         }
@@ -6831,9 +6854,12 @@
             const chosen = territorialUnit !== null
                 && territorialSlug(territorialCurrentUnit()?.name) === slug;
             return {
-                color: '#2C3E50',
+                color: TERRITORY_OUTLINE_COLOR,
                 weight: chosen ? 3.5 : 1.5,
                 opacity: chosen ? 1 : 0.6,
+                // Une emprise reconstituée ne doit pas se lire comme une
+                // frontière : la couleur reste la même, le trait se pointille.
+                dashArray: territorialScaleIsDerived(territorialScale) ? '3, 4' : null,
                 // Sans remplissage, seul le trait reçoit les clics : l'intérieur
                 // d'un secteur reste celui des routes et de leurs fiches.
                 fill: false
@@ -6858,13 +6884,26 @@
 
             if (territorialMeshScale !== scale) {
                 clearTerritorialOutlines();
-                territorialMeshLayer = L.geoJSON({
+                const collection = {
                     type: 'FeatureCollection',
                     features: Object.entries(outlines).map(([slug, geometry]) => ({
                         type: 'Feature', geometry, properties: { slug }
                     }))
-                }, {
-                    style: feature => territorialMeshStyle(feature.properties.slug),
+                };
+
+                // Cliquer une limite sur la carte vaut cliquer sa ligne dans la
+                // liste : c'est le geste qu'un maillage affiché appelle, et
+                // chercher cent cinquante communes dans une liste quand on sait
+                // où l'on regarde n'a pas de sens.
+                territorialHitLayer = L.geoJSON(collection, {
+                    style: {
+                        color: TERRITORY_OUTLINE_COLOR,
+                        weight: TERRITORY_HIT_WEIGHT,
+                        // Non pas zéro : un trait d'opacité nulle n'est pas peint,
+                        // et ce qui n'est pas peint ne reçoit pas les clics.
+                        opacity: 0.01,
+                        fill: false
+                    },
                     onEachFeature: (feature, layer) => {
                         const slug = feature.properties.slug;
                         const unit = territorialUnits(scale)[territorialIndexOfSlug(scale, slug)];
@@ -6872,17 +6911,21 @@
                             layer.bindTooltip(`${unit.name} — ${unit.km.toFixed(0)} km`,
                                               { sticky: true, direction: 'top' });
                         }
-                        // Cliquer une limite sur la carte vaut cliquer sa ligne
-                        // dans la liste : c'est le geste qu'un maillage affiché
-                        // appelle, et chercher cent cinquante communes dans une
-                        // liste quand on sait où l'on regarde n'a pas de sens.
-                        layer.on('click', () => window.selectTerritorialUnit(
-                            territorialIndexOfSlug(scale, slug)));
+                        layer.on('click', event => window.selectTerritorialUnit(
+                            territorialIndexOfSlug(scale, slug), event.latlng));
                     }
                 }).addTo(window.map);
+
+                territorialMeshLayer = L.geoJSON(collection, {
+                    style: feature => territorialMeshStyle(feature.properties.slug),
+                    interactive: false
+                }).addTo(window.map);
+
                 // Sous les tracés : le maillage situe les secteurs, il ne doit
-                // pas passer devant les routes qu'on est venu regarder.
+                // pas passer devant les routes qu'on est venu regarder. La bande
+                // de clic passe derrière lui, donc plus loin encore des routes.
                 territorialMeshLayer.bringToBack();
+                territorialHitLayer.bringToBack();
                 territorialMeshScale = scale;
             } else {
                 territorialMeshLayer.setStyle(
@@ -6897,7 +6940,7 @@
             const geometry = unit && outlines[territorialSlug(unit.name)];
             if (!geometry) return;
             territorialFillLayer = L.geoJSON(geometry, {
-                style: { stroke: false, fillColor: '#2C3E50', fillOpacity: 0.04 },
+                style: { stroke: false, fillColor: TERRITORY_OUTLINE_COLOR, fillOpacity: 0.04 },
                 interactive: false
             }).addTo(window.map);
             territorialFillLayer.bringToBack();
@@ -6930,13 +6973,41 @@
             applyTerritorialFilter();
         };
 
-        window.selectTerritorialUnit = function(index) {
+        window.selectTerritorialUnit = function(index, at) {
             if (!territorialData) return;
             const next = index === null || index === 'all' ? null : Number(index);
             territorialUnit = (next === territorialUnit || next === null) ? null : next;
             if (territorialUnit !== null) ensureHierarchyVisibility(true);
             applyTerritorialFilter();
+            if (territorialUnit === null) window.map?.closePopup();
+            else openTerritorialDigest(at);
         };
+
+        // Choisir un secteur et ne rien en dire de plus que son linéaire serait
+        // s'arrêter au seuil : le digest dit de quoi il est fait. Il attend le
+        // recadrage, sinon la popup s'ancre sur la vue précédente.
+        function openTerritorialDigest(at) {
+            const unit = territorialCurrentUnit();
+            if (!unit || !window.map) return;
+            const anchor = at || (Array.isArray(unit.bounds)
+                ? [(unit.bounds[1] + unit.bounds[3]) / 2, (unit.bounds[0] + unit.bounds[2]) / 2]
+                : null);
+            if (!anchor) return;
+            setTimeout(() => {
+                const html = window.buildTerritorialDigest?.();
+                if (!html || territorialCurrentUnit() !== unit) return;
+                // autoPan : le digest est plus haut qu'une fiche de route et se
+                // coupait sur le bord supérieur quand le secteur touchait le haut
+                // de la vue. Mieux vaut un léger recadrage qu'un titre illisible.
+                L.popup({
+                    maxWidth: 340, minWidth: 280, className: 'digest-popup',
+                    autoPanPadding: [20, 20]
+                })
+                    .setLatLng(anchor)
+                    .setContent(html)
+                    .openOn(window.map);
+            }, 450);
+        }
 
         function territorialStateForUrl() {
             const unit = territorialCurrentUnit();
@@ -12122,6 +12193,119 @@
             }
             return { kmh: null, implicit: false, label: null };
         }
+
+        // ========== DIGEST D'UNE UNITÉ TERRITORIALE ==========
+        // Ce qu'un secteur choisi dit de lui-même, agrégé à la demande depuis les
+        // tronçons que le filtre retient. Rien n'est précalculé : la liste des
+        // unités ne porte qu'un linéaire et un compte, or ce qu'un chef de centre
+        // veut savoir de son secteur est sa composition — quelle part de réseau
+        // régional, quelles vitesses, quelles routes.
+        //
+        // Déclaré ici pour atteindre l'échelle des vitesses et resolveWaySpeed, et
+        // exposé parce que le code territorial vit hors de ce bloc.
+        window.buildTerritorialDigest = function() {
+            const unit = territorialCurrentUnit();
+            if (!unit || !window.routePolylines) return '';
+
+            const byHierarchy = { regional: 0, territorial: 0, local: 0 };
+            const bySpeed = new Map();
+            const byRef = new Map();
+            const communes = new Set();
+            const communeColumn = territorialData?.order?.indexOf('commune') ?? -1;
+            let totalKm = 0;
+            let ways = 0;
+
+            Object.entries(window.routePolylines).forEach(([ref, polylines]) => {
+                polylines.forEach(polyline => {
+                    if (!window.passesTerritorialFilter(polyline)) return;
+                    const points = polyline.getLatLngs();
+                    let km = 0;
+                    for (let i = 1; i < points.length; i += 1) {
+                        km += haversineKm(points[i - 1], points[i]);
+                    }
+                    ways += 1;
+                    totalKm += km;
+                    const hierarchy = polyline.options.roadHierarchy;
+                    if (hierarchy in byHierarchy) byHierarchy[hierarchy] += km;
+                    byRef.set(ref, (byRef.get(ref) || 0) + km);
+                    const step = speedStepFor(resolveWaySpeed(polyline.options.wayTags).kmh);
+                    bySpeed.set(step, (bySpeed.get(step) || 0) + km);
+                    if (communeColumn >= 0) {
+                        const row = territorialData.ways[String(polyline.options.wayId)];
+                        if (row && row[communeColumn] !== null) communes.add(row[communeColumn]);
+                    }
+                });
+            });
+
+            if (!ways) return '';
+
+            const km = value => value >= 10 ? Math.round(value) : value.toFixed(1);
+            const bar = (label, value, color, total) => `
+                <div class="digest-bar">
+                    <span class="digest-bar-label">${label}</span>
+                    <span class="digest-bar-track">
+                        <span class="digest-bar-fill" style="width:${total ? 100 * value / total : 0}%;background:${color}"></span>
+                    </span>
+                    <span class="digest-bar-value">${km(value)} km</span>
+                </div>`;
+
+            const hierarchyLabels = {
+                regional: 'Régional', territorial: 'Territorial', local: 'Local'
+            };
+            const hierarchyBars = Object.keys(hierarchyLabels)
+                .filter(key => byHierarchy[key] > 0)
+                .map(key => bar(hierarchyLabels[key], byHierarchy[key],
+                                hierarchyColors[key], totalKm))
+                .join('');
+
+            // Des tranches les plus lentes aux plus rapides, l'inconnu en dernier :
+            // c'est l'ordre de la légende des limitations.
+            const speedBars = [...bySpeed.entries()]
+                .sort((a, b) => (a[0] === 'unknown' ? 99 : a[0]) - (b[0] === 'unknown' ? 99 : b[0]))
+                .map(([step, value]) => bar(
+                    step === 'unknown' ? 'Inconnue' : `${SPEED_COLOR_SCALE[step].label} km/h`,
+                    value,
+                    step === 'unknown' ? SPEED_UNKNOWN_COLOR : SPEED_COLOR_SCALE[step].color,
+                    totalKm))
+                .join('');
+
+            const topRefs = [...byRef.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+            const refBars = topRefs
+                .map(([ref, value]) => bar(ref, value, '#7F8C8D', topRefs[0][1]))
+                .join('');
+
+            const scaleLabel = territorialData?.scales?.[territorialScale]?.label || '';
+            const derived = territorialScaleIsDerived(territorialScale);
+            const gap = territorialData?._cache?.derived_offset_percent?.[territorialScale];
+            const caveat = derived
+                ? `Emprise reconstituée en communes entières, non officielle${
+                    gap ? ` — ${gap} % du linéaire relève d'un secteur voisin` : ''}.`
+                : unit.clipped
+                    ? 'Contour arrêté à la limite du département : les communes hors Vaucluse n\'y figurent pas.'
+                    : '';
+
+            return `
+                <div class="digest">
+                    <div class="digest-title">${escapeHtml(unit.name)}</div>
+                    <div class="digest-scale">${escapeHtml(scaleLabel)}${
+                        unit.code ? ` · <code>${escapeHtml(unit.code)}</code>` : ''}</div>
+                    <div class="digest-figures">
+                        <span><strong>${km(totalKm)}</strong> km</span>
+                        <span><strong>${ways}</strong> tronçons</span>
+                        <span><strong>${byRef.size}</strong> routes</span>
+                        ${communes.size && territorialScale !== 'commune'
+                            ? `<span><strong>${communes.size}</strong> communes traversées</span>`
+                            : ''}
+                    </div>
+                    ${hierarchyBars ? `<div class="digest-group">
+                        <div class="digest-group-title">Niveau de réseau</div>${hierarchyBars}</div>` : ''}
+                    ${speedBars ? `<div class="digest-group">
+                        <div class="digest-group-title">Vitesse autorisée</div>${speedBars}</div>` : ''}
+                    ${refBars ? `<div class="digest-group">
+                        <div class="digest-group-title">Principales routes</div>${refBars}</div>` : ''}
+                    ${caveat ? `<div class="digest-caveat">${caveat}</div>` : ''}
+                </div>`;
+        };
 
         function colorForSpeed(kmh) {
             if (kmh === null || kmh === undefined) return SPEED_UNKNOWN_COLOR;

@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.21.0] - 2026-09-24
+
+### Added
+
+- **The road agency and the maintenance centre now have a perimeter too.** They have no official one — the Department establishes those limits section by section — but a maintenance sector is read in municipalities, so it is rebuilt as one: each municipality is attached to the sector maintaining the most mileage within it, and the municipal boundaries are then reassembled as they are for an intercommunality. The outline therefore follows limits a reader can place. The price is measured and stated on screen: 2.1 % of the departmental mileage for agencies, 5.8 % for centres, belongs to a sector other than its municipality's. All fifteen sectors come out in one piece, except the Vaison-la-Romaine agency, which properly carries the Enclave des Papes as a separate part.
+- **Clicking a sector opens a digest of what is known about it**: mileage, sections, routes and municipalities crossed, then three bar charts — the split by network level in the hierarchy's own colours, the split by speed limit in the Limitations scale's colours, and the five routes carrying the most kilometres. It is computed on demand from the sections the filter retains, so it always describes exactly what is on the map. The reservation about a reconstituted or clipped outline is repeated at the foot of the digest, where the figures are read.
+- The outlines can be clicked anywhere within a wide invisible band along them, since a line a pixel and a half wide cannot be aimed at. That band sits at the very back, so roads drawn above it keep priority for their own popups.
+
+### Changed
+
+- **A single colour for every outline.** The department, the constituencies and the maintenance sectors are all drawn in the same dark blue; only the stroke pattern distinguishes them — dashed for the department, solid for a constituency, dotted for a reconstituted sector. Colour was carrying no information that the pattern did not carry better.
+
 ## [0.20.0] - 2026-09-24
 
 ### Changed

@@ -64,7 +64,7 @@ Emprise du département et découpage administratif. Cette rubrique ne porte pas
 
 ==== [layer:layer-territoire] Territoire — Limite du Vaucluse (84) ====
 
-Toujours affichée. Contour en pointillés du département ; repère pour le cadrage. Les traits pleins de la même couleur, eux, marquent les contours des secteurs de l'échelle territoriale.
+Toujours affichée. Contour en pointillés du département ; repère pour le cadrage. Les traits de la même couleur, pleins ou en pointillé fin, marquent les contours des secteurs de l'échelle territoriale.
 
 ==== [layer:layer-echelle] Échelle territoriale ====
 
@@ -74,9 +74,11 @@ Restreint le réseau affiché à un secteur, à cinq échelles : '''agence routi
 
 Les secteurs d'exploitation viennent des '''limites d'exploitation de la voirie départementale''' publiées par le Département sur DataSud, attribuées au tronçon et non en emprises — 57 communes relèvent de plusieurs centres, il n'existe donc pas de polygone à plaquer. L'appartenance de chaque tronçon OSM est calculée hors ligne par proximité ; la commune et le canton sont déterminés par inclusion dans les limites OSM, et l'intercommunalité déduite du code INSEE via l'API Géo.
 
-'''Les contours''' de toutes les unités de l'échelle choisie sont tracés en bleu nuit : le découpage entier, et pas seulement le secteur filtré. Le secteur choisi épaissit son trait et prend un léger aplat. Survoler un contour le nomme et donne son linéaire ; le cliquer sélectionne l'unité, ce qui évite de chercher une commune parmi cent cinquante dans la liste. Les contours n'ont pas de remplissage : l'intérieur d'un secteur reste celui des routes et de leurs fiches.
+'''Les contours''' de toutes les unités de l'échelle choisie sont tracés en bleu nuit : le découpage entier, et pas seulement le secteur filtré. Le secteur choisi épaissit son trait et prend un léger aplat. Survoler un contour le nomme et donne son linéaire ; le cliquer sélectionne l'unité, ce qui évite de chercher une commune parmi cent cinquante dans la liste. Une bande large et invisible longe chaque trait pour qu'il soit visable, mais elle passe sous les routes : celles-ci gardent la priorité sur leurs propres fiches.
 
-Canton, intercommunalité et commune sont des circonscriptions et ont un périmètre exact. L'agence routière et le centre d'exploitation n'en ont pas : le panneau l'indique au lieu de laisser interpréter l'absence. Le contour d'une intercommunalité est recollé depuis les limites de ses communes membres, aucune source ne le publiant, et s'arrête à la limite du département pour les six qui en débordent — ce que le panneau signale également, puisque c'est aussi ce que fait le filtre.
+Une seule couleur pour toutes les limites, seule la trame les distingue : '''pointillé long''' pour le département, '''trait plein''' pour une circonscription — canton, intercommunalité, commune — dont le périmètre est exact, '''pointillé fin''' pour un secteur d'exploitation, dont il ne l'est pas. L'agence routière et le centre d'exploitation n'ont aucune limite officielle : leur emprise est reconstituée en rattachant chaque commune au secteur qui y entretient le plus de linéaire. Le panneau annonce ce que ce raccourci déplace — 2,1 % du linéaire pour les agences, 5,8 % pour les centres. Le contour d'une intercommunalité, lui, est recollé depuis les limites de ses communes membres, aucune source ne le publiant, et s'arrête à la limite du département pour les six qui en débordent.
+
+'''Le digest.''' Choisir un secteur ouvre une fiche de ce qu'on sait de lui : linéaire, tronçons, routes, communes traversées, puis trois histogrammes — la part de chaque niveau de réseau, la part de chaque vitesse autorisée, et les cinq routes qui y portent le plus de kilomètres. Il est calculé à la demande sur les tronçons que le filtre retient, donc il décrit exactement ce qui est à l'écran.
 
 {{hint|Le filtre agit sur la visibilité, pas sur le style : il se combine au mode Limitations, aux niveaux de hiérarchie et aux étiquettes.}}
 

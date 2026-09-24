@@ -5977,6 +5977,101 @@
             margin-top: 10px;
         }
 
+        /* ========== DIGEST D'UNE UNITÉ TERRITORIALE ========== */
+
+        .digest-popup .leaflet-popup-content {
+            margin: 12px 14px;
+        }
+
+        .digest-title {
+            font-weight: 700;
+            font-size: 0.98rem;
+            color: var(--text-dark);
+            line-height: 1.25;
+        }
+
+        .digest-scale {
+            font-size: 0.74rem;
+            color: var(--text-light);
+            margin-top: 1px;
+            padding-bottom: 7px;
+            border-bottom: 2px solid #2C3E50;
+        }
+
+        .digest-figures {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 14px;
+            margin: 8px 0 2px;
+            font-size: 0.78rem;
+            color: var(--text-light);
+        }
+
+        .digest-figures strong {
+            color: var(--text-dark);
+            font-size: 0.92rem;
+        }
+
+        .digest-group {
+            margin-top: 9px;
+        }
+
+        .digest-group-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-light);
+            margin-bottom: 3px;
+        }
+
+        /* Trois colonnes de largeur fixe pour l'intitulé et la valeur : les
+           barres partent alors du même bord et se comparent à l'œil, ce qui est
+           tout ce qu'on demande à une barre. */
+        .digest-bar {
+            display: grid;
+            grid-template-columns: 78px 1fr 52px;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.74rem;
+            line-height: 1.7;
+        }
+
+        .digest-bar-label {
+            color: var(--text-dark);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .digest-bar-track {
+            background: #ECF0F1;
+            border-radius: 3px;
+            height: 8px;
+            overflow: hidden;
+        }
+
+        .digest-bar-fill {
+            display: block;
+            height: 100%;
+            border-radius: 3px;
+            min-width: 2px;
+        }
+
+        .digest-bar-value {
+            text-align: right;
+            color: var(--text-light);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .digest-caveat {
+            margin-top: 9px;
+            padding-top: 7px;
+            border-top: 1px solid #E5E8EA;
+            font-size: 0.71rem;
+            color: var(--text-light);
+            line-height: 1.45;
+        }
+
         /* ========== ÉCHELLE TERRITORIALE ========== */
 
         /* Cinq échelles sur deux rangs : les intitulés vont de « Canton » à
