@@ -6911,8 +6911,8 @@
                             layer.bindTooltip(`${unit.name} — ${unit.km.toFixed(0)} km`,
                                               { sticky: true, direction: 'top' });
                         }
-                        layer.on('click', event => window.selectTerritorialUnit(
-                            territorialIndexOfSlug(scale, slug), event.latlng));
+                        layer.on('click', () => window.selectTerritorialUnit(
+                            territorialIndexOfSlug(scale, slug)));
                     }
                 }).addTo(window.map);
 
@@ -6950,12 +6950,10 @@
             if (typeof window.updateHierarchyDisplay === 'function') window.updateHierarchyDisplay();
             drawTerritorialOutlines();
             const unit = territorialCurrentUnit();
-            if (unit && Array.isArray(unit.bounds) && window.map) {
-                window.map.fitBounds(
-                    L.latLngBounds([unit.bounds[1], unit.bounds[0]], [unit.bounds[3], unit.bounds[2]]),
-                    { padding: [30, 30], animate: true }
-                );
-            }
+            // Le digest se règle avant le recadrage : il prend sa part de la
+            // largeur, et la carte doit cadrer sur celle qui lui reste.
+            setTerritorialDigest(unit !== null);
+            territorialFitBounds(unit);
             renderTerritoryScales();
             renderTerritoryList();
             scheduleAppUrlSync();
@@ -6973,40 +6971,55 @@
             applyTerritorialFilter();
         };
 
-        window.selectTerritorialUnit = function(index, at) {
+        window.selectTerritorialUnit = function(index) {
             if (!territorialData) return;
             const next = index === null || index === 'all' ? null : Number(index);
             territorialUnit = (next === territorialUnit || next === null) ? null : next;
             if (territorialUnit !== null) ensureHierarchyVisibility(true);
             applyTerritorialFilter();
-            if (territorialUnit === null) window.map?.closePopup();
-            else openTerritorialDigest(at);
         };
 
         // Choisir un secteur et ne rien en dire de plus que son linéaire serait
-        // s'arrêter au seuil : le digest dit de quoi il est fait. Il attend le
-        // recadrage, sinon la popup s'ancre sur la vue précédente.
-        function openTerritorialDigest(at) {
-            const unit = territorialCurrentUnit();
-            if (!unit || !window.map) return;
-            const anchor = at || (Array.isArray(unit.bounds)
-                ? [(unit.bounds[1] + unit.bounds[3]) / 2, (unit.bounds[0] + unit.bounds[2]) / 2]
-                : null);
-            if (!anchor) return;
-            setTimeout(() => {
-                const html = window.buildTerritorialDigest?.();
-                if (!html || territorialCurrentUnit() !== unit) return;
-                // autoPan : le digest est plus haut qu'une fiche de route et se
-                // coupait sur le bord supérieur quand le secteur touchait le haut
-                // de la vue. Mieux vaut un léger recadrage qu'un titre illisible.
-                L.popup({
-                    maxWidth: 340, minWidth: 280, className: 'digest-popup',
-                    autoPanPadding: [20, 20]
-                })
-                    .setLatLng(anchor)
-                    .setContent(html)
-                    .openOn(window.map);
-            }, 450);
+        // s'arrêter au seuil : le digest dit de quoi il est fait. Il est docké à
+        // droite et non posé sur la carte, pour qu'on lise le secteur et ses
+        // chiffres d'un même regard.
+        function territorialFitBounds(unit) {
+            if (!unit || !Array.isArray(unit.bounds) || !window.map) return;
+            // En deux volets, la carte a déjà rétréci et Leaflet cadre juste.
+            // Un panneau aussi large que la scène est une feuille basse, posée
+            // sur la carte : là il faut lui réserver sa hauteur.
+            const panel = document.getElementById('digestPanel');
+            const stage = panel?.closest('.map-stage');
+            const sheet = panel?.classList.contains('is-open')
+                && panel.offsetWidth >= stage.clientWidth - 1
+                ? panel.offsetHeight : 0;
+            window.map.fitBounds(
+                L.latLngBounds([unit.bounds[1], unit.bounds[0]], [unit.bounds[3], unit.bounds[2]]),
+                { paddingTopLeft: [30, 30], paddingBottomRight: [30, 30 + sheet], animate: true }
+            );
+        }
+
+        function setTerritorialDigest(open) {
+            const panel = document.getElementById('digestPanel');
+            const body = document.getElementById('digestPanelBody');
+            const stage = panel?.closest('.map-stage');
+            if (!panel || !body || !stage) return;
+            const html = open ? (window.buildTerritorialDigest?.() || '') : '';
+            const shown = Boolean(html);
+            if (shown || panel.classList.contains('is-open')) body.innerHTML = html;
+            panel.classList.toggle('is-open', shown);
+            panel.setAttribute('aria-hidden', shown ? 'false' : 'true');
+            stage.classList.toggle('has-digest', shown);
+            // La carte vient de changer de largeur : sans cela Leaflet cadrerait
+            // et poserait ses tuiles d'après l'ancienne.
+            window.map?.invalidateSize({ animate: false, pan: false });
+        }
+
+        // Fermer le digest laisse le filtre en place : on rend la largeur à la
+        // carte sans perdre le secteur choisi.
+        function closeTerritorialDigest() {
+            setTerritorialDigest(false);
+            territorialFitBounds(territorialCurrentUnit());
         }
 
         function territorialStateForUrl() {
@@ -7072,6 +7085,8 @@
             });
             const search = document.getElementById('territorySearch');
             search?.addEventListener('input', renderTerritoryList);
+            document.getElementById('digestPanelClose')
+                ?.addEventListener('click', closeTerritorialDigest);
         });
 
         // Update route display according to hierarchy

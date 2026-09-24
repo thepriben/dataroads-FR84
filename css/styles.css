@@ -898,6 +898,33 @@
             height: 100%;
             min-height: 0;
             overflow: hidden;
+            /* Une seule source pour la largeur du digest : la carte, la barre
+               d'outils et l'attribution s'y accordent toutes. Étroit à dessein —
+               le panneau prend ce qu'il faut à ses barres, pas la moitié de la vue. */
+            --digest-width: clamp(276px, 22vw, 340px);
+        }
+
+        /* Le partage en deux volets n'a de sens que s'il reste de la largeur à
+           partager : sous 721 px le digest devient une feuille basse et ne
+           déplace plus rien. Conditionné plutôt que défait plus loin, pour ne
+           pas se battre avec les règles mobiles des autres panneaux. */
+        @media (min-width: 721px) {
+            .map-stage.has-digest #map {
+                width: calc(100% - var(--digest-width));
+            }
+
+            .map-stage.has-digest .map-toolbar {
+                right: calc(var(--digest-width) + 12px);
+                max-width: calc(100% - var(--digest-width) - 24px);
+            }
+
+            /* Tout ce qui flotte contre le bord droit s'en écarte d'autant :
+               sans cela le digest les recouvrirait, ou passerait dessous. */
+            .map-stage.has-digest .latest-recap,
+            .map-stage.has-digest .quality-panel,
+            .map-stage.has-digest .bridge-viewer-panel {
+                right: calc(var(--digest-width) + 14px);
+            }
         }
 
         /* Floating data quality button */
@@ -5979,11 +6006,105 @@
 
         /* ========== DIGEST D'UNE UNITÉ TERRITORIALE ========== */
 
-        .digest-popup .leaflet-popup-content {
-            margin: 12px 14px;
+        /* Docké à droite, hauteur pleine : la vue se lit en deux volets, la
+           carte et ce qu'on en sait. Pas de transition d'ouverture — le
+           recadrage de la carte fournit déjà le mouvement, et une largeur qui
+           s'anime ferait recalculer les tuiles à chaque image. */
+        .digest-panel {
+            display: none;
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: var(--digest-width);
+            z-index: 1000;
+            flex-direction: column;
+            background: #fff;
+            border-left: 1px solid #dfe5ea;
+            box-shadow: -10px 0 30px rgba(15, 23, 42, 0.07);
+        }
+
+        .digest-panel.is-open {
+            display: flex;
+        }
+
+        .digest-panel-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            padding: 14px 16px 18px;
+            animation: digestFade 0.22s ease both;
+        }
+
+        @keyframes digestFade {
+            from { opacity: 0; transform: translateX(8px); }
+            to { opacity: 1; transform: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .digest-panel-body {
+                animation: none;
+            }
+        }
+
+        /* Au-dessus du contenu, à l'aplomb du titre : la croix se trouve là où
+           l'œil arrive, et le titre lui réserve sa place par sa marge droite. */
+        .digest-panel-close {
+            position: absolute;
+            top: 9px;
+            right: 10px;
+            z-index: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            background: transparent;
+            color: #95a5a6;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+
+        .digest-panel-close:hover {
+            background: #f4f6f8;
+            border-color: #e2e8f0;
+            color: #2C3E50;
+        }
+
+        .digest-panel-close svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* Feuille basse : sous 720 px la largeur ne se partage plus, seule la
+           hauteur peut l'être. */
+        @media (max-width: 720px) {
+            .digest-panel {
+                top: auto;
+                left: 0;
+                width: auto;
+                height: min(58%, 380px);
+                border-left: none;
+                border-top: 1px solid #dfe5ea;
+                border-radius: 14px 14px 0 0;
+                box-shadow: 0 -10px 30px rgba(15, 23, 42, 0.09);
+            }
+
+            /* Sur toute la largeur d'une feuille basse, une barre de 12 km
+               s'étirerait sur 470 px : le contenu garde la largeur où il se
+               compare, et se centre. */
+            .digest-panel-body > .digest {
+                max-width: 420px;
+                margin: 0 auto;
+            }
         }
 
         .digest-title {
+            padding-right: 28px;
             font-weight: 700;
             font-size: 0.98rem;
             color: var(--text-dark);

@@ -35,7 +35,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260924-7">
+    <link rel="stylesheet" href="css/styles.css?v=20260924-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -891,6 +891,16 @@
 
                 <div id="map"></div>
 
+                <!-- Le digest d'un secteur partage l'écran avec la carte plutôt
+                     que de se poser dessus : le secteur reste entier à gauche,
+                     ses chiffres à droite, et rien ne se recouvre. -->
+                <aside class="digest-panel" id="digestPanel" role="complementary" aria-label="Digest du secteur sélectionné" aria-hidden="true">
+                    <button type="button" class="digest-panel-close" id="digestPanelClose" title="Fermer le digest" aria-label="Fermer le digest">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                    <div class="digest-panel-body" id="digestPanelBody"></div>
+                </aside>
+
                 <div class="map-loader" id="mapLoader" role="status" aria-live="polite">
                     <div class="map-loader-spinner" aria-hidden="true"></div>
                     <p class="map-loader-text">Chargement de la carte…</p>
@@ -958,7 +968,7 @@
 
     </div>
 
-    <script src="js/config.js?v=20260924-7"></script>
+    <script src="js/config.js?v=20260924-8"></script>
     <script>
         (function () {
             var el = document.getElementById('siteVersion');
@@ -969,7 +979,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260825-2"></script>
-    <script src="js/app.js?v=20260924-7"></script>
+    <script src="js/app.js?v=20260924-8"></script>
     <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260826-4"></script>
 </body>

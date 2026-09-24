@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.22.0] - 2026-09-24
+
+### Changed
+
+- **The digest shares the screen with the map instead of sitting on top of it.** Selecting a sector splits the view in two: the map, reframed on the sector across the width left to it, and the digest docked on the right. A popup put the figures over the very thing they described, and auto-panning to keep it readable moved the sector out of the frame it had just been given. The pane is deliberately narrow — it takes what its bars need, not half the view — and everything anchored to the right edge steps aside with it, so the map toolbar stays whole and reachable. The close button gives the width back to the map without dropping the selected sector. Below 721 px there is no width left to share, so the pane becomes a bottom sheet and the framing reserves its height instead.
+
 ## [0.21.0] - 2026-09-24
 
 ### Added
