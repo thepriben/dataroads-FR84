@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.23.1] - 2026-09-24
+
+### Changed
+
+- **In the digest, each of the top routes takes the colour of its network level** instead of a uniform grey. The bar then says two things at once — how many kilometres, and of what rank — in the very colours the road is drawn in on the map beside it, and in the same colours as the network-level chart above. A reference can change rank along its course, so the level carrying the most kilometres inside the sector is the one that colours it.
+
 ## [0.23.0] - 2026-09-24
 
 ### Added

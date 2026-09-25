@@ -12260,6 +12260,7 @@
             const byHierarchy = { regional: 0, territorial: 0, local: 0 };
             const bySpeed = new Map();
             const byRef = new Map();
+            const levelsByRef = new Map();
             const communes = new Set();
             const communeColumn = territorialData?.order?.indexOf('commune') ?? -1;
             let totalKm = 0;
@@ -12276,7 +12277,12 @@
                     ways += 1;
                     totalKm += km;
                     const hierarchy = polyline.options.roadHierarchy;
-                    if (hierarchy in byHierarchy) byHierarchy[hierarchy] += km;
+                    if (hierarchy in byHierarchy) {
+                        byHierarchy[hierarchy] += km;
+                        const levels = levelsByRef.get(ref) || {};
+                        levels[hierarchy] = (levels[hierarchy] || 0) + km;
+                        levelsByRef.set(ref, levels);
+                    }
                     byRef.set(ref, (byRef.get(ref) || 0) + km);
                     const step = speedStepFor(resolveWaySpeed(polyline.options.wayTags).kmh);
                     bySpeed.set(step, (bySpeed.get(step) || 0) + km);
@@ -12319,9 +12325,20 @@
                     totalKm))
                 .join('');
 
+            // Chaque route prend la couleur de son niveau de réseau : la barre dit
+            // alors deux choses d'un coup, sa longueur et son rang, dans les mêmes
+            // couleurs que l'histogramme du dessus. Une même référence pouvant
+            // changer de rang en chemin, c'est le niveau qui porte le plus de
+            // kilomètres dans le secteur qui l'emporte.
+            const levelOf = ref => {
+                const levels = levelsByRef.get(ref) || {};
+                return Object.keys(levels).sort((a, b) => levels[b] - levels[a])[0];
+            };
             const topRefs = [...byRef.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
             const refBars = topRefs
-                .map(([ref, value]) => bar(ref, value, '#7F8C8D', topRefs[0][1]))
+                .map(([ref, value]) => bar(ref, value,
+                                           hierarchyColors[levelOf(ref)] || '#7F8C8D',
+                                           topRefs[0][1]))
                 .join('');
 
             const scaleLabel = territorialData?.scales?.[territorialScale]?.label || '';
