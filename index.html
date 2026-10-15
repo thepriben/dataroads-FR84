@@ -35,7 +35,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20260924-10">
+    <link rel="stylesheet" href="css/styles.css?v=20261014-1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -617,6 +617,26 @@
 
                 
                 <div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleDeclassified && window.toggleDeclassified();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Tronçons<small class="legend-title-sub">déclassés (issue #38)</small></span>
+                        <span id="declassifiedToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-declassified" data-schedule-key="osm"></span>
+
+                    <div class="legend-item" data-declassified="declassified" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color declassified-swatch"></div>
+                        <div class="legend-label">A porté un n° de RD, ne le porte plus</div>
+                        <div class="legend-count" id="count-declassified">-</div>
+                    </div>
+                    <div class="legend-item" data-declassified="declassified" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color declassified-swatch is-linked"></div>
+                        <div class="legend-label">Rattaché à la route sélectionnée</div>
+                        <div class="legend-count" id="count-declassified-linked">-</div>
+                    </div>
+                    <div class="sensitive-zones-hint">Sélectionnez une route pour voir ses tronçons déclassés · <code>was:ref</code> et <code>old_ref</code> OSM, hors nationales transférées</div>
+                </div>
+
+                <div class="legend-section">
                     <div class="legend-title" onclick="window.toggleSensitiveZones && window.toggleSensitiveZones();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
                         <span>Espaces naturels sensibles</span>
                         <span id="sensitiveZonesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
@@ -968,7 +988,7 @@
 
     </div>
 
-    <script src="js/config.js?v=20260924-10"></script>
+    <script src="js/config.js?v=20261014-1"></script>
     <script>
         (function () {
             var el = document.getElementById('siteVersion');
@@ -979,7 +999,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260825-2"></script>
-    <script src="js/app.js?v=20260924-10"></script>
+    <script src="js/app.js?v=20261014-1"></script>
     <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260826-4"></script>
 </body>

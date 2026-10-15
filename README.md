@@ -67,6 +67,7 @@ Vérification des reprises : `python3 -m unittest discover -s tests -v`.
 | --- | --- | --- | --- |
 | Routes départementales | OpenStreetMap | cache du 2026-05-17 22:52 UTC | Données réseau, pas un millésime administratif CD84. |
 | Routes en construction | OpenStreetMap | cache du 2026-05-17 22:53 UTC | Quelques ouvertures indiquées entre 2025 et 2027 selon les tags OSM. |
+| Tronçons déclassés | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 1 386 tronçons, 179 km, 92 anciens numéros : voirie qui a porté un n° de RD et ne le porte plus (issue #38), lus dans `was:ref` et `old_ref` en écartant les nationales transférées au département en 2006. Relevé bénévole, sans source officielle ni date ; jamais compté avec le réseau. |
 | Communes | OpenStreetMap | cache du 2026-05-17 22:53 UTC | 151 communes ; les tags de population pointent vers 2021. |
 | Aires d'arrêt & covoiturage | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 213 aires : covoiturage, aires de repos, parkings-relais et aires d'arrêt (layby) le long des RD (issue #7), nœuds / contours / relations, générées par `scripts/update_osm_geojson.py`. |
 | Panneaux directionnels & agglomération | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 2 167 mâts directionnels (`information=guidepost`, dont ~1 450 avec photo référencée) et 468 panneaux d'agglomération (`traffic_sign=city_limit`), générés par `scripts/update_osm_geojson.py`. |

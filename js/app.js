@@ -339,6 +339,7 @@
 
             const layerStates = [
                 ['constructionToggleIcon', constructionVisible],
+                ['declassifiedToggleIcon', declassifiedVisible],
                 ['bicycleToggleIcon', bicycleVisible],
                 ['citiesToggleIcon', citiesVisible],
                 ['accidentToggleIcon', accidentsVisible],
@@ -492,10 +493,12 @@
                 case 'incubator':
                     if (targetVisible) {
                         ensureLayerToggle(latestChangesVisible, window.toggleLatestChanges);
+                        ensureLayerToggle(declassifiedVisible, window.toggleDeclassified);
                         ensureLayerToggle(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerToggle(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                     } else {
                         ensureLayerOff(latestChangesVisible, window.toggleLatestChanges);
+                        ensureLayerOff(declassifiedVisible, window.toggleDeclassified);
                         ensureLayerOff(sensitiveZonesVisible, window.toggleSensitiveZones);
                         ensureLayerOff(inaturalistSensitivesVisible, window.toggleInaturalistSensitives);
                     }
@@ -1328,6 +1331,9 @@
         let constructionPolylines = [];
         let constructionVisible = false;
         const constructionTypeVisibility = { highway: true, proposed: true };
+        let declassifiedPolylines = [];
+        let declassifiedVisible = false;
+        let declassifiedLoaded = false;
         let bicyclePolylines = [];
         let bicycleVisible = false;
         const bicycleTypeVisibility = { EV17: true, EV8: true, V861: true, local: true };
@@ -1634,6 +1640,7 @@
             if (guidepostsVisible) active.push('guide');
             if (cityLimitsVisible) active.push('agglo');
             if (latestChangesVisible) active.push('osmdiff');
+            if (declassifiedVisible) active.push('exrd');
             if (sensitiveZonesVisible) active.push('ens');
             if (inaturalistSensitivesVisible) active.push('inat');
             if (webcamsVisible) active.push('wcam');
@@ -1785,6 +1792,9 @@
                     if (desired && !bridgeVisible) setBooleanLayerIfNeeded(bridgeVisible, true, window.toggleBridges);
                     setBridgeProviderIfNeeded('mapillary', desired);
                     return bridgePhotoProviderVisibility.mapillary === desired && (!desired || bridgeVisible);
+                case 'exrd':
+                    setBooleanLayerIfNeeded(declassifiedVisible, desired, window.toggleDeclassified);
+                    return declassifiedVisible === desired;
                 case 'ens':
                     setBooleanLayerIfNeeded(sensitiveZonesVisible, desired, window.toggleSensitiveZones);
                     return sensitiveZonesVisible === desired;
@@ -1810,7 +1820,7 @@
 
             const pendingKeys = [
                 'construction', 'bicycle', 'cities', 'aires', 'limits', 'accidents', 'traffic', 'waze',
-                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'guide', 'agglo', 'osmdiff', 'ens', 'inat', 'wcam', 'oedb'
+                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'guide', 'agglo', 'osmdiff', 'exrd', 'ens', 'inat', 'wcam', 'oedb'
             ];
             let allReady = true;
             pendingKeys.forEach(key => {
@@ -1944,8 +1954,9 @@
                 }
                 case 'incubator': {
                     let visible = 0;
-                    const total = 3;
+                    const total = 4;
                     if (latestChangesVisible) visible++;
+                    if (declassifiedVisible) visible++;
                     if (sensitiveZonesVisible) visible++;
                     if (inaturalistSensitivesVisible) visible++;
                     return { visible, total };
@@ -1964,6 +1975,8 @@
                     return hierarchyVisibility.regional || hierarchyVisibility.territorial || hierarchyVisibility.local;
                 case 'freshness-construction':
                     return constructionVisible;
+                case 'freshness-declassified':
+                    return declassifiedVisible;
                 case 'freshness-bicycle':
                     return bicycleVisible;
                 case 'freshness-bridges':
@@ -9357,7 +9370,12 @@
                 // Show detailed route information
                 displayRoadInfo(ref, hierarchy);
             }
+
+            // Les tronçons déclassés de cette route prennent sa couleur : c'est
+            // là que la continuité d'un axe amputé se voit (issue #38).
+            if (typeof refreshDeclassifiedStyles === 'function') refreshDeclassifiedStyles();
         }
+        window.highlightRoute = highlightRoute;
         
         // Show detailed information for a route
         function displayRoadInfo(ref, hierarchy) {
@@ -11699,6 +11717,157 @@
                 : null;
         }
         
+        // ========== TRONÇONS DÉCLASSÉS (issue #38) ==========
+        // Une RD peut être rétrocédée à la commune — c'est le cas de la plupart
+        // des traversées d'agglomération. Le tronçon reste, son numéro disparaît,
+        // et la route affichée se retrouve coupée en deux sans qu'on sache
+        // pourquoi. OSM en garde la trace dans `was:ref` et `old_ref`, que le
+        // script d'extraction réunit après avoir écarté les nationales
+        // transférées au département, qui décrivent le mouvement inverse.
+        //
+        // Jamais compté avec le réseau : ces kilomètres ne sont plus
+        // départementaux, et les additionner rendrait faux tout le reste.
+        const DECLASSIFIED_COLOR = '#7F8C8D';
+
+        function declassifiedStyle(polyline) {
+            const linked = window.highlightedRoute
+                && polyline.formerRefs.includes(window.highlightedRoute);
+            // Rattaché à la route sélectionnée, le tronçon prend sa couleur pour
+            // que la continuité se lise d'un coup d'œil ; il reste en tirets,
+            // parce qu'il n'est plus de ce réseau.
+            const hierarchy = linked ? window.routePolylines?.[window.highlightedRoute]
+                ?.[0]?.options?.roadHierarchy : null;
+            return linked
+                ? { color: hierarchyColors[hierarchy] || DECLASSIFIED_COLOR,
+                    weight: 5, opacity: 0.95, dashArray: '9, 7' }
+                : { color: DECLASSIFIED_COLOR, weight: 2.5, opacity: 0.55, dashArray: '6, 6' };
+        }
+
+        function refreshDeclassifiedStyles() {
+            let linked = 0;
+            declassifiedPolylines.forEach(polyline => {
+                polyline.setStyle(declassifiedStyle(polyline));
+                if (window.highlightedRoute
+                    && polyline.formerRefs.includes(window.highlightedRoute)) {
+                    linked += 1;
+                    polyline.bringToFront();
+                }
+            });
+            const count = document.getElementById('count-declassified-linked');
+            if (count) {
+                count.textContent = !declassifiedVisible ? '-'
+                    : !window.highlightedRoute ? 'aucune route'
+                    : linked ? String(linked)
+                    : '0';
+            }
+        }
+        window.refreshDeclassifiedStyles = refreshDeclassifiedStyles;
+
+        function applyDeclassifiedUi() {
+            const icon = document.getElementById('declassifiedToggleIcon');
+            const title = document.querySelector('.legend-section:has([id="declassifiedToggleIcon"]) .legend-title');
+            setToggleIcon(icon, declassifiedVisible);
+            if (icon) icon.style.opacity = '';
+            if (title) title.style.fontWeight = declassifiedVisible ? '700' : '600';
+            document.querySelectorAll('[data-declassified]').forEach(item => {
+                item.style.opacity = declassifiedVisible ? '1' : '0.5';
+                item.style.pointerEvents = declassifiedVisible ? 'auto' : 'none';
+            });
+        }
+
+        function syncDeclassifiedOnMap() {
+            if (!window.map) return;
+            declassifiedPolylines.forEach(polyline => {
+                const onMap = window.map.hasLayer(polyline);
+                if (declassifiedVisible && !onMap) polyline.addTo(window.map);
+                if (!declassifiedVisible && onMap) window.map.removeLayer(polyline);
+            });
+            if (declassifiedVisible) refreshDeclassifiedStyles();
+        }
+
+        window.toggleDeclassified = function() {
+            declassifiedVisible = !declassifiedVisible;
+            if (declassifiedVisible && !declassifiedLoaded) {
+                const icon = document.getElementById('declassifiedToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                window.loadDeclassifiedRoads();
+                return;
+            }
+            syncDeclassifiedOnMap();
+            applyDeclassifiedUi();
+            syncLegendChrome();
+            scheduleAppUrlSync();
+        };
+
+        window.loadDeclassifiedRoads = async function() {
+            try {
+                const data = await window.InforouteApi.fetchGeoJson('declassified-roads');
+                renderFreshnessBadge(document.getElementById('freshness-declassified'), {
+                    generatedAt: data._cache?.generated_at,
+                    scheduleKey: 'osm'
+                });
+
+                declassifiedPolylines.forEach(polyline => window.map?.removeLayer(polyline));
+                declassifiedPolylines = [];
+
+                let meters = 0;
+                (data.features || []).forEach(feature => {
+                    const coordinates = feature.geometry?.coordinates;
+                    const props = feature.properties || {};
+                    const refs = props.former_refs || [];
+                    if (!Array.isArray(coordinates) || coordinates.length < 2 || !refs.length) return;
+                    const points = coordinates.map(([lon, lat]) => [lat, lon]);
+                    for (let i = 1; i < points.length; i += 1) {
+                        meters += haversineKm(L.latLng(points[i - 1]), L.latLng(points[i])) * 1000;
+                    }
+                    const polyline = L.polyline(points, { smoothFactor: 1 });
+                    polyline.formerRefs = refs;
+                    polyline.setStyle(declassifiedStyle(polyline));
+                    polyline.bindPopup(buildDeclassifiedPopup(props, refs));
+                    declassifiedPolylines.push(polyline);
+                });
+
+                declassifiedLoaded = true;
+                const count = document.getElementById('count-declassified');
+                if (count) count.textContent = `${declassifiedPolylines.length} · ${Math.round(meters / 1000)} km`;
+                syncDeclassifiedOnMap();
+                applyDeclassifiedUi();
+                syncLegendChrome();
+                scheduleAppUrlSync();
+            } catch (error) {
+                console.warn('Tronçons déclassés indisponibles:', error);
+                declassifiedVisible = false;
+                applyDeclassifiedUi();
+                syncLegendChrome();
+            }
+        };
+
+        function buildDeclassifiedPopup(props, refs) {
+            const nature = {
+                primary: 'Route principale', secondary: 'Route secondaire',
+                tertiary: 'Route de desserte', unclassified: 'Voie communale',
+                residential: 'Voie urbaine', secondary_link: 'Bretelle',
+                tertiary_link: 'Bretelle'
+            }[props.highway] || props.highway || 'Voirie';
+            const encore = refs.filter(ref => window.routePolylines?.[ref]);
+            return `
+                <div class="route-popup">
+                    <h3>Ancien ${refs.map(escapeHtml).join(' · ')}</h3>
+                    ${props.name ? `<div class="detail"><strong>Nom&nbsp;:</strong> ${escapeHtml(props.name)}</div>` : ''}
+                    <div class="detail"><strong>Aujourd'hui&nbsp;:</strong> ${escapeHtml(nature)}, hors réseau départemental</div>
+                    ${encore.length
+                        ? `<div class="detail"><strong>Route rattachée&nbsp;:</strong> ${
+                            encore.map(ref => `<a href="#" onclick="window.highlightRoute && window.highlightRoute('${escapeHtml(ref)}'); return false;">${escapeHtml(ref)}</a>`).join(', ')
+                          }</div>`
+                        : '<div class="detail"><strong>Route rattachée&nbsp;:</strong> ce numéro a entièrement disparu du répertoire départemental</div>'}
+                    <div class="detail" style="margin-top: 10px; font-size: 0.78rem; color: #7f8c8d; line-height: 1.45;">
+                        Déclassement relevé dans OpenStreetMap (<code>was:ref</code>, <code>old_ref</code>).
+                        Témoignage de contributeurs, sans source officielle en regard :
+                        la date du déclassement n'est pas connue.
+                    </div>
+                </div>`;
+        }
+
         window.loadConstructionRoads = async function() {
             try {
                 const data = await window.InforouteApi.fetchGeoJson('construction-roads');

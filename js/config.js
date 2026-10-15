@@ -13,7 +13,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.23.1',
+        version: '0.24.0',
         repository,
         basemap: {
             // Le Plan IGN de la Géoplateforme, en tuiles raster : libre, sans clé
@@ -59,6 +59,7 @@
             externalRefreshHours: 3,
             geojson: {
                 'departmental-roads': 'data/osm/departmental-roads.geojson',
+                'declassified-roads': 'data/osm/declassified-roads.geojson',
                 'construction-roads': 'data/osm/construction-roads.geojson',
                 'bicycle-routes': 'data/osm/bicycle-routes.geojson',
                 bridges: 'data/osm/bridges.geojson',

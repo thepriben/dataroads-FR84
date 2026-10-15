@@ -5591,6 +5591,20 @@
         }
 
         /* ===== Derniers changements OSM ===== */
+        /* Un tiret, jamais un trait plein : la même grammaire que les emprises
+           reconstituées de l'échelle territoriale, où le pointillé dit « plus
+           tout à fait ça ». Ici, « plus une route départementale ». */
+        .declassified-swatch {
+            background: transparent;
+            height: 0;
+            border-top: 3px dashed #7F8C8D;
+        }
+
+        .declassified-swatch.is-linked {
+            border-top-color: #E74C3C;
+            border-top-width: 4px;
+        }
+
         .latest-change-swatch {
             position: relative;
             height: 12px;

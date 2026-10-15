@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import urllib.error
 from datetime import datetime, timezone
@@ -33,6 +34,22 @@ QUERIES = {
         (
           way(area.dept)["highway"]["ref"~"^D ?[0-9]+$"];
           relation(area.dept)["type"="route"]["route"="road"]["ref"~"^D ?[0-9]+$"];
+        );
+        out geom;
+        out tags;
+    """,
+    # Deux clés disent la même chose et il faut les lire ensemble : `was:ref`
+    # porte l'essentiel des déclassements relevés dans le Vaucluse, `old_ref`
+    # quelques autres. Mais `old_ref` sert aussi, sur 734 tronçons, à garder la
+    # trace du transfert des nationales au département en 2006 — mouvement
+    # inverse. Ne retenir que les valeurs en « D » suffit à les séparer : une
+    # ancienne nationale s'écrit « N 7 ».
+    "declassified-roads": """
+        [out:json][timeout:90];
+        area["ISO3166-2"="FR-84"]->.dept;
+        (
+          way(area.dept)["highway"]["was:ref"~"(^|;) *[Dd] ?[0-9]"];
+          way(area.dept)["highway"]["old_ref"~"(^|;) *[Dd] ?[0-9]"];
         );
         out geom;
         out tags;
@@ -370,6 +387,46 @@ def construction_roads_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
         if not status:
             continue
         feature = way_to_feature(element, {"road_status": status})
+        if feature:
+            features.append(feature)
+    return collection(features, len(data.get("elements", [])))
+
+
+DEPARTMENTAL_REF = re.compile(r"^\s*[Dd]\s*0*(\d+)\s*(.*)$")
+HISTORIC_REF_KEYS = ("was:ref", "old_ref")
+
+
+def former_departmental_refs(tags: dict[str, Any]) -> list[str]:
+    """Les numéros départementaux qu'un tronçon a portés et ne porte plus.
+
+    Un tronçon qui porte encore un numéro départemental est écarté : il n'a pas
+    été déclassé mais renuméroté, et son tracé figure déjà au réseau affiché.
+    """
+    if DEPARTMENTAL_REF.match(str(tags.get("ref") or "")):
+        return []
+    refs: list[str] = []
+    for key in HISTORIC_REF_KEYS:
+        for value in str(tags.get(key) or "").split(";"):
+            found = DEPARTMENTAL_REF.match(value)
+            if not found:
+                continue
+            # « D 900 » et « D900 » désignent la même route : la forme retenue
+            # est celle du réseau affiché, pour que la jointure se fasse côté app.
+            ref = "D" + found.group(1) + found.group(2).strip().replace(" ", "")
+            if ref not in refs:
+                refs.append(ref)
+    return refs
+
+
+def declassified_roads_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    features = []
+    for element in data.get("elements", []):
+        if element.get("type") != "way":
+            continue
+        refs = former_departmental_refs(element.get("tags") or {})
+        if not refs:
+            continue
+        feature = way_to_feature(element, {"former_refs": refs})
         if feature:
             features.append(feature)
     return collection(features, len(data.get("elements", [])))
@@ -734,6 +791,7 @@ def roadside_areas_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
 
 CONVERTERS = {
     "departmental-roads": departmental_roads_to_geojson,
+    "declassified-roads": declassified_roads_to_geojson,
     "construction-roads": construction_roads_to_geojson,
     "communes-vaucluse": communes_to_geojson,
     "cantons-vaucluse": communes_to_geojson,

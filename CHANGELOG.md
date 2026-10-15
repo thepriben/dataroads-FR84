@@ -5,6 +5,15 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.24.0] - 2026-10-14
+
+### Added
+
+- **Declassified sections, in the incubator (issue #38).** A departmental road can be handed back to the municipality — most town crossings have been — and when that happens the section stays on the ground but loses its number, so the road shown on the map is cut in two with nothing to say why. OpenStreetMap keeps the trace of it, and the layer now shows those 1 386 sections, 179 km across 92 former numbers. **Selecting a road is what the layer is for:** its declassified sections take the colour of its network level while staying dashed, and the amputated axis reads whole again. On the D6 that means 191 sections and 15.5 km, more than the 10.6 km still classified — three disconnected pieces become one continuous axis.
+- Two keys had to be read together, and one of them is a trap. `was:ref` carries the bulk of the declassifications surveyed in Vaucluse, `old_ref` a few more — but `old_ref` is also used, on 734 sections, to record the transfer of national roads *to* the department in 2006, which is the opposite movement. Keeping only the values written as a `D` number separates the two cleanly, since a former national road is written `N 7`. A section that still carries a departmental number is dropped as well: it was renumbered, not declassified, and its course is already on the map.
+- These kilometres are never added to anything. They are no longer departmental, and summing them would make every other figure wrong — the sector digest, the network totals and the road list all ignore them.
+- The popup states what the data is worth: a declassification recorded by OpenStreetMap contributors, with no official source alongside it and no date. Thirteen numbers have vanished from the departmental register entirely; for those the popup says so rather than offering a road to jump to.
+
 ## [0.23.1] - 2026-09-24
 
 ### Changed
