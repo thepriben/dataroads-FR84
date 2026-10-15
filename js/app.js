@@ -11727,7 +11727,10 @@
         //
         // Jamais compté avec le réseau : ces kilomètres ne sont plus
         // départementaux, et les additionner rendrait faux tout le reste.
-        const DECLASSIFIED_COLOR = '#7F8C8D';
+        // Vert pomme, franchement jaune : le gris se perdait dans le fond de
+        // carte, et les verts du projet tirent tous sur l'émeraude — dont le
+        // « créé » des derniers changements, dans la même rubrique.
+        const DECLASSIFIED_COLOR = '#8DB600';
 
         function declassifiedStyle(polyline) {
             const linked = window.highlightedRoute
@@ -11740,7 +11743,7 @@
             return linked
                 ? { color: hierarchyColors[hierarchy] || DECLASSIFIED_COLOR,
                     weight: 5, opacity: 0.95, dashArray: '9, 7' }
-                : { color: DECLASSIFIED_COLOR, weight: 2.5, opacity: 0.55, dashArray: '6, 6' };
+                : { color: DECLASSIFIED_COLOR, weight: 3, opacity: 0.85, dashArray: '7, 5' };
         }
 
         function refreshDeclassifiedStyles() {

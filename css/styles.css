@@ -5597,7 +5597,7 @@
         .declassified-swatch {
             background: transparent;
             height: 0;
-            border-top: 3px dashed #7F8C8D;
+            border-top: 3px dashed #8DB600;
         }
 
         .declassified-swatch.is-linked {

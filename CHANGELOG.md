@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.24.1] - 2026-10-14
+
+### Changed
+
+- **Declassified sections are drawn in apple green rather than grey.** Grey was losing them in the basemap, which already draws its minor roads in grey, so an inventory layer had nothing to show. The green is markedly yellow on purpose: every other green in the project leans towards emerald — including the "created" green of the OSM changes layer, which sits in the same incubator family — so there is nothing it could be mistaken for. The dashes were thickened and made more opaque at the same time, since a layer meant to be read as an inventory has to be readable without being selected first.
+
 ## [0.24.0] - 2026-10-14
 
 ### Added
