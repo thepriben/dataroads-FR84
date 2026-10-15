@@ -9120,6 +9120,20 @@
                 });
             });
 
+            // Les ombres de halo survivaient à la réinitialisation : les routes
+            // reprenaient leur trait normal, mais l'une d'elles gardait son
+            // auréole, qui ne désignait plus rien.
+            Object.values(window.shadowPolylines).forEach(shadows => {
+                shadows.forEach(shadow => window.map.removeLayer(shadow));
+            });
+            window.shadowPolylines = {};
+
+            // Plus rien n'est mis en évidence : le dire, sinon la liste des
+            // routes garde une ligne active et les tronçons déclassés restent
+            // épaissis au nom d'une sélection qui n'existe plus.
+            window.highlightedRoute = null;
+            if (typeof refreshDeclassifiedStyles === 'function') refreshDeclassifiedStyles();
+
             clearStationAxisTrace();
             window.map.closePopup();
         }
@@ -11732,16 +11746,22 @@
         // « créé » des derniers changements, dans la même rubrique.
         const DECLASSIFIED_COLOR = '#8DB600';
 
+        // La couleur du niveau de réseau de la route sélectionnée, celle-là même
+        // que portent son tracé et sa barre dans le digest.
+        function declassifiedLinkedColor() {
+            const hierarchy = window.routePolylines?.[window.highlightedRoute]
+                ?.[0]?.options?.roadHierarchy;
+            return hierarchyColors[hierarchy] || DECLASSIFIED_COLOR;
+        }
+
         function declassifiedStyle(polyline) {
             const linked = window.highlightedRoute
                 && polyline.formerRefs.includes(window.highlightedRoute);
             // Rattaché à la route sélectionnée, le tronçon prend sa couleur pour
             // que la continuité se lise d'un coup d'œil ; il reste en tirets,
             // parce qu'il n'est plus de ce réseau.
-            const hierarchy = linked ? window.routePolylines?.[window.highlightedRoute]
-                ?.[0]?.options?.roadHierarchy : null;
             return linked
-                ? { color: hierarchyColors[hierarchy] || DECLASSIFIED_COLOR,
+                ? { color: declassifiedLinkedColor(),
                     weight: 5, opacity: 0.95, dashArray: '9, 7' }
                 : { color: DECLASSIFIED_COLOR, weight: 3, opacity: 0.85, dashArray: '7, 5' };
         }
@@ -11762,6 +11782,15 @@
                     : !window.highlightedRoute ? 'aucune route'
                     : linked ? String(linked)
                     : '0';
+            }
+            // Cette pastille ne peut pas avoir de couleur fixe : ce qu'elle
+            // annonce dépend de la route sélectionnée. Elle emprunte donc la
+            // même couleur que les tronçons sur la carte, et retrouve le vert
+            // de l'inventaire quand il n'y a plus de sélection.
+            const swatch = document.querySelector('.declassified-swatch.is-linked');
+            if (swatch) {
+                swatch.style.borderTopColor = window.highlightedRoute
+                    ? declassifiedLinkedColor() : '';
             }
         }
         window.refreshDeclassifiedStyles = refreshDeclassifiedStyles;

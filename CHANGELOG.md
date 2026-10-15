@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.24.2] - 2026-10-14
+
+### Fixed
+
+- **The legend swatch for a linked declassified section no longer announces the wrong colour.** It was a fixed red, which happened to be right only for structural roads: on the map those sections take the colour of the selected road's network level, so for the D6 the legend promised red and the map drew blue. The swatch now borrows the same colour as the map, and falls back to a neutral grey while no road is selected, alongside the "aucune route" count that already says as much.
+- **"Réinitialiser" now really resets.** It restored every road to its normal stroke but left the glow shadows of the last selection on the map, an aura pointing at nothing, and never cleared the highlighted road itself — so the road list kept a line marked active and declassified sections stayed thickened in the colour of a selection that no longer existed.
+
 ## [0.24.1] - 2026-10-14
 
 ### Changed

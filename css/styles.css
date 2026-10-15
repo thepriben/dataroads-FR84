@@ -5600,9 +5600,13 @@
             border-top: 3px dashed #8DB600;
         }
 
+        /* Cette ligne annonce une couleur qu'elle ne connaît pas encore : celle
+           de la route qu'on va choisir, posée par le script. Sans sélection
+           elle reste au gris d'attente, en regard du « aucune route » qui la
+           chiffre — l'épaissir n'était pas une option, un tiret de 4 px se
+           rendant plein sur une pastille arrondie. */
         .declassified-swatch.is-linked {
-            border-top-color: #E74C3C;
-            border-top-width: 4px;
+            border-top-color: #BDC3C7;
         }
 
         .latest-change-swatch {
