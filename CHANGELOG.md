@@ -5,6 +5,17 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.26.1] - 2026-10-19
+
+### Fixed
+
+- **The test suite had been red since 24 September and nothing was watching.** When the Overpass failover mirror was removed that day — measurements in hand, no public replica answering inside a minute and the one that did announcing a base four months old — the test covering the switch was left behind, still asserting that the second attempt landed on `client.FALLBACK`. The constant survived the removal, as the empty default for `OVERPASS_FALLBACK_ENDPOINTS`, so the assertion ended up comparing a real URL against an empty string. The code was right and the test was wrong: the removal was argued at length in its commit and both READMEs were brought into line in 0.26.0. Rather than delete the assertion, the test now states what the client actually promises — a 429 is retried against the *same* endpoint instead of being quietly diverted elsewhere, which is the behaviour the removal introduced and the one worth guarding — and it keeps the check that a `Retry-After` of ninety seconds overrides the twenty-second default.
+- The failover machinery itself is now covered for the first time. It stayed in the code on purpose, to declare a mirror the day a dependable one reappears, and deleting the old test outright would have left that path to be exercised blind on the day someone finally sets `OVERPASS_FALLBACK_ENDPOINTS`. A second test declares a mirror and checks that the two attempts go to the primary and then to it, in that order.
+
+### Added
+
+- **A workflow that runs the tests on pushes to `main` and on pull requests.** The four existing workflows publish the site and refresh the data; none of them ran `python3 -m unittest discover -s tests`, which is the whole reason a broken assertion survived a month of commits. It installs nothing: every module the suite reaches imports from the standard library alone, and only `update_external_data.py` needs pyshp and pyproj, which the suite never touches — installing them would make this check depend on PyPI to verify code that does not use it. There is no path filter either, the suite running in a hundredth of a second and opening no connection, so filtering would save nothing measurable while giving a regression a way out.
+
 ## [0.26.0] - 2026-10-19
 
 ### Added

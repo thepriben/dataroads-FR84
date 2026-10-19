@@ -1,0 +1,28 @@
+name: Tests
+
+# Sur « main » et sur les propositions de fusion, sans filtre de chemin : la
+# suite s'exécute en un centième de seconde et n'ouvre aucune connexion, si
+# bien qu'un filtre ne ferait économiser rien de mesurable tout en offrant à
+# une régression une porte de sortie. Les commits des workflows de données
+# n'ouvrent pas d'exécution, le jeton par défaut ne déclenchant pas « push ».
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run unit tests
+        # Aucune installation : les modules couverts ici ne tirent que la
+        # bibliothèque standard, et le python3 de l'image suffit. Seul
+        # update_external_data.py réclame pyshp et pyproj, et la suite ne
+        # l'atteint pas — les installer rendrait ce rendez-vous tributaire
+        # de PyPI pour vérifier du code qui ne s'en sert pas.
+        run: python3 -m unittest discover -s tests -v

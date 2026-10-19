@@ -23,12 +23,24 @@ class OverpassTests(unittest.TestCase):
     def fetch(self, **kwargs):
         return client.fetch('query', endpoint='https://primary.test/api', user_agent='test', **kwargs)
 
-    def test_429_fails_over_and_respects_retry_after(self):
+    def test_429_is_retried_on_the_same_endpoint_and_respects_retry_after(self):
         error = urllib.error.HTTPError('url', 429, 'busy', {'Retry-After': '90'}, None)
         with patch.object(client.urllib.request, 'urlopen', side_effect=[error, io.BytesIO(b'{"elements": []}')]) as request:
             self.assertEqual(self.fetch(), {'elements': []})
-            self.assertEqual(request.call_args_list[1].args[0].full_url, client.FALLBACK)
+            self.assertEqual(request.call_args_list[1].args[0].full_url, 'https://primary.test/api')
             self.sleep.assert_called_once_with(90)
+
+    def test_declared_fallback_takes_the_next_attempt(self):
+        # Aucun miroir n'est déclaré par défaut, mais la bascule reste du code
+        # vivant : sans ce test, OVERPASS_FALLBACK_ENDPOINTS ne serait exercé
+        # que le jour où un miroir fiable réapparaîtrait, et à l'aveugle.
+        with patch.dict('os.environ', {'OVERPASS_FALLBACK_ENDPOINTS': 'https://mirror.test/api'}):
+            with patch.object(client.urllib.request, 'urlopen', side_effect=[TimeoutError('timeout'), io.BytesIO(b'{"elements": []}')]) as request:
+                self.assertEqual(self.fetch(), {'elements': []})
+                self.assertEqual(
+                    [call.args[0].full_url for call in request.call_args_list],
+                    ['https://primary.test/api', 'https://mirror.test/api'],
+                )
 
     def test_incomplete_json_is_retried(self):
         bad = b'{"elements": [], "remark": "runtime error: timeout"}'
