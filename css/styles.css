@@ -4856,13 +4856,16 @@
             outline-offset: 1px;
         }
 
-        .freshness-badge.is-layer-hidden .freshness-pill {
+        /* L'effacement vaut pour une couche éteinte, pas pour un rendez-vous
+           manqué : celui-ci garde son ambre, puisqu'il faudrait sinon allumer la
+           bonne couche pour découvrir qu'elle est en retard. */
+        .freshness-badge.is-layer-hidden .freshness-pill:not(.freshness-pill--late):not(.freshness-pill--stale) {
             color: #bdc3c7;
             background: #f0f1f2;
             border-color: rgba(44, 62, 80, 0.18);
         }
 
-        .freshness-badge.is-layer-hidden .freshness-dot {
+        .freshness-badge.is-layer-hidden .freshness-pill:not(.freshness-pill--late):not(.freshness-pill--stale) .freshness-dot {
             background: #bdc3c7;
         }
 
@@ -4900,13 +4903,30 @@
             background: #95a5a6;
         }
 
-        .freshness-pill--stale .freshness-dot,
-        .freshness-pill--late .freshness-dot {
-            background: #7f8c8d;
+        /* Toute la série des pastilles est grise : l'ambre y est le seul écart de
+           couleur, réservé au rendez-vous manqué. Un jeu périmé de onze jours
+           doit sauter aux yeux depuis l'autre bout de la légende, sans qu'il
+           faille lire le chiffre pour comprendre. */
+        .freshness-pill--late,
+        .freshness-pill--stale {
+            color: #8A4B00;
+            background: #FDF3E3;
+            border-color: rgba(192, 109, 0, 0.55);
+        }
+
+        .freshness-pill--late .freshness-dot,
+        .freshness-pill--stale .freshness-dot {
+            background: #C06D00;
         }
 
         .freshness-pill--stale {
-            border-color: rgba(44, 62, 80, 0.48);
+            border-color: rgba(192, 109, 0, 0.9);
+        }
+
+        .freshness-late-label {
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 700;
         }
 
         .freshness-pill--error {
@@ -4944,6 +4964,17 @@
         .refresh-formula-row[data-schedule-key="incubator"] { border-left-color: #0E7490; }
         .refresh-formula-row[data-schedule-key="live"]     { border-left-color: #27AE60; }
         .refresh-formula-row[data-schedule-key="static"]   { border-left-color: #7f8c8d; }
+
+        .refresh-formula-row[data-freshness-status="late"],
+        .refresh-formula-row[data-freshness-status="stale"] {
+            border-left-color: #C06D00;
+            background: #FFFAF2;
+        }
+
+        .refresh-formula-row[data-freshness-status="late"] .freshness-late-label,
+        .refresh-formula-row[data-freshness-status="stale"] .freshness-late-label {
+            color: #8A4B00;
+        }
 
         .refresh-formula-row .refresh-formula-label {
             font-weight: 700;

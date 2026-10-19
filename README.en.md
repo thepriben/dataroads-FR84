@@ -41,6 +41,34 @@ The page indicates external data refreshed every 3 hours. The browser reads loca
 - Direct dynamic data: Open-Meteo weather, requested by the browser at load time and then every 10 minutes.
 - Overpass API: never called by the browser. It is only used by the OSM refresh script.
 
+OSM caches (and their Wikidata links) are refreshed on Mondays and Thursdays. A
+dataset refused by Overpass keeps its previous file rather than writing a truncated
+one, and the run stays green as long as at least one dataset could be read — a
+permanently red light warns of nothing any more.
+
+**Daily catch-up.** An extra pass runs every day at 04:47 UTC and takes back only
+the datasets that are genuinely overdue
+(`python3 scripts/update_osm_geojson.py --stale-only`). A dataset is overdue when
+its cache is older than **four days and an hour**: four days is the longest
+legitimate gap between two extractions (Thursday to Monday), and the hour absorbs
+GitHub Actions scheduling delays. The timestamp consulted is the OSM cut-off
+announced by Overpass (`_cache.source_timestamp`), falling back to the write time;
+a missing or unreadable file counts as overdue. When nothing is late the catch-up
+issues no Overpass request at all and exits in under a second — the full pass makes
+twelve and takes a quarter of an hour. If Overpass stays broken the catch-up remains
+one attempt a day: the selection is read from the files on disk, so a failed
+catch-up cannot feed itself. The same pass can be triggered by hand through the
+workflow's `stale_only` input.
+
+**Freshness pills.** Under each layer, a pill announces the age of the data and the
+next due date. When a dataset has missed its appointment — age greater than its
+announced period plus an hour of grace — the pill says so explicitly, "en retard",
+and turns amber, the single colour departure in an otherwise grey series. The
+*Formule de rafraîchissement* section follows, qualified by the oldest dataset of
+its group. A pill fades out when its layer is switched off, unless it is late:
+since most layers start switched off, muting it would mean waiting for someone to
+turn on the right one to discover the delay.
+
 ## Vintage consistency
 
 State of the dataset versioned in this repository:
@@ -115,6 +143,11 @@ python3 scripts/update_external_data.py
 ```text
 dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 ```
+
+With no argument it processes all twelve datasets. It also accepts dataset names as
+positional arguments (`python3 scripts/update_osm_geojson.py declassified-roads`)
+and the `--stale-only` option, which restricts the pass to overdue datasets and
+exits without asking Overpass for anything when there are none.
 
 `scripts/update_external_data.py` materialises data.gouv.fr and Info Routière data into `data/external/`. If Info Routière is unavailable, the script keeps an empty GeoJSON with the error recorded in `_cache`.
 

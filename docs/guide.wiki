@@ -316,7 +316,7 @@ Compteurs : nombre de routes, tronçons OSM, longueur cumulée, trafic MJA min/m
 
 ==== [layer:layer-refresh] Formule de rafraîchissement ====
 
-Calendrier par source (OSM, Wikidata, externe, incubateur, météo, statique) et état du dernier rafraîchissement.
+Calendrier par source (OSM, Wikidata, externe, incubateur, météo, statique) et état du dernier rafraîchissement. Une ligne dont un jeu a manqué son tour passe à l'ambre et annonce l'âge du plus ancien.
 
 == Barre d'outils carte {#toolbar} ==
 
@@ -364,5 +364,9 @@ Sous la plupart des couches, une pastille indique quand les données ont été g
 * '''Territoire''' (secteurs d'exploitation CD84) — recalculé avec les extraits OSM.
 * '''Météo''' — live navigateur, ~10 min.
 * '''Statique''' (limite 84, accidents 2019-2024) — snapshot versionné, mise à jour manuelle.
+
+'''Quand un jeu a manqué son rendez-vous, la pastille le dit.''' Un âge seul se lit comme un nombre parmi d'autres : « il y a 11j » n'alarme que si l'on sait déjà que cette donnée-là est rafraîchie deux fois par semaine. Une pastille en retard porte donc la mention '''« en retard »''' et passe à l''''ambre''', seul écart de couleur d'une série autrement grise — un retard de onze jours saute aux yeux depuis l'autre bout de la légende. Le seuil se déduit de la cadence annoncée du jeu, augmentée d'une heure de battement pour les retards d'ordonnancement : quatre jours et une heure pour les extraits OSM, quatre heures pour les données externes, deux heures pour les derniers changements. La rubrique ''Formule de rafraîchissement'' suit, qualifiée par le jeu le plus ancien de son groupe. Une couche éteinte voit sa pastille s'effacer, '''sauf''' si elle est en retard : la plupart des couches étant éteintes au chargement, attendre qu'on allume la bonne reviendrait à ne jamais voir le retard.
+
+{{hint|Un retard signalé n'est pas une donnée fausse, mais une donnée plus ancienne qu'annoncé : l'extraction OpenStreetMap a échoué et l'ancien fichier a été conservé plutôt que remplacé par un fichier tronqué. Un rattrapage automatique repasse chaque jour sur les seuls jeux concernés.}}
 
 {{hint|Le détail complet est dans ''Outils & méta → Formule de rafraîchissement''.}}

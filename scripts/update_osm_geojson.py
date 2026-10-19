@@ -8,7 +8,7 @@ import os
 import re
 import sys
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -834,12 +834,60 @@ def refresh_cache(name: str, query: str) -> bool:
     return changed
 
 
+# Le passage complet a rendez-vous les lundis et jeudis : le plus long
+# intervalle légitime entre deux extractions court donc du jeudi au lundi, soit
+# quatre jours. Au-delà, un jeu n'a pas attendu son tour, il l'a manqué.
+# L'heure de battement absorbe les retards d'ordonnancement de GitHub Actions,
+# qui décale volontiers un cron planifié de quelques dizaines de minutes.
+STALE_AFTER = timedelta(days=4, hours=1)
+
+
+def parse_timestamp(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        moment = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
+
+
+def cache_age(name: str, now: datetime) -> timedelta | None:
+    """L'âge du contenu d'un jeu, ou None quand il n'a pas d'âge lisible.
+
+    La coupure annoncée par Overpass prime sur l'heure d'écriture : c'est elle
+    qui dit jusqu'à quand OSM a été lu. Un fichier absent ou illisible n'a pas
+    d'âge mesurable mais réclame quand même une extraction, d'où le None que
+    l'appelant traite comme un retard.
+    """
+    path = DATA_DIR / f"{name}.geojson"
+    try:
+        cache = json.loads(path.read_text(encoding="utf-8")).get("_cache") or {}
+    except (OSError, json.JSONDecodeError):
+        return None
+
+    moment = parse_timestamp(cache.get("source_timestamp")) or parse_timestamp(cache.get("generated_at"))
+    return now - moment if moment else None
+
+
+def stale_datasets(names: list[str] | None = None, now: datetime | None = None) -> list[str]:
+    now = now or datetime.now(timezone.utc)
+    overdue = []
+    for name in names if names is not None else list(QUERIES):
+        age = cache_age(name, now)
+        if age is None or age > STALE_AFTER:
+            overdue.append(name)
+    return overdue
+
+
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Overpass endpoint: {ENDPOINT}")
     print(f"User-Agent: {USER_AGENT}")
 
-    selected = sys.argv[1:]
+    arguments = sys.argv[1:]
+    stale_only = "--stale-only" in arguments
+    selected = [argument for argument in arguments if argument != "--stale-only"]
     if selected:
         unknown = [name for name in selected if name not in QUERIES]
         if unknown:
@@ -848,7 +896,19 @@ def main() -> int:
             return 2
         queries = {name: QUERIES[name] for name in selected}
     else:
-        queries = QUERIES
+        queries = dict(QUERIES)
+
+    if stale_only:
+        # Le rattrapage quotidien ne rejoue que les rendez-vous manqués. Refaire
+        # les douze jeux chaque matin coûterait un quart d'heure d'Overpass pour
+        # rien, et ce service public est gratuit : on ne lui demande que ce que
+        # l'échec de la veille a réellement laissé en arrière.
+        overdue = set(stale_datasets(list(queries)))
+        queries = {name: query for name, query in queries.items() if name in overdue}
+        if not queries:
+            print("Aucun jeu périmé : rien à rattraper.")
+            return 0
+        print(f"Jeux périmés à rattraper : {', '.join(queries)}")
 
     changed = False
     failed: list[str] = []

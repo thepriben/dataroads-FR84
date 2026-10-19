@@ -5,6 +5,25 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.26.0] - 2026-10-19
+
+### Added
+
+- **A daily catch-up for the OSM extracts that missed their turn.** Overpass answered HTTP 502 on the heaviest queries during two consecutive runs, on 12 and 15 October. The script behaved correctly — it left the previous file in place rather than writing a truncated one, and said so in its log — but nothing picked the work back up before the next appointment three days later, so the departmental network stayed eleven days out of date and the only trace of it was a line nobody reads. *Update OSM GeoJSON* now also runs every day at 04:47 UTC in catch-up mode, which reprocesses **only** the datasets that are genuinely overdue. A full daily pass was never an option: it takes thirteen to sixteen minutes and would interrogate a free public service about twelve datasets to rediscover that eleven are fine. On an ordinary morning the catch-up asks Overpass for nothing at all and exits in under a second; when Overpass stays broken it remains one attempt a day, no more, because the selection is read from the files on disk and a failed catch-up has no way of feeding itself.
+- A dataset is overdue when its cache is older than four days and an hour. Four days is the longest legitimate gap between two extractions, Thursday to Monday — not the average of the two gaps, which would call a dataset late on the Sunday it is simply waiting its turn. The extra hour absorbs GitHub Actions scheduling, which cheerfully pushes a planned cron back by a few dozen minutes. The timestamp consulted is the OSM cut-off announced by Overpass, falling back to the write time: a missing or unreadable file counts as overdue, since it needs an extraction either way.
+- **The freshness pills say "en retard" instead of leaving the reader to judge a number.** "il y a 11j" is only alarming if you happen to know that this particular dataset is refreshed twice a week; next to "il y a 41 min" elsewhere in the legend it reads as one figure among others. An overdue pill now names the delay in amber — the single colour departure in an otherwise uniformly grey series — so an eleven-day lag is visible from the other end of the legend without reading the figure. The *Formule de rafraîchissement* section follows suit, qualified by the **oldest** dataset of its group rather than the newest, without which a stale departmental network would hide behind municipalities refreshed that morning.
+- A pill whose layer is switched off keeps its warning. Fading it out is right for an age that concerns nobody while the layer is not on screen, but a missed appointment is a fault in the data pipeline rather than a property of the current view — and since most layers start switched off, muting it would mean waiting for someone to think of turning on the right one to discover eleven days of lateness.
+
+### Changed
+
+- The badge's lateness threshold is now "one missed appointment plus an hour" rather than fifteen per cent of the refresh period. A proportional margin gets it wrong at both ends: fifteen per cent of an hour does not even cover the usual scheduling slip, so the hourly OSM-changes layer would have been called late on a routine delay, while fifteen per cent of four days grants half a day too much. The browser and the catch-up script now derive their verdict from the same rule.
+- The twice-weekly schedules — OSM extracts, their Wikidata links, the incubator layers — all declare the same four-day period, which is the real worst case of the Monday-and-Thursday cron they all ride on; two of them were still claiming three and a half days, the average. The three-hour external period is read from `APP_CONFIG.data.externalRefreshHours` instead of being written out a second time.
+- The territorial attribution table is no longer rebuilt when no extract changed. It is recomputed in the wake of every extraction because it designates sections by their OSM identifier, but a catch-up that found nothing to take back has redivided nothing: recomputing anyway would question DataSud and the Géo API every morning to rewrite two files identically.
+
+### Fixed
+
+- The README described an Overpass fallback to `overpass.private.coffee` that no longer exists. The mirror was removed in September, measurements in hand — no public replica answers in under a minute any more, and the one that did announced a base four months old, ready to replace our data with older — but the sentence promising it survived in both languages.
+
 ## [0.25.0] - 2026-10-19
 
 ### Added

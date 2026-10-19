@@ -2,8 +2,19 @@ name: Update OSM GeoJSON
 
 on:
   workflow_dispatch:
+    inputs:
+      stale_only:
+        description: "Ne reprendre que les jeux périmés"
+        type: boolean
+        default: false
   schedule:
     - cron: "17 3 * * 1,4"
+    # Un 502 d'Overpass sur la requête la plus lourde laissait le réseau
+    # départemental périmé jusqu'au rendez-vous suivant, trois jours plus tard —
+    # onze jours la fois où deux passages ont échoué d'affilée. Ce passage
+    # quotidien ne reprend que les jeux qui ont manqué leur tour : une tentative
+    # par jour, jamais davantage, même si Overpass reste durablement en panne.
+    - cron: "47 4 * * *"
 
 permissions:
   contents: write
@@ -21,13 +32,28 @@ jobs:
           ref: main
           fetch-depth: 0
       - name: Update GeoJSON
-        run: python3 scripts/update_osm_geojson.py
+        env:
+          STALE_ONLY: ${{ github.event.schedule == '47 4 * * *' || inputs.stale_only }}
+        run: |
+          if [ "${STALE_ONLY}" = "true" ]; then
+            python3 scripts/update_osm_geojson.py --stale-only
+          else
+            python3 scripts/update_osm_geojson.py
+          fi
       - name: Rebuild territorial attribution
         # La table territoriale désigne les tronçons par leur identifiant OSM :
         # elle doit se recalculer dans la foulée de l'extraction, sinon un
         # tronçon redécoupé perdrait son secteur jusqu'au prochain passage.
+        # Un rattrapage qui ne trouve rien à reprendre n'a rien redécoupé : la
+        # recalculer quand même irait interroger DataSud et l'API Géo chaque
+        # matin pour réécrire deux fichiers à l'identique.
         if: always()
-        run: python3 scripts/update_territorial_units.py
+        run: |
+          if git diff --quiet -- data/osm; then
+            echo "Aucun extrait modifié : table territoriale inchangée."
+            exit 0
+          fi
+          python3 scripts/update_territorial_units.py
       - name: Commit changes
         # Un jeu refusé par Overpass fait échouer l'étape précédente, mais ce
         # qui a été rapatrié avant doit être publié quand même : le garder sur

@@ -47,15 +47,40 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 Les caches OSM (et leurs liens Wikidata) sont actualisés les lundis et jeudis.
 Chaque fin de workflow de données déclenche une publication GitHub Pages, y compris
 si seuls certains jeux ont pu être rafraîchis. Un jeu en échec conserve son ancien
-fichier et le workflow reste signalé en échec.
+fichier plutôt que d'en écrire un tronqué, et l'exécution reste verte tant qu'au
+moins un jeu a pu être lu — un voyant rouge en permanence ne prévient plus de rien.
+
+**Rattrapage quotidien.** Un passage supplémentaire tourne chaque jour à 04:47 UTC
+et ne reprend que les jeux réellement périmés
+(`python3 scripts/update_osm_geojson.py --stale-only`). Un jeu est périmé quand son
+cache dépasse **quatre jours et une heure** : quatre jours sont le plus long
+intervalle légitime entre deux extractions (du jeudi au lundi), l'heure absorbe les
+retards d'ordonnancement de GitHub Actions. L'horodatage consulté est la coupure
+OSM annoncée par Overpass (`_cache.source_timestamp`), à défaut l'heure d'écriture ;
+un fichier absent ou illisible est traité comme périmé. Quand rien n'est en retard,
+le rattrapage n'émet aucune requête Overpass et sort en moins d'une seconde — le
+passage complet en demande douze et dure un quart d'heure. Si Overpass reste en
+panne, le rattrapage demeure une tentative par jour : la sélection se lit sur les
+fichiers du disque, un rattrapage raté ne peut donc pas s'auto-alimenter. Le même
+passage se déclenche à la main avec l'entrée `stale_only` du workflow.
 
 Les exports Overpass partagent une file d'exécution et réessaient jusqu'à quatre
-fois, avec temporisation et bascule vers `overpass.private.coffee`. Les réponses
-incomplètes, les répliques en retard de plus de 24 h et les diffs hebdomadaires
-suspects sans aucune action sont rejetés avant écriture. `OVERPASS_ENDPOINT` choisit le serveur
-principal ; `OVERPASS_FALLBACK_ENDPOINTS` permet de remplacer la liste de secours
-(URL séparées par des virgules), ou de la désactiver avec une valeur vide.
-Les fiches détaillées Wikidata restent demandées directement par le navigateur.
+fois, avec temporisation. Les réponses incomplètes, les répliques décrochées de plus
+de sept jours et les diffs hebdomadaires suspects sans aucune action sont rejetés
+avant écriture. `OVERPASS_ENDPOINT` choisit le serveur ; il n'y a plus de miroir de
+secours par défaut, aucun ne répondant en moins d'une minute (mesure du 24 septembre
+2026), mais `OVERPASS_FALLBACK_ENDPOINTS` permet d'en déclarer un (URL séparées par
+des virgules). Les fiches détaillées Wikidata restent demandées directement par le
+navigateur.
+
+**Pastilles de fraîcheur.** Sous chaque couche, une pastille annonce l'âge de la
+donnée et la prochaine échéance. Quand un jeu a manqué son rendez-vous — âge
+supérieur à sa cadence annoncée plus une heure de battement — la pastille le dit
+explicitement, « en retard », et passe à l'ambre, seul écart de couleur d'une série
+autrement grise. La rubrique *Formule de rafraîchissement* suit, qualifiée par le
+jeu le plus ancien de son groupe. Une couche éteinte voit sa pastille s'effacer,
+sauf si elle est en retard : la plupart des couches étant éteintes au chargement,
+l'étouffer reviendrait à attendre qu'on allume la bonne pour découvrir le retard.
 
 Vérification des reprises : `python3 -m unittest discover -s tests -v`.
 
@@ -135,6 +160,11 @@ python3 scripts/update_osm_latest_changes.py
 ```text
 dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 ```
+
+Sans argument il traite les douze jeux. Il accepte des noms de jeux en arguments
+positionnels (`python3 scripts/update_osm_geojson.py declassified-roads`) et
+l'option `--stale-only`, qui restreint le passage aux jeux périmés et sort sans
+rien demander à Overpass quand il n'y en a aucun.
 
 `scripts/update_external_data.py` matérialise les données data.gouv.fr et Info Routière dans `data/external/`. Si Info Routière est indisponible, le script conserve un GeoJSON vide avec l'erreur dans `_cache`.
 

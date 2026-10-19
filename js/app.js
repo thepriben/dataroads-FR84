@@ -59,30 +59,38 @@
 
         // ========== FRESHNESS BADGES (integration date + next refresh) ==========
 
+        // Le rendez-vous bi-hebdomadaire tombe les lundis et jeudis : le plus long
+        // intervalle légitime entre deux extractions court du jeudi au lundi, soit
+        // quatre jours. C'est cette borne, et non la moyenne des deux écarts, qui
+        // dit à partir de quand un jeu a manqué son tour — le script de rattrapage
+        // raisonne sur la même.
+        const OSM_SCHEDULE_INTERVAL_MS = 4 * 24 * 60 * 60 * 1000;
+        const EXTERNAL_REFRESH_HOURS = window.APP_CONFIG?.data?.externalRefreshHours || 3;
+
         const FRESHNESS_SCHEDULES = {
             osm: {
                 label: 'Bi-hebdo — lun. & jeu. 03:17 UTC',
                 source: 'OpenStreetMap via Overpass',
                 cron: '17 3 * * 1,4',
-                intervalMs: 4 * 24 * 60 * 60 * 1000
+                intervalMs: OSM_SCHEDULE_INTERVAL_MS
             },
             wikidata: {
                 label: 'Bi-hebdo — lun. & jeu. 03:17 UTC',
                 source: 'Liens Wikidata issus du cache OSM',
                 cron: '17 3 * * 1,4',
-                intervalMs: 3.5 * 24 * 60 * 60 * 1000
+                intervalMs: OSM_SCHEDULE_INTERVAL_MS
             },
             external: {
-                label: 'Toutes les 3 h — à xx:23 UTC',
+                label: `Toutes les ${EXTERNAL_REFRESH_HOURS} h — à xx:23 UTC`,
                 source: 'data.gouv.fr & Bison Futé',
                 cron: '23 */3 * * *',
-                intervalMs: 3 * 60 * 60 * 1000
+                intervalMs: EXTERNAL_REFRESH_HOURS * 60 * 60 * 1000
             },
             incubator: {
                 label: 'Bi-hebdo (lun. & jeu.)',
                 source: 'Couche ponts OSM (workflow OSM GeoJSON)',
                 cron: '17 3 * * 1,4',
-                intervalMs: 3.5 * 24 * 60 * 60 * 1000
+                intervalMs: OSM_SCHEDULE_INTERVAL_MS
             },
             hourly: {
                 label: 'Toutes les heures — à xx:41 UTC',
@@ -164,6 +172,15 @@
             return `${prefix}${days}j${remH > 0 ? ` ${remH}h` : ''}`;
         }
 
+        // Les crons de GitHub Actions ne partent jamais tout à fait à l'heure : un
+        // passage planifié est volontiers décalé de quelques dizaines de minutes
+        // aux heures chargées. Ce battement sépare le retard d'ordonnancement, qui
+        // ne regarde personne, du rendez-vous réellement manqué, qui doit se voir.
+        // Une marge proportionnelle ferait l'inverse : 15 % d'une heure ne couvre
+        // même pas le décalage habituel, quand 15 % de quatre jours en couvrent un
+        // demi-jour de trop.
+        const FRESHNESS_GRACE_MS = 60 * 60 * 1000;
+
         function freshnessState(generatedAtMs, scheduleConfig) {
             if (!scheduleConfig.intervalMs) {
                 return { status: 'static' };
@@ -173,12 +190,21 @@
             }
             const ageMs = Date.now() - generatedAtMs;
             const interval = scheduleConfig.intervalMs;
-            if (ageMs <= interval * 1.15) return { status: 'fresh' };
-            if (ageMs <= interval * 2) return { status: 'late' };
+            if (ageMs <= interval + FRESHNESS_GRACE_MS) return { status: 'fresh' };
+            if (ageMs <= interval * 2 + FRESHNESS_GRACE_MS) return { status: 'late' };
             return { status: 'stale' };
         }
 
+        function isOverdueStatus(status) {
+            return status === 'late' || status === 'stale';
+        }
+
         const latestCacheByGroup = {};
+        // La pastille d'une couche parle pour elle, la rubrique des cadences parle
+        // pour un groupe entier : c'est le jeu le plus en retard qui la qualifie,
+        // sans quoi un réseau départemental périmé de onze jours disparaîtrait
+        // derrière des communes rafraîchies le matin même.
+        const oldestCacheByGroup = {};
 
         function updateRefreshFormulaCell(scheduleKey) {
             const config = FRESHNESS_SCHEDULES[scheduleKey];
@@ -211,6 +237,16 @@
                 }
             }
 
+            const oldest = oldestCacheByGroup[scheduleKey];
+            const oldestMs = oldest ? new Date(oldest).getTime() : null;
+            const status = freshnessState(oldestMs, config).status;
+            const row = cell.closest('.refresh-formula-row');
+            if (row) row.dataset.freshnessStatus = status;
+            if (isOverdueStatus(status)) {
+                const age = formatRelativeDuration(Date.now() - oldestMs);
+                lines.push(`<span class="freshness-late-label">en retard</span> · le plus ancien ${age}`);
+            }
+
             cell.innerHTML = lines.join('<br>');
         }
 
@@ -222,10 +258,17 @@
 
             if (generatedAt && config.cron) {
                 const current = latestCacheByGroup[scheduleKey];
-                if (!current || new Date(generatedAt).getTime() > new Date(current).getTime()) {
+                const oldest = oldestCacheByGroup[scheduleKey];
+                let moved = false;
+                if (!current || generatedAtMs > new Date(current).getTime()) {
                     latestCacheByGroup[scheduleKey] = generatedAt;
-                    updateRefreshFormulaCell(scheduleKey);
+                    moved = true;
                 }
+                if (!oldest || generatedAtMs < new Date(oldest).getTime()) {
+                    oldestCacheByGroup[scheduleKey] = generatedAt;
+                    moved = true;
+                }
+                if (moved) updateRefreshFormulaCell(scheduleKey);
             }
 
             const ageText = generatedAtMs
@@ -255,14 +298,6 @@
             if (generatedAt) element.dataset.generatedAt = generatedAt;
             if (errorMsg) element.dataset.errorMsg = errorMsg; else delete element.dataset.errorMsg;
 
-            const tooltipLines = [
-                config.label || '',
-                config.source ? `Source\u00a0: ${config.source}` : '',
-                generatedAt ? `Intégré le ${formatParisDateTime(generatedAt)}` : '',
-                errorMsg ? `Erreur\u00a0: ${errorMsg}` : ''
-            ].filter(Boolean);
-            element.title = tooltipLines.join('\n');
-
             if (layerVisible === undefined && element.id && typeof isFreshnessBadgeLayerVisible === 'function') {
                 layerVisible = isFreshnessBadgeLayerVisible(element.id);
             } else if (layerVisible === undefined) {
@@ -272,17 +307,45 @@
             element.dataset.layerVisible = layerVisible ? 'true' : 'false';
             const layerHidden = !layerVisible;
 
-            if (layerHidden) {
+            // Une couche éteinte voit sa pastille s'effacer : son âge ne regarde
+            // plus personne tant qu'elle n'est pas à l'écran. Un rendez-vous
+            // manqué, lui, ne tient pas à ce qu'on affiche — c'est une panne de
+            // la chaîne de données, et la plupart des couches étant éteintes au
+            // chargement, l'étouffer reviendrait à attendre que quelqu'un pense
+            // à allumer la bonne pour découvrir onze jours de retard.
+            if (layerHidden && !isOverdueStatus(status)) {
                 status = 'hidden';
             } else if (!config.intervalMs && generatedAtMs) {
                 status = 'static';
             }
 
+            // Un âge seul se lit comme un nombre parmi d'autres : « il y a 11j »
+            // ne dit pas s'il est normal pour ce jeu. La pastille nomme donc le
+            // retard, faute de quoi deux extractions manquées d'affilée passent
+            // onze jours sans que personne les remarque.
+            const overdue = isOverdueStatus(status);
+            // Pas de séparateur après l'étiquette : dans la largeur de la légende
+            // la pastille passe forcément à la ligne, et un point médian échoué
+            // en tête de seconde ligne se lit comme une puce orpheline.
+            const overdueText = overdue
+                ? '<span class="freshness-late-label">en retard</span>'
+                : '';
+
+            const tooltipLines = [
+                config.label || '',
+                config.source ? `Source\u00a0: ${config.source}` : '',
+                generatedAt ? `Intégré le ${formatParisDateTime(generatedAt)}` : '',
+                overdue ? 'En retard\u00a0: le rafraîchissement annoncé n\u2019a pas eu lieu.' : '',
+                errorMsg ? `Erreur\u00a0: ${errorMsg}` : ''
+            ].filter(Boolean);
+            element.title = tooltipLines.join('\n');
+            element.dataset.freshnessStatus = status;
+
             const errorIcon = errorMsg ? '<span class="freshness-error-icon" aria-hidden="true">⚠</span>' : '';
             const pillClasses = ['freshness-pill', `freshness-pill--${status}`];
             if (errorMsg) pillClasses.push('freshness-pill--error');
             element.classList.toggle('is-layer-hidden', layerHidden);
-            element.innerHTML = `<span class="${pillClasses.join(' ')}"><span class="freshness-dot" aria-hidden="true"></span>${ageText}${nextText}${errorIcon}</span>`;
+            element.innerHTML = `<span class="${pillClasses.join(' ')}"><span class="freshness-dot" aria-hidden="true"></span>${overdueText}${ageText}${nextText}${errorIcon}</span>`;
         }
 
         function refreshAllBadges() {
