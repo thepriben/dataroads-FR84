@@ -7557,6 +7557,54 @@
             return BASEMAP_ENTRIES.find(entry => entry.id === id) || BASEMAP_ENTRIES[0];
         }
 
+        // Cinq noms dans une liste ne disent pas à quoi ressemble un fond : on
+        // choisissait à l'aveugle. Une vignette doit départager cinq rendus du
+        // même terrain, ce qu'un pan de garrigue ne ferait pas — il y faut du
+        // bâti, un fleuve et des parcelles dans la même image. La tuile d'Avignon
+        // les réunit, et c'est une tuile du département servie par le fournisseur
+        // lui-même, non une image de démonstration.
+        //
+        // Le zoom 13 plutôt que 12 : réduite à cinquante pixels, une tuile de
+        // zoom 12 écrase toute la ville en une bouillie où les trois plans se
+        // ressemblent, quand le zoom 13 laisse paraître le Rhône, les rocades et
+        // la teinte propre à chaque rendu. Six kilo-octets de plus, mesurés, pour
+        // des vignettes qui distinguent enfin ce qu'elles annoncent.
+        const BASEMAP_THUMB = { lat: 43.9493, lon: 4.8055, zoom: 13 };
+
+        function basemapThumbUrl(entry) {
+            const count = 2 ** BASEMAP_THUMB.zoom;
+            const rad = BASEMAP_THUMB.lat * Math.PI / 180;
+            const col = Math.floor((BASEMAP_THUMB.lon + 180) / 360 * count);
+            const row = Math.floor((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2 * count);
+            return entry.url
+                .replace('{s}', (entry.subdomains || 'abc')[0])
+                .replace(/\{z\}/g, BASEMAP_THUMB.zoom)
+                .replace(/\{x\}/g, col)
+                .replace(/\{y\}/g, row);
+        }
+
+        // Cinq tuiles de plus, mais aucune au démarrage : elles ne partent qu'à la
+        // première ouverture du panneau, quand le choix est effectivement posé. Les
+        // éléments sont retenus ici et déplacés d'un rendu à l'autre, jamais
+        // recopiés : un clone repartirait chercher la tuile sur le réseau.
+        const basemapThumbs = new Map();
+
+        function loadBasemapThumbs() {
+            if (basemapThumbs.size) return;
+            BASEMAP_ENTRIES.forEach(entry => {
+                const img = new Image();
+                img.className = 'basemap-choice-thumb';
+                img.alt = '';
+                img.decoding = 'async';
+                // La vignette porte le filtre de l'entrée : elle annonce le fond
+                // tel qu'il s'affichera, désaturé pour un plan et franc pour une
+                // vue aérienne, au lieu d'un échantillon qui mentirait.
+                img.style.filter = entry.filter || '';
+                img.src = basemapThumbUrl(entry);
+                basemapThumbs.set(entry.id, img);
+            });
+        }
+
         function applyFocusMaskToLayer(layer) {
             if (!focusTileMask || !layer) return;
             const isValidTile = L.TileLayer.prototype._isValidTile;
@@ -7617,31 +7665,79 @@
         window.activeBasemapId = () => activeBasemapId;
         window.basemapEntries = () => BASEMAP_ENTRIES;
 
+        function basemapChoiceNodes() {
+            const body = document.getElementById('basemapPickerBody');
+            return body ? Array.from(body.querySelectorAll('.basemap-choice')) : [];
+        }
+
+        function focusCheckedChoice() {
+            const nodes = basemapChoiceNodes();
+            (nodes.find(node => node.getAttribute('aria-checked') === 'true') || nodes[0])?.focus();
+        }
+
         // La liste est écrite depuis la configuration : ajouter un fournisseur
         // ne demande qu'une entrée de plus dans `basemaps`.
         window.renderBasemapChoices = function() {
             const body = document.getElementById('basemapPickerBody');
             if (!body) return;
+            // Choisir un fond réécrit la liste sous le doigt qui vient de cliquer :
+            // sans ce report, le focus retomberait sur la page et la tabulation
+            // repartirait du début.
+            const held = body.contains(document.activeElement);
             body.innerHTML = BASEMAP_ENTRIES.map(entry => {
                 const on = entry.id === activeBasemapId;
+                // Un seul choix s'offre au tabulateur, celui qui est retenu : les
+                // flèches circulent à l'intérieur du groupe, et en sortir ne
+                // demande qu'une tabulation au lieu de cinq.
                 return `<button type="button" class="basemap-choice${on ? ' is-active' : ''}"`
-                    + ` role="radio" aria-checked="${on}" data-basemap="${entry.id}">`
+                    + ` role="radio" aria-checked="${on}" tabindex="${on ? '0' : '-1'}"`
+                    + ` data-basemap="${entry.id}">`
                     + '<span class="basemap-choice-dot" aria-hidden="true"></span>'
                     + `<span class="basemap-choice-label">${escapeHtml(entry.label || entry.id)}</span>`
                     + '</button>';
             }).join('');
+            basemapThumbs.forEach((img, id) => {
+                const row = body.querySelector(`[data-basemap="${id}"]`);
+                if (row) row.insertBefore(img, row.lastElementChild);
+            });
+            if (held) focusCheckedChoice();
         };
 
-        window.toggleBasemapPicker = function(force) {
+        // La barre d'outils enveloppe ses boutons et sa hauteur suit la largeur de
+        // la fenêtre : un décalage écrit en dur la frôlait à toutes les tailles, et
+        // l'aurait recouverte le jour où elle passe sur deux lignes. Le panneau se
+        // pose donc sous son bas mesuré.
+        function placeBasemapPicker(panel) {
+            const stage = panel.offsetParent;
+            const toolbar = document.querySelector('.map-toolbar');
+            if (!stage || !toolbar) return;
+            const bottom = toolbar.getBoundingClientRect().bottom - stage.getBoundingClientRect().top;
+            panel.style.top = `${Math.round(bottom) + 8}px`;
+        }
+
+        window.toggleBasemapPicker = function(force, restoreFocus) {
             const panel = document.getElementById('basemapPicker');
             const button = document.getElementById('basemapBtn');
             if (!panel) return;
             const open = typeof force === 'boolean' ? force : !panel.classList.contains('is-open');
+            const held = panel.contains(document.activeElement);
             panel.classList.toggle('is-open', open);
             panel.setAttribute('aria-hidden', open ? 'false' : 'true');
             button?.setAttribute('aria-expanded', open ? 'true' : 'false');
             button?.classList.toggle('active', open);
-            if (open) window.renderBasemapChoices();
+            if (open) {
+                loadBasemapThumbs();
+                window.renderBasemapChoices();
+                // Après l'ouverture seulement : un panneau masqué n'a pas de
+                // parent de positionnement à mesurer.
+                placeBasemapPicker(panel);
+                focusCheckedChoice();
+            } else if (restoreFocus && held) {
+                // Le focus ne revient au bouton que s'il était dans le panneau,
+                // et seulement sur une fermeture au clavier : le reprendre après
+                // un clic ailleurs l'arracherait à ce que l'on vient de viser.
+                button?.focus();
+            }
         };
 
         document.getElementById('basemapPickerBody')?.addEventListener('click', event => {
@@ -7649,9 +7745,47 @@
             if (choice) window.selectBasemap(choice.dataset.basemap);
         });
 
-        // Un clic sur la carte referme le choix : il a été fait, ou on passe à
-        // autre chose. Le bouton garde sa propre bascule.
-        window.map.on('click', () => window.toggleBasemapPicker(false));
+        // Le panneau annonce un groupe de boutons radio : il doit s'en conduire
+        // comme un, flèches comprises, sans quoi le rôle promet au lecteur d'écran
+        // une navigation qui n'existe pas.
+        //
+        // Les flèches déplacent le focus sans choisir. Choisir remplace la couche
+        // de tuiles : traverser les cinq fonds pour atteindre le dernier en aurait
+        // demandé cinq jeux, une centaine de tuiles pour un seul fond voulu. Les
+        // règles ARIA prévoient exactement cette variante quand la sélection coûte
+        // cher — l'espace ou l'entrée valide, et le bouton s'en charge lui-même.
+        document.getElementById('basemapPicker')?.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                window.toggleBasemapPicker(false, true);
+                return;
+            }
+            const nodes = basemapChoiceNodes();
+            const index = nodes.indexOf(document.activeElement);
+            if (index < 0) return;
+            const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
+            let target = null;
+            if (step) target = nodes[(index + step + nodes.length) % nodes.length];
+            else if (event.key === 'Home') target = nodes[0];
+            else if (event.key === 'End') target = nodes[nodes.length - 1];
+            else return;
+            nodes.forEach(node => { node.tabIndex = node === target ? 0 : -1; });
+            target.focus();
+            // Les flèches font défiler la carte sous le panneau sans cela.
+            event.preventDefault();
+        });
+
+        // Un clic ailleurs referme le choix : il a été fait, ou on passe à autre
+        // chose. La carte seule ne suffisait pas — la légende et l'entête le
+        // laissaient ouvert derrière elles. En phase de capture, car Leaflet
+        // retient les évènements de la carte avant qu'ils n'atteignent le
+        // document ; le bouton garde sa propre bascule, d'où son exception.
+        document.addEventListener('pointerdown', event => {
+            const panel = document.getElementById('basemapPicker');
+            if (!panel?.classList.contains('is-open')) return;
+            if (panel.contains(event.target)) return;
+            if (document.getElementById('basemapBtn')?.contains(event.target)) return;
+            window.toggleBasemapPicker(false);
+        }, true);
 
         window.renderBasemapChoices();
 

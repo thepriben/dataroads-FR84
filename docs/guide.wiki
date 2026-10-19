@@ -44,7 +44,11 @@ Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte 
 
 '''Le fond de carte s'arrête au Vaucluse.''' La carte n'est dessinée qu'à l'intérieur du département ; autour, un aplat sobre, sans rien. Ce n'est pas qu'une affaire de lisibilité : les tuiles hors du Vaucluse ne sont même pas demandées au serveur, ce qui rend le chargement et le dézoom nettement plus rapides.
 
-'''Cinq fonds au choix.''' Le bouton en forme de calques, dans la barre d'outils, ouvre la liste : '''IGN — Plan''' par défaut, '''IGN — BD ORTHO''' et '''Esri — Imagerie''' pour les vues aériennes, '''OpenStreetMap''' et '''OpenStreetMap France'''. La photo aérienne sert à voir ce que le plan ne dit pas — l'emprise réelle d'un carrefour, la largeur d'une aire, ce qui pousse sur un accotement ; les deux rendus OSM montrent la donnée telle que les contributeurs la voient. Les plans sont désaturés pour rester derrière les routes, les vues aériennes ne le sont pas, leur couleur étant ce qu'on vient y chercher. Le fond choisi part dans le lien de partage, et le découpage au département vaut pour tous.
+'''Cinq fonds au choix.''' Le bouton en forme de calques, dans la barre d'outils, ouvre la liste : '''IGN — Plan''' par défaut, '''IGN — BD ORTHO''' et '''Esri — Imagerie''' pour les vues aériennes, '''OpenStreetMap''' et '''OpenStreetMap France'''. Chaque ligne montre une vignette — une vraie tuile du département, prise sur Avignon — pour qu'on voie le fond avant de le choisir au lieu de le deviner à son nom. La photo aérienne sert à voir ce que le plan ne dit pas — l'emprise réelle d'un carrefour, la largeur d'une aire, ce qui pousse sur un accotement ; les deux rendus OSM montrent la donnée telle que les contributeurs la voient. Les plans sont désaturés pour rester derrière les routes, les vues aériennes ne le sont pas, leur couleur étant ce qu'on vient y chercher. Le fond choisi part dans le lien de partage, et le découpage au département vaut pour tous.
+
+Le panneau s'utilise aussi au clavier : les '''flèches''' parcourent les cinq entrées, la '''barre d'espace''' ou l'''''entrée''' valide celle où l'on se trouve, <span class="guide-kbd">Échap</span> referme. Un clic n'importe où ailleurs dans la page referme également.
+
+{{hint|Les vues aériennes ne portent aucun nom de lieu : c'est la photo brute de l'IGN ou d'Esri. Pour retrouver un toponyme, repassez au Plan IGN ou à l'un des rendus OpenStreetMap.}}
 
 == Contrôles de visibilité {#controles} ==
 

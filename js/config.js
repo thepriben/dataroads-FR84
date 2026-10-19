@@ -75,7 +75,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.26.1',
+        version: '0.27.0',
         repository,
         // Le fond par défaut, et celui que prend la visionneuse 3D des ponts, qui
         // peint son sol tuile par tuile sur un canvas : le Plan IGN, carte de

@@ -1124,15 +1124,24 @@
            laisser libres le bandeau d'outils en haut et la légende à gauche. */
         /* Posé sous la barre d'outils, dont il dépend : le bouton y est, et le
            panneau s'ouvre juste dessous plutôt que de rester affiché en
-           permanence — la carte est déjà chargée de panneaux. */
+           permanence — la carte est déjà chargée de panneaux. Ce décalage n'est
+           qu'un repli : le script repose le panneau sous le bas mesuré de la
+           barre, dont la hauteur change avec la largeur de la fenêtre. */
         .basemap-picker {
             position: absolute;
             top: 58px;
             right: 12px;
             z-index: 999;
             display: none;
-            width: 232px;
+            /* Assez large pour que « IGN — BD ORTHO (aérien) » tienne sur une
+               ligne à côté de sa vignette : le plus long des cinq noms règle la
+               largeur du panneau. */
+            width: 286px;
             max-width: calc(100% - 24px);
+            /* Le panneau a grandi avec ses vignettes : en paysage sur téléphone,
+               il doit défiler plutôt que de dépasser sous la carte. */
+            max-height: calc(100% - 84px);
+            overflow-y: auto;
             padding: 8px;
             background: rgba(255, 255, 255, 0.97);
             border: 1px solid #e5e9ec;
@@ -1157,9 +1166,9 @@
         .basemap-choice {
             display: flex;
             align-items: center;
-            gap: 9px;
+            gap: 10px;
             width: 100%;
-            padding: 7px 8px;
+            padding: 6px 8px;
             border: 0;
             border-radius: 7px;
             background: transparent;
@@ -1179,6 +1188,31 @@
             font-weight: 600;
         }
 
+        /* Les flèches déplacent le focus sans choisir : il faut donc le voir, sinon
+           parcourir le groupe au clavier ne montre rien du tout. */
+        .basemap-choice:focus-visible {
+            outline: 2px solid #1d4ed8;
+            outline-offset: -2px;
+        }
+
+        /* Un aplat neutre tient la place avant que la tuile n'arrive, et y reste si
+           le fournisseur ne répond pas : un trou gris se lit mieux qu'une icône
+           d'image cassée. */
+        .basemap-choice-thumb {
+            flex: 0 0 auto;
+            width: 52px;
+            height: 52px;
+            border-radius: 5px;
+            border: 1px solid #dfe4e8;
+            background: #eceff1;
+            object-fit: cover;
+        }
+
+        .basemap-choice-label {
+            flex: 1 1 auto;
+            line-height: 1.25;
+        }
+
         /* Le même rond que les boutons radio de la copie d'écran : l'anneau est
            toujours là, c'est le point central qui apparaît. */
         .basemap-choice-dot {
@@ -1192,6 +1226,18 @@
         .basemap-choice.is-active .basemap-choice-dot {
             border-color: #3498DB;
             background: radial-gradient(circle, #3498DB 0 3.5px, transparent 3.5px);
+        }
+
+        /* Le panneau n'avait aucune règle pour le téléphone, là où tous les autres
+           en ont : il se serre contre le bord de l'écran comme le récapitulatif,
+           huit pixels au lieu de douze, le pouce ayant besoin de ce qui reste. La
+           hauteur des lignes, elle, n'a plus à être forcée — la vignette passe
+           déjà la cible tactile à elle seule. */
+        @media (max-width: 720px) {
+            .basemap-picker {
+                right: 8px;
+                max-width: calc(100% - 16px);
+            }
         }
 
         .latest-recap {

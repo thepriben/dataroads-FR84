@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.27.0] - 2026-10-19
+
+### Added
+
+- **A preview thumbnail for each basemap, because five names chose blind.** "IGN — BD ORTHO" and "Esri — Imagerie" tell you they are aerial and nothing else; "OpenStreetMap" and "OpenStreetMap France" do not even tell you that much apart. Each entry now carries a real tile of the department — Avignon, the Rhône and its ring roads — served by the provider itself, so the list shows what it is offering instead of naming it. The thumbnail wears the entry's own filter, desaturated for a plan and plain for an aerial view, rather than advertising a colour the map will not produce.
+- Nothing is fetched for this at startup. The five tiles leave only when the panel is first opened, which is the moment the choice is actually being made, and the elements are kept and moved from one render to the next rather than copied, so reopening the panel asks the network for nothing. Measured in Chrome: 0 requests before the first opening, 5 requests and 178 kB on it, 0 on every opening afterwards.
+- Zoom 13 rather than 12 for that tile. Shrunk to fifty pixels, a zoom 12 tile mashes the whole city into a pulp in which the three plans look alike, where zoom 13 still lets the river, the ring roads and each rendering's own tint come through — six kilobytes more, measured, for thumbnails that finally distinguish what they announce.
+- **Keyboard navigation, which the panel had been promising without providing.** It declared `role="radiogroup"` and `role="radio"`, which promises arrow keys to anyone using a screen reader, and implemented none: no arrows, no `Escape`, no focus handling at all. An interface that lies about its own role is worse than a neutral one. The arrows now move through the five entries and wrap around, `Home` and `End` jump to the ends, `Escape` closes the panel and hands focus back to the button, and opening the panel puts focus on the entry currently in force.
+- The arrows move focus without choosing. Choosing replaces the tile layer, so walking through the five basemaps to reach the last would have ordered five sets of tiles — about a hundred tiles for the one basemap actually wanted. The ARIA rules provide for exactly this variant when selection is expensive: space or enter confirms, and the button handles that itself. Only the entry in force is in the tab order, so leaving the group takes one tab rather than five.
+
+### Changed
+
+- **A click anywhere outside the panel now closes it.** A click on the map did, which covered the common case and left every other one open: the legend, the header, the key figures. The listener sits on the document in the capture phase, Leaflet holding on to the map's own events before they reach it.
+- **The panel no longer touches the toolbar it hangs from.** Its offset was written out as 58 pixels, which is exactly where the toolbar ends: measured at thirteen window widths from 360 to 1600 pixels, the gap was 0 below 1280 and 4 above. It is now placed under the toolbar's measured bottom edge, so the gap is 8 pixels at every width — and the day the toolbar wraps onto two lines, the panel will still be below it rather than behind it.
+- **The picker finally has the mobile rules every other panel has.** It had none. It now keeps eight pixels from the screen edge like the recap panel does, and scrolls instead of running off the bottom of a landscape phone. Its rows, 31 pixels tall before, are now 64: the thumbnail alone carries them past the 44-pixel touch target, so there is no need to force a height.
+
+### Not done
+
+- **No place-name overlay on the aerial views.** The need is real — on BD ORTHO or Esri imagery not a single toponym remains, and you see the ground without knowing where you are — but nothing clean exists to meet it. The Géoplateforme publishes no transparent toponym-only raster: all 870 of its WMTS layers were listed and none is one. CARTO's `light_only_labels` answers HTTP 200 without a key but returns the same bytes at every zoom, which is the "API KEY REQUIRED" stamp this project already documented for Positron. Stadia, which inherited the Stamen label layers, answers 401. Esri's two world reference layers are genuinely free and keyless, and were rendered over the orthophoto to judge them: they place one or two toponyms per tile up to zoom 14 and then nothing at all, so they go quiet exactly where an aerial view earns its keep — on the junction being examined at zoom 16 and beyond. Buying that with a second tile request on every aerial pan was not worth it.
+
 ## [0.26.1] - 2026-10-19
 
 ### Fixed
