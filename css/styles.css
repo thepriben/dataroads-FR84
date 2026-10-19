@@ -925,6 +925,10 @@
             .map-stage.has-digest .bridge-viewer-panel {
                 right: calc(var(--digest-width) + 14px);
             }
+
+            .map-stage.has-digest .basemap-picker {
+                right: calc(var(--digest-width) + 12px);
+            }
         }
 
         /* Floating data quality button */
@@ -1118,6 +1122,78 @@
 
         /* Récapitulatif des derniers changements : posé en bas à droite pour
            laisser libres le bandeau d'outils en haut et la légende à gauche. */
+        /* Posé sous la barre d'outils, dont il dépend : le bouton y est, et le
+           panneau s'ouvre juste dessous plutôt que de rester affiché en
+           permanence — la carte est déjà chargée de panneaux. */
+        .basemap-picker {
+            position: absolute;
+            top: 58px;
+            right: 12px;
+            z-index: 999;
+            display: none;
+            width: 232px;
+            max-width: calc(100% - 24px);
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.97);
+            border: 1px solid #e5e9ec;
+            border-radius: 10px;
+            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
+            backdrop-filter: blur(10px);
+        }
+
+        .basemap-picker.is-open {
+            display: block;
+        }
+
+        .basemap-picker-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #7f8c8d;
+            padding: 2px 6px 7px;
+        }
+
+        .basemap-choice {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            width: 100%;
+            padding: 7px 8px;
+            border: 0;
+            border-radius: 7px;
+            background: transparent;
+            font: inherit;
+            font-size: 0.82rem;
+            color: #2C3E50;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .basemap-choice:hover {
+            background: #f1f5f8;
+        }
+
+        .basemap-choice.is-active {
+            background: #eef5fb;
+            font-weight: 600;
+        }
+
+        /* Le même rond que les boutons radio de la copie d'écran : l'anneau est
+           toujours là, c'est le point central qui apparaît. */
+        .basemap-choice-dot {
+            flex: 0 0 auto;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #bdc3c7;
+            border-radius: 50%;
+        }
+
+        .basemap-choice.is-active .basemap-choice-dot {
+            border-color: #3498DB;
+            background: radial-gradient(circle, #3498DB 0 3.5px, transparent 3.5px);
+        }
+
         .latest-recap {
             position: absolute;
             right: 14px;

@@ -35,7 +35,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261014-3">
+    <link rel="stylesheet" href="css/styles.css?v=20261019-1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -845,6 +845,9 @@
                     <button type="button" class="map-tool map-tool--compact map-tool--legend" id="mapLegendBtn" title="Afficher ou masquer la légende" aria-label="Afficher ou masquer la légende" aria-controls="appSidebar" aria-expanded="false">
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
                     </button>
+                    <button type="button" class="map-tool map-tool--compact" onclick="window.toggleBasemapPicker && window.toggleBasemapPicker()" id="basemapBtn" title="Changer le fond de carte : plan, photo aérienne" aria-label="Changer le fond de carte" aria-controls="basemapPicker" aria-expanded="false">
+                        <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 7 12 12 2 7 12 2"/><polyline points="2 12 12 17 22 12"/><polyline points="2 17 12 22 22 17"/></svg></span>
+                    </button>
                     <button type="button" class="map-tool map-tool--compact" onclick="window.resetMapView && window.resetMapView()" id="mapResetBtn" title="Revenir à la vue initiale du département" aria-label="Revenir à la vue initiale du département">
                         <span class="map-tool-icon map-tool-icon--svg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5"/><path d="M5 10v9h14v-9"/><path d="M10 21v-6h4v6"/></svg></span>
                     </button>
@@ -871,6 +874,14 @@
                         <span class="map-tool-pnx" aria-hidden="true">P</span>
                     </button>
                 </div>
+
+                <!-- Choix du fond : les boutons radio sont écrits par le script
+                     depuis APP_CONFIG.basemaps, pour qu'ajouter un fournisseur
+                     ne demande pas de toucher à cette page. -->
+                <aside class="basemap-picker" id="basemapPicker" aria-hidden="true" aria-label="Fond de carte">
+                    <div class="basemap-picker-title">Fond de carte</div>
+                    <div class="basemap-picker-body" id="basemapPickerBody" role="radiogroup" aria-label="Fond de carte"></div>
+                </aside>
 
                 <!-- Récapitulatif des derniers changements OSM sur l'emprise affichée -->
                 <aside class="latest-recap" id="latestChangesRecap" aria-live="polite">
@@ -988,7 +999,7 @@
 
     </div>
 
-    <script src="js/config.js?v=20261014-3"></script>
+    <script src="js/config.js?v=20261019-1"></script>
     <script>
         (function () {
             var el = document.getElementById('siteVersion');
@@ -999,7 +1010,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260825-2"></script>
-    <script src="js/app.js?v=20261014-3"></script>
+    <script src="js/app.js?v=20261019-1"></script>
     <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260826-4"></script>
 </body>

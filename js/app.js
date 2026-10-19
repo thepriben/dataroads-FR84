@@ -1581,7 +1581,14 @@
             const terr = params.get('terr');
             if (terr && terr.includes(':')) state.territory = terr.trim();
 
-            if (!state.view && !state.layersExplicit && !state.families.length && !state.territory) {
+            // Le fond de carte fait partie de ce qu'on partage : une photo
+            // aérienne ne dit pas la même chose qu'un plan, et un lien envoyé
+            // pour montrer l'emprise d'un carrefour doit rouvrir sur la photo.
+            const bg = params.get('bg');
+            if (bg) state.basemap = bg.trim();
+
+            if (!state.view && !state.layersExplicit && !state.families.length
+                && !state.territory && !state.basemap) {
                 return null;
             }
             return state;
@@ -1673,6 +1680,13 @@
 
                 const territory = territorialStateForUrl();
                 if (territory) params.set('terr', territory);
+
+                // Seul un fond autre que celui par défaut s'écrit : inutile
+                // d'alourdir tous les liens pour dire ce qui va de soi.
+                const basemapId = window.activeBasemapId?.();
+                if (basemapId && basemapId !== window.APP_CONFIG?.basemaps?.[0]?.id) {
+                    params.set('bg', basemapId);
+                }
 
                 const query = params.toString();
                 const next = query
@@ -1897,6 +1911,10 @@
             appUrlFamiliesPending = null;
             initAppUrlStateFromLocation();
             tryApplyAppUrlState();
+            // Revenir en arrière doit aussi rendre son fond : c'est une partie
+            // de la vue, au même titre que le cadrage.
+            const back = parseAppUrlState();
+            window.selectBasemap?.(back?.basemap || window.APP_CONFIG?.basemaps?.[0]?.id);
         });
 
         function getFamilyLayerCounts(familyId) {
@@ -7461,19 +7479,118 @@
         window.map.setMinZoom(basemapConfig.minZoom || 8);
         window.map.setMaxZoom(basemapConfig.maxZoom || 19);
 
-        window.basemapLayer = L.tileLayer(basemapConfig.url, {
-            attribution: basemapConfig.attribution,
-            minZoom: basemapConfig.minZoom || 8,
-            maxZoom: basemapConfig.maxZoom || 19,
-            keepBuffer: 2,
-            bounds: focusBounds
-        }).addTo(window.map);
+        // Le masque de découpe n'existe qu'une fois la frontière chargée, bien
+        // après le premier fond. Il est retenu ici pour que les fonds suivants
+        // en héritent, sans quoi changer de fond ferait repartir les requêtes
+        // sur tout le rectangle de tuiles, Drôme et Gard compris.
+        let focusTileMask = null;
 
-        // Désaturation portée par la couche et non par le tilePane, que d'autres
-        // couches partagent et qui n'a pas à pâlir avec le fond.
-        if (basemapConfig.filter && window.basemapLayer.getContainer()) {
-            window.basemapLayer.getContainer().style.filter = basemapConfig.filter;
+        const BASEMAP_ENTRIES = Array.isArray(window.APP_CONFIG?.basemaps)
+            && window.APP_CONFIG.basemaps.length
+            ? window.APP_CONFIG.basemaps
+            : [basemapConfig];
+
+        function basemapEntry(id) {
+            return BASEMAP_ENTRIES.find(entry => entry.id === id) || BASEMAP_ENTRIES[0];
         }
+
+        function applyFocusMaskToLayer(layer) {
+            if (!focusTileMask || !layer) return;
+            const isValidTile = L.TileLayer.prototype._isValidTile;
+            layer._isValidTile = function(coords) {
+                if (!isValidTile.call(this, coords)) return false;
+                return maskCoversTile(focusTileMask, this._tileCoordsToBounds(coords));
+            };
+        }
+
+        function createBasemapLayer(entry) {
+            const layer = L.tileLayer(entry.url, {
+                attribution: entry.attribution,
+                minZoom: basemapConfig.minZoom || 8,
+                maxZoom: basemapConfig.maxZoom || 19,
+                subdomains: entry.subdomains || 'abc',
+                keepBuffer: 2,
+                bounds: focusBounds
+            });
+            applyFocusMaskToLayer(layer);
+
+            layer.on('tileerror', () => {
+                if (basemapTileRetryTimer) return;
+                basemapTileRetryTimer = window.setTimeout(() => {
+                    basemapTileRetryTimer = null;
+                    window.ensureBasemapVisible();
+                    if (!basemapHasLoadedTiles() && window.map) {
+                        window.map.invalidateSize({ pan: false });
+                    }
+                }, 480);
+            });
+
+            layer.addTo(window.map);
+            // Désaturation portée par la couche et non par le tilePane, que
+            // d'autres couches partagent et qui n'a pas à pâlir avec le fond.
+            // Posée après l'ajout : le conteneur n'existe pas avant.
+            const container = layer.getContainer();
+            if (container) container.style.filter = entry.filter || '';
+            return layer;
+        }
+
+        let activeBasemapId = basemapEntry(INITIAL_APP_URL_STATE?.basemap).id;
+        window.basemapLayer = createBasemapLayer(basemapEntry(activeBasemapId));
+
+        // Changer de fond, c'est remplacer la couche : garder l'ancienne sous la
+        // nouvelle doublerait les requêtes et laisserait son filtre s'appliquer
+        // à travers les trous de celle du dessus.
+        window.selectBasemap = function(id) {
+            const entry = basemapEntry(id);
+            if (!entry || entry.id === activeBasemapId) return;
+            const previous = window.basemapLayer;
+            activeBasemapId = entry.id;
+            window.basemapLayer = createBasemapLayer(entry);
+            if (previous) window.map.removeLayer(previous);
+            window.renderBasemapChoices?.();
+            scheduleAppUrlSync();
+        };
+
+        window.activeBasemapId = () => activeBasemapId;
+        window.basemapEntries = () => BASEMAP_ENTRIES;
+
+        // La liste est écrite depuis la configuration : ajouter un fournisseur
+        // ne demande qu'une entrée de plus dans `basemaps`.
+        window.renderBasemapChoices = function() {
+            const body = document.getElementById('basemapPickerBody');
+            if (!body) return;
+            body.innerHTML = BASEMAP_ENTRIES.map(entry => {
+                const on = entry.id === activeBasemapId;
+                return `<button type="button" class="basemap-choice${on ? ' is-active' : ''}"`
+                    + ` role="radio" aria-checked="${on}" data-basemap="${entry.id}">`
+                    + '<span class="basemap-choice-dot" aria-hidden="true"></span>'
+                    + `<span class="basemap-choice-label">${escapeHtml(entry.label || entry.id)}</span>`
+                    + '</button>';
+            }).join('');
+        };
+
+        window.toggleBasemapPicker = function(force) {
+            const panel = document.getElementById('basemapPicker');
+            const button = document.getElementById('basemapBtn');
+            if (!panel) return;
+            const open = typeof force === 'boolean' ? force : !panel.classList.contains('is-open');
+            panel.classList.toggle('is-open', open);
+            panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+            button?.setAttribute('aria-expanded', open ? 'true' : 'false');
+            button?.classList.toggle('active', open);
+            if (open) window.renderBasemapChoices();
+        };
+
+        document.getElementById('basemapPickerBody')?.addEventListener('click', event => {
+            const choice = event.target.closest('[data-basemap]');
+            if (choice) window.selectBasemap(choice.dataset.basemap);
+        });
+
+        // Un clic sur la carte referme le choix : il a été fait, ou on passe à
+        // autre chose. Le bouton garde sa propre bascule.
+        window.map.on('click', () => window.toggleBasemapPicker(false));
+
+        window.renderBasemapChoices();
 
         // L'écran d'attente ne se retire qu'une fois les deux moitiés de la carte
         // en place : les tuiles, et la frontière qui découpe le département. Sans
@@ -7501,17 +7618,6 @@
         // Filet : une tuile qui ne vient jamais ne doit pas laisser la démo
         // derrière un écran d'attente perpétuel.
         window.setTimeout(() => window.settleMapLoader('giveup'), 12000);
-
-        window.basemapLayer.on('tileerror', () => {
-            if (basemapTileRetryTimer) return;
-            basemapTileRetryTimer = window.setTimeout(() => {
-                basemapTileRetryTimer = null;
-                window.ensureBasemapVisible();
-                if (!basemapHasLoadedTiles() && window.map) {
-                    window.map.invalidateSize({ pan: false });
-                }
-            }, 480);
-        });
 
         // Le cadre des tuiles est un rectangle, le département n'en est pas un.
         // Deux traitements pour ce débord : un aplat qui le couvre à l'écran, et
@@ -7617,13 +7723,10 @@
             }).addTo(window.map);
 
             const mask = buildFocusMask(rings);
-            if (!mask || !window.basemapLayer) return;
-            const layer = window.basemapLayer;
-            const isValidTile = L.TileLayer.prototype._isValidTile;
-            layer._isValidTile = function(coords) {
-                if (!isValidTile.call(this, coords)) return false;
-                return maskCoversTile(mask, this._tileCoordsToBounds(coords));
-            };
+            if (!mask) return;
+            // Retenu pour les fonds suivants, puis posé sur celui qui est là.
+            focusTileMask = mask;
+            applyFocusMaskToLayer(window.basemapLayer);
         }
 
         function basemapHasLoadedTiles() {

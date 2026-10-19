@@ -5,6 +5,17 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.25.0] - 2026-10-19
+
+### Added
+
+- **Five basemaps instead of one.** A layers button in the map toolbar opens the list: the IGN Plan as before, the IGN's BD ORTHO and Esri's imagery for aerial views, and the two OpenStreetMap renderings. Aerial imagery shows what a plan cannot — the real extent of a junction, the width of a rest area, what grows on a verge — and the OSM renderings show the data as contributors see it. All raster, free and keyless, like the plan they join.
+- The chosen basemap travels in the share link as `bg=`, written only when it is not the default one, and comes back on browser history navigation like the rest of the view.
+
+### Changed
+
+- Desaturation is now a property of each basemap rather than of the map: the plans keep theirs, the aerial views get none, their colour being exactly what one comes for. Switching basemaps replaces the layer instead of stacking a second one, and the new layer inherits the Vaucluse clipping mask, so a switch does not send tile requests across Drôme and Gard again.
+
 ## [0.24.2] - 2026-10-14
 
 ### Fixed
