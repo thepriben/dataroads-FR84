@@ -7,7 +7,17 @@ on:
         description: "Ne reprendre que les jeux périmés"
         type: boolean
         default: false
+      full:
+        description: "Tout réextraire sans consulter le diff"
+        type: boolean
+        default: false
   schedule:
+    # Le rendez-vous nocturne est quotidien, mais il n'extrait plus les onze
+    # jeux : un unique diff OSM des dernières vingt-quatre heures dit lesquels
+    # ont réellement bougé, et seuls ceux-là sont relus. Interroger chaque nuit
+    # ``overpass-api.de`` — service public gratuit — onze fois pour redécouvrir
+    # que les cantons du Vaucluse n'ont pas changé n'avait de justification que
+    # l'absence d'un moyen de le savoir à moindres frais.
     # Le rendez-vous est 2 h du matin, heure de France. Les crons de GitHub
     # Actions sont en UTC et ignorent les fuseaux : 2 h à Paris vaut 00:00 UTC
     # l'été (CEST) et 01:00 UTC l'hiver (CET). Un cron unique dériverait donc
@@ -24,7 +34,7 @@ on:
     # n'a pas su rapatrier n'atteint le seuil de péremption (trente heures) qu'en
     # fin de matinée, et attendre le milieu du jour laisse par ailleurs le temps
     # à un passage nocturne simplement retardé d'arriver avant — sans quoi le
-    # rattrapage reprendrait les douze jeux que le passage complet s'apprête à
+    # rattrapage reprendrait les onze jeux que le passage complet s'apprête à
     # relire.
     - cron: "47 12 * * *"
 
@@ -77,13 +87,24 @@ jobs:
           ref: main
           fetch-depth: 0
       - name: Update GeoJSON
+        id: extraction
+        # Le dimanche, le filet : tout est réextrait sans rien demander au diff.
+        # Le rapprochement « objet modifié → jeu concerné » comporte une part de
+        # jugement, et ses angles morts sont connus — un sommet déplacé sur un
+        # chemin sans tag qui compose une limite communale n'apparaît dans aucun
+        # diff filtré par tags. Sans reprise périodique, une erreur de
+        # rapprochement laisserait un jeu faux pendant des mois sans que rien ne
+        # le signale ; une fois par semaine, elle ne survit pas à sept jours.
         env:
           STALE_ONLY: ${{ github.event.schedule == '47 12 * * *' || inputs.stale_only }}
+          FULL: ${{ inputs.full }}
         run: |
           if [ "${STALE_ONLY}" = "true" ]; then
             python3 scripts/update_osm_geojson.py --stale-only
-          else
+          elif [ "${FULL}" = "true" ] || [ "$(date -u +%u)" = "7" ]; then
             python3 scripts/update_osm_geojson.py
+          else
+            python3 scripts/update_osm_geojson.py --since-diff
           fi
       - name: Rebuild territorial attribution
         # La table territoriale désigne les tronçons par leur identifiant OSM :
@@ -92,12 +113,21 @@ jobs:
         # Un rattrapage qui ne trouve rien à reprendre n'a rien redécoupé : la
         # recalculer quand même irait interroger DataSud et l'API Géo chaque
         # matin pour réécrire deux fichiers à l'identique.
+        # Le verdict ne peut plus se lire dans ``git diff`` : une nuit pilotée
+        # par le diff OSM touche tous les extraits, ne serait-ce que pour
+        # horodater la vérification des jeux qu'elle épargne. Seuls comptent les
+        # trois jeux dont la table se déduit, et seulement s'ils ont été relus.
         if: always()
+        env:
+          REFRESHED: ${{ steps.extraction.outputs.refreshed }}
         run: |
-          if git diff --quiet -- data/osm; then
-            echo "Aucun extrait modifié : table territoriale inchangée."
-            exit 0
-          fi
+          case " ${REFRESHED} " in
+            *" departmental-roads "*|*" communes-vaucluse "*|*" cantons-vaucluse "*) ;;
+            *)
+              echo "Ni réseau ni découpage relus : table territoriale inchangée."
+              exit 0
+              ;;
+          esac
           python3 scripts/update_territorial_units.py
       - name: Commit changes
         # Un jeu refusé par Overpass fait échouer l'étape précédente, mais ce

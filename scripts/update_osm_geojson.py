@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import urllib.error
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from project_meta import read_version, user_agent
 from overpass_client import fetch
+import osm_diff_selection
 
 DATA_DIR = ROOT / "data" / "osm"
 ENDPOINT = os.environ.get("OVERPASS_ENDPOINT", "https://overpass-api.de/api/interpreter")
@@ -822,8 +824,14 @@ def refresh_cache(name: str, query: str) -> bool:
     # faits périmés. On retient donc la coupure annoncée par le serveur, la
     # seule qui permette de savoir jusqu'à quand OSM a été lu.
     base_timestamp = (overpass_data.get("osm3s") or {}).get("timestamp_osm_base")
-    if base_timestamp and isinstance(geojson.get("_cache"), dict):
-        geojson["_cache"]["source_timestamp"] = base_timestamp
+    if isinstance(geojson.get("_cache"), dict):
+        if base_timestamp:
+            geojson["_cache"]["source_timestamp"] = base_timestamp
+        # Une extraction vaut vérification : le jeu colle à OSM jusqu'à la
+        # coupure annoncée. Porter la date sous la même clé que les jeux
+        # seulement confrontés au diff évite au navigateur d'avoir à distinguer
+        # les deux pour savoir si un retard est réel.
+        geojson["_cache"]["verified_at"] = base_timestamp or geojson["_cache"]["generated_at"]
 
     output_path = DATA_DIR / f"{name}.geojson"
     changed = write_json_if_changed(output_path, geojson)
@@ -855,22 +863,65 @@ def parse_timestamp(value: Any) -> datetime | None:
     return moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)
 
 
-def cache_age(name: str, now: datetime) -> timedelta | None:
-    """L'âge du contenu d'un jeu, ou None quand il n'a pas d'âge lisible.
+def read_cache(name: str) -> dict[str, Any] | None:
+    path = DATA_DIR / f"{name}.geojson"
+    try:
+        cache = json.loads(path.read_text(encoding="utf-8")).get("_cache")
+    except (OSError, json.JSONDecodeError):
+        return None
+    return cache if isinstance(cache, dict) else None
 
-    La coupure annoncée par Overpass prime sur l'heure d'écriture : c'est elle
-    qui dit jusqu'à quand OSM a été lu. Un fichier absent ou illisible n'a pas
+
+def verified_through(name: str) -> datetime | None:
+    """Jusqu'à quand OSM a été lu en tenant ce jeu pour exact.
+
+    Une nuit pilotée par le diff laisse volontairement dix jeux sur onze en
+    place : leur contenu date d'avant, mais il vient d'être confronté aux
+    contributions de la nuit et déclaré intact. Confondre les deux dates, c'est
+    déclarer périmée une donnée vérifiée — et un signal qui crie à tort cesse
+    d'être lu.
+    """
+    cache = read_cache(name)
+    if cache is None:
+        return None
+    stamps = [
+        parse_timestamp(cache.get(key))
+        for key in ("verified_at", "source_timestamp", "generated_at")
+    ]
+    readable = [moment for moment in stamps if moment]
+    return max(readable) if readable else None
+
+
+def cache_age(name: str, now: datetime) -> timedelta | None:
+    """L'âge de ce qu'on sait d'un jeu, ou None quand il n'a pas d'âge lisible.
+
+    L'âge compté est celui de la dernière vérification, et non celui du contenu :
+    un jeu que la nuit a confronté au diff sans rien trouver à y changer n'a pas
+    manqué son rendez-vous, il l'a tenu. Un fichier absent ou illisible n'a pas
     d'âge mesurable mais réclame quand même une extraction, d'où le None que
     l'appelant traite comme un retard.
     """
+    moment = verified_through(name)
+    return now - moment if moment else None
+
+
+def mark_verified(name: str, verified_at: str) -> bool:
+    """Horodate la vérification d'un jeu que le diff a trouvé intact.
+
+    Rien n'est réécrit du contenu : seule avance la date jusqu'à laquelle on
+    peut affirmer qu'il colle à OSM. C'est la contrepartie du jeu non réextrait
+    — sans elle, l'application le dirait en retard dès le lendemain matin.
+    """
     path = DATA_DIR / f"{name}.geojson"
     try:
-        cache = json.loads(path.read_text(encoding="utf-8")).get("_cache") or {}
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return None
-
-    moment = parse_timestamp(cache.get("source_timestamp")) or parse_timestamp(cache.get("generated_at"))
-    return now - moment if moment else None
+        return False
+    cache = payload.get("_cache")
+    if not isinstance(cache, dict):
+        return False
+    cache["verified_at"] = verified_at
+    return write_json_if_changed(path, payload)
 
 
 def stale_datasets(names: list[str] | None = None, now: datetime | None = None) -> list[str]:
@@ -883,6 +934,49 @@ def stale_datasets(names: list[str] | None = None, now: datetime | None = None) 
     return overdue
 
 
+def diff_selection(queries: dict[str, str], now: datetime) -> tuple[dict[str, str], str | None]:
+    """Les jeux à relire d'après le diff OSM, et jusqu'à quand OSM a été lu.
+
+    Un verdict vide est un verdict : la nuit n'a touché aucun des onze jeux, et
+    l'unique requête du diff remplace les onze extractions. Mais perdre la
+    source d'information ne doit jamais se traduire par une nuit blanche
+    silencieuse : toute incertitude — diff indisponible, illisible, fenêtre trop
+    large, jeu sans date de vérification — rend la main à l'extraction complète,
+    signalée ici par un second membre nul.
+    """
+    verified = {name: verified_through(name) for name in queries}
+    since = osm_diff_selection.window_start(verified, now)
+    if since is None:
+        print("Diff hors de portée (jeu jamais vérifié ou fenêtre trop large) : extraction complète.")
+        return dict.fromkeys(queries, "extraction complète"), None
+
+    by_dataset = osm_diff_selection.dataset_selectors(queries)
+    selectors = osm_diff_selection.merge_selectors(by_dataset)
+    query = osm_diff_selection.adiff_query(since, selectors)
+    print(f"Diff OSM depuis {since:%Y-%m-%dT%H:%M:%SZ} ({len(selectors)} motifs)")
+    try:
+        payload = fetch(query, endpoint=ENDPOINT, user_agent=USER_AGENT, output="xml",
+                        timeout=600, attempts=3, max_lag=timedelta(days=1))
+        changes, osm_base = osm_diff_selection.parse_adiff(payload)
+    except (urllib.error.URLError, TimeoutError, RuntimeError, ET.ParseError) as error:
+        print(f"Diff OSM indisponible ({error}) : repli sur l'extraction complète.", file=sys.stderr)
+        return dict.fromkeys(queries, "diff indisponible"), None
+    if not osm_base:
+        print("Diff OSM sans coupure annoncée : repli sur l'extraction complète.", file=sys.stderr)
+        return dict.fromkeys(queries, "diff sans coupure"), None
+
+    references = {
+        name: osm_diff_selection.dataset_references(DATA_DIR / f"{name}.geojson")
+        for name in queries
+    }
+    verdict = osm_diff_selection.affected_datasets(changes, by_dataset, references)
+    print(f"Diff OSM : {len(changes)} objets touchés, OSM lu jusqu'au {osm_base}")
+    for name in queries:
+        reason = verdict.get(name)
+        print(f"  {name}: {'à relire — ' + reason if reason else 'inchangé'}")
+    return verdict, osm_base
+
+
 def main() -> int:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Overpass endpoint: {ENDPOINT}")
@@ -890,7 +984,11 @@ def main() -> int:
 
     arguments = sys.argv[1:]
     stale_only = "--stale-only" in arguments
-    selected = [argument for argument in arguments if argument != "--stale-only"]
+    since_diff = "--since-diff" in arguments
+    selected = [
+        argument for argument in arguments
+        if argument not in ("--stale-only", "--since-diff")
+    ]
     if selected:
         unknown = [name for name in selected if name not in QUERIES]
         if unknown:
@@ -902,7 +1000,7 @@ def main() -> int:
         queries = dict(QUERIES)
 
     if stale_only:
-        # Le rattrapage ne rejoue que les rendez-vous manqués. Refaire les douze
+        # Le rattrapage ne rejoue que les rendez-vous manqués. Refaire les onze
         # jeux à midi coûterait un quart d'heure d'Overpass quelques heures après
         # que le passage nocturne les a déjà relus, et ce service public est
         # gratuit : on ne lui demande que ce que la nuit a laissé en arrière.
@@ -913,17 +1011,48 @@ def main() -> int:
             return 0
         print(f"Jeux périmés à rattraper : {', '.join(queries)}")
 
+    verified_at: str | None = None
+    spared: list[str] = []
+    if since_diff:
+        verdict, verified_at = diff_selection(queries, datetime.now(timezone.utc))
+        # Un jeu qui a manqué son tour se reprend quoi qu'en dise le diff : son
+        # fichier est vieux pour une autre raison que l'absence de contributions,
+        # et aucun diff ne peut le rajeunir.
+        for name in stale_datasets(list(queries)):
+            verdict.setdefault(name, "jeu périmé")
+        spared = [name for name in queries if name not in verdict]
+        queries = {name: query for name, query in queries.items() if name in verdict}
+        print(f"Extractions retenues : {len(queries)}/{len(queries) + len(spared)}")
+
     changed = False
+    rewritten: list[str] = []
     failed: list[str] = []
     for name, query in queries.items():
         try:
-            changed = refresh_cache(name, query) or changed
+            if refresh_cache(name, query):
+                rewritten.append(name)
+                changed = True
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, RuntimeError) as error:
             # Un jeu refusé ne doit pas emporter les suivants : autrement une
             # limite de débit sur l'un laisse tous les autres inchangés jusqu'à
             # la prochaine exécution planifiée, plusieurs jours plus tard.
             print(f"{name}: left unchanged after {error}", file=sys.stderr)
             failed.append(name)
+
+    if spared and verified_at:
+        for name in spared:
+            changed = mark_verified(name, verified_at) or changed
+        print(f"Jeux vérifiés inchangés jusqu'au {verified_at} : {', '.join(spared)}")
+
+    # Les étapes suivantes du workflow ont besoin de savoir ce qui a réellement
+    # été réécrit, et non ce que ``git diff`` voit : une nuit pilotée par le diff
+    # touche les onze fichiers, ne serait-ce que pour horodater la vérification
+    # des jeux épargnés. S'en remettre au diff reviendrait à recalculer chaque
+    # matin une table territoriale que rien n'a bougée.
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as handle:
+            handle.write(f"refreshed={' '.join(rewritten)}\n")
 
     if failed:
         # Un jeu qui manque son tour n'est pas une panne du rendez-vous : les

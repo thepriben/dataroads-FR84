@@ -50,6 +50,43 @@ run must still go through. A dataset refused by Overpass keeps its previous file
 rather than writing a truncated one, and the run stays green as long as at least
 one dataset could be read — a permanently red light warns of nothing any more.
 
+**The night is driven by the OSM diff.** The nightly pass no longer extracts the
+eleven datasets: it first asks Overpass for a single augmented diff over the last
+twenty-four hours, and re-extracts only the datasets genuinely touched
+(`python3 scripts/update_osm_geojson.py --since-diff`). Eleven extractions every
+night to rediscover that the cantons of Vaucluse have not changed cost
+`overpass-api.de` — a free public service — some eighty heavy requests a week. The
+mapping from a changed object to the datasets that show it is derived from the
+Overpass queries themselves (`scripts/osm_diff_selection.py`) rather than from a
+table copied alongside them, which would drift in silence, and three channels lead
+to a re-extraction: tags read **before and after** the change, so that a deletion
+is recognised as readily as an object entering or leaving a dataset's perimeter;
+membership of the already published dataset, which catches moved geometries and
+route members edited without their relation; and territorial divisions, which
+redefine the queried area itself. Doubt always favours re-extraction: one request
+too many costs nothing but machine time, whereas a missed dataset would display
+wrong data with nothing to signal it.
+
+**A dataset verified unchanged is not a late dataset.** The file of a dataset the
+diff found intact does not move, but its `_cache` block gains a `verified_at`: the
+date up to which OSM was read while holding it exact. The freshness chip reasons
+on that date rather than on the age of the content, without which communes
+verified that very night would be declared late on the third day without an edit —
+and a signal that cries wolf stops being read. The tooltip carries both dates. A
+dataset the diff could not examine does not see its verification move forward, and
+will therefore always end up being called late: of the two properties, that is the
+one which has already cost eleven days of stale data.
+
+**The Sunday net.** The Sunday nightly pass ignores the diff and takes everything
+back. The mapping involves a measure of judgement and its blind spots are known —
+a node moved on an untagged way that makes up a commune boundary appears in no
+tag-filtered diff. Without a periodic sweep, a mapping error would leave a dataset
+wrong for months; once a week, it cannot survive seven days. The same pass is
+triggered by hand through the workflow's `full` input. And should the diff source
+fall over — Overpass unavailable, unreadable answer, window grown too wide, a
+dataset without a verification date — the night falls back on the full extraction:
+losing the source of information must never turn into a silent sleepless night.
+
 **Daily catch-up.** An extra pass runs every day at 12:47 UTC and takes back only
 the datasets that are genuinely overdue
 (`python3 scripts/update_osm_geojson.py --stale-only`). A dataset is overdue when
@@ -59,12 +96,13 @@ scheduling delays, which have already pushed a nightly cron back by more than fi
 hours. Midday is not an arbitrary slot: a dataset the night failed to fetch only
 crosses that threshold late in the morning, and waiting for the middle of the day
 gives a merely delayed nightly pass time to land first — otherwise the catch-up
-would re-read the twelve datasets the full pass is about to take back. The
-timestamp consulted is the OSM cut-off
-announced by Overpass (`_cache.source_timestamp`), falling back to the write time;
+would re-read the eleven datasets the full pass is about to take back. The
+timestamp consulted is the last verification (`_cache.verified_at`), falling back
+to the OSM cut-off announced by Overpass (`_cache.source_timestamp`) and then to
+the write time;
 a missing or unreadable file counts as overdue. When nothing is late the catch-up
 issues no Overpass request at all and exits in under a second — the full pass makes
-twelve and takes a quarter of an hour. If Overpass stays broken the catch-up remains
+eleven and takes a quarter of an hour. If Overpass stays broken the catch-up remains
 one attempt a day: the selection is read from the files on disk, so a failed
 catch-up cannot feed itself. The same pass can be triggered by hand through the
 workflow's `stale_only` input.
@@ -160,7 +198,7 @@ python3 scripts/update_external_data.py
 dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 ```
 
-With no argument it processes all twelve datasets. It also accepts dataset names as
+With no argument it processes all eleven datasets. It also accepts dataset names as
 positional arguments (`python3 scripts/update_osm_geojson.py declassified-roads`)
 and the `--stale-only` option, which restricts the pass to overdue datasets and
 exits without asking Overpass for anything when there are none.

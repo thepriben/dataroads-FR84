@@ -55,6 +55,45 @@ si seuls certains jeux ont pu être rafraîchis. Un jeu en échec conserve son a
 fichier plutôt que d'en écrire un tronqué, et l'exécution reste verte tant qu'au
 moins un jeu a pu être lu — un voyant rouge en permanence ne prévient plus de rien.
 
+**La nuit est pilotée par le diff OSM.** Le passage nocturne n'extrait plus les
+onze jeux : il demande d'abord à Overpass un *augmented diff* unique sur les
+dernières vingt-quatre heures, et n'en réextrait que les jeux réellement touchés
+(`python3 scripts/update_osm_geojson.py --since-diff`). Onze extractions chaque
+nuit pour redécouvrir que les cantons du Vaucluse n'ont pas changé coûtaient
+quatre-vingts requêtes lourdes par semaine à `overpass-api.de`, service public et
+gratuit. Le rapprochement « objet modifié → jeu concerné » se déduit des requêtes
+Overpass elles-mêmes (`scripts/osm_diff_selection.py`), jamais d'une table
+recopiée à côté qui dériverait en silence, et trois voies y mènent : les tags lus
+**avant et après** le changement, pour reconnaître aussi bien une suppression
+qu'un objet qui entre ou sort du périmètre d'un jeu ; l'appartenance au jeu déjà
+publié, qui rattrape les tracés déplacés et les membres d'itinéraire réédités
+sans leur relation ; le découpage territorial, qui redéfinit l'aire interrogée
+elle-même. Le doute profite toujours à la réextraction : une requête de trop ne
+coûte que du temps machine, un jeu manqué afficherait des données fausses sans
+que rien ne le signale.
+
+**Un jeu vérifié inchangé n'est pas un jeu en retard.** Le fichier d'un jeu que le
+diff a trouvé intact ne bouge pas, mais son bloc `_cache` reçoit un
+`verified_at` : la date jusqu'à laquelle OSM a été lu en le tenant pour exact. La
+pastille de fraîcheur raisonne sur cette date, non sur l'âge du contenu, sans
+quoi des communes vérifiées la nuit même seraient déclarées en retard au
+troisième jour sans modification — et un signal qui crie à tort cesse d'être lu.
+L'infobulle porte les deux dates, celle de l'intégration et celle de la
+vérification. Un jeu que le diff n'a pas su examiner, lui, ne voit pas sa
+vérification avancer : il finira donc toujours par être dit en retard, ce qui est
+la seule des deux propriétés à avoir déjà coûté onze jours de données périmées.
+
+**Le filet du dimanche.** Le passage nocturne du dimanche ignore le diff et
+reprend tout. Le rapprochement comporte une part de jugement et ses angles morts
+sont connus — un sommet déplacé sur un chemin sans tag qui compose une limite
+communale n'apparaît dans aucun diff filtré par tags. Sans reprise périodique,
+une erreur de rapprochement laisserait un jeu faux pendant des mois ; une fois
+par semaine, elle ne survit pas à sept jours. Le même passage se déclenche à la
+main avec l'entrée `full` du workflow. Et si la source du diff tombe — Overpass
+indisponible, réponse illisible, fenêtre devenue trop large, jeu sans date de
+vérification — la nuit se replie sur l'extraction complète : perdre la source
+d'information ne doit jamais se traduire par une nuit blanche silencieuse.
+
 **Rattrapage quotidien.** Un passage supplémentaire tourne chaque jour à 12:47 UTC
 et ne reprend que les jeux réellement périmés
 (`python3 scripts/update_osm_geojson.py --stale-only`). Un jeu est périmé quand son
@@ -64,12 +103,13 @@ d'ordonnancement de GitHub Actions, qui a déjà fait partir un cron nocturne av
 plus de cinq heures de décalage. Midi n'est pas un horaire arbitraire : un jeu que
 la nuit n'a pas su rapatrier n'atteint ce seuil qu'en fin de matinée, et attendre le
 milieu du jour laisse le temps à un passage nocturne simplement retardé d'arriver
-avant — sans quoi le rattrapage relirait les douze jeux que le passage complet
-s'apprête à reprendre. L'horodatage consulté est la coupure
-OSM annoncée par Overpass (`_cache.source_timestamp`), à défaut l'heure d'écriture ;
+avant — sans quoi le rattrapage relirait les onze jeux que le passage complet
+s'apprête à reprendre. L'horodatage consulté est la dernière vérification
+(`_cache.verified_at`), à défaut la coupure OSM annoncée par Overpass
+(`_cache.source_timestamp`) puis l'heure d'écriture ;
 un fichier absent ou illisible est traité comme périmé. Quand rien n'est en retard,
 le rattrapage n'émet aucune requête Overpass et sort en moins d'une seconde — le
-passage complet en demande douze et dure un quart d'heure. Si Overpass reste en
+passage complet en demande onze et dure un quart d'heure. Si Overpass reste en
 panne, le rattrapage demeure une tentative par jour : la sélection se lit sur les
 fichiers du disque, un rattrapage raté ne peut donc pas s'auto-alimenter. Le même
 passage se déclenche à la main avec l'entrée `stale_only` du workflow.
@@ -178,7 +218,7 @@ python3 scripts/update_osm_latest_changes.py
 dataroads-FR84/<version> (https://github.com/thepriben/dataroads-FR84)
 ```
 
-Sans argument il traite les douze jeux. Il accepte des noms de jeux en arguments
+Sans argument il traite les onze jeux. Il accepte des noms de jeux en arguments
 positionnels (`python3 scripts/update_osm_geojson.py declassified-roads`) et
 l'option `--stale-only`, qui restreint le passage aux jeux périmés et sort sans
 rien demander à Overpass quand il n'y en a aucun.

@@ -89,7 +89,7 @@
             return parisUtcOffsetHours(date) >= 2 ? '0 0 * * *' : '0 1 * * *';
         }
 
-        const OSM_SCHEDULE_LABEL = 'Quotidien — 02:00 heure de Paris';
+        const OSM_SCHEDULE_LABEL = 'Quotidien — 02:00 heure de Paris · diff OSM, reprise complète le dimanche';
 
         function osmSchedule(source) {
             return {
@@ -271,33 +271,43 @@
             cell.innerHTML = lines.join('<br>');
         }
 
-        function renderFreshnessBadge(element, { generatedAt, scheduleKey, errorMsg, layerVisible } = {}) {
+        function renderFreshnessBadge(element, { generatedAt, verifiedAt, scheduleKey, errorMsg, layerVisible } = {}) {
             if (!element) return;
             const config = FRESHNESS_SCHEDULES[scheduleKey] || {};
-            const generatedAtMs = generatedAt ? new Date(generatedAt).getTime() : null;
-            let status = freshnessState(generatedAtMs, config).status;
+            const dataAtMs = generatedAt ? new Date(generatedAt).getTime() : null;
+            const verifiedAtMs = verifiedAt ? new Date(verifiedAt).getTime() : null;
+            // Deux dates à ne pas confondre : celle du contenu et celle de la
+            // dernière confrontation à OpenStreetMap. Le passage nocturne ne
+            // réextrait que les jeux que le diff a vus bouger ; les autres sont
+            // relus, trouvés intacts, et leur fichier n'a pas à changer pour
+            // autant. C'est la vérification qui dit si le rendez-vous a eu lieu
+            // — juger sur l'âge du contenu ferait crier au retard devant une
+            // donnée vérifiée à jour, et un signal qui crie à tort cesse d'être lu.
+            const freshnessAtMs = Math.max(dataAtMs || 0, verifiedAtMs || 0) || null;
+            const freshnessAt = freshnessAtMs ? new Date(freshnessAtMs).toISOString() : null;
+            let status = freshnessState(freshnessAtMs, config).status;
 
-            if (generatedAt && config.cron) {
+            if (freshnessAt && config.cron) {
                 const current = latestCacheByGroup[scheduleKey];
                 const oldest = oldestCacheByGroup[scheduleKey];
                 let moved = false;
-                if (!current || generatedAtMs > new Date(current).getTime()) {
-                    latestCacheByGroup[scheduleKey] = generatedAt;
+                if (!current || freshnessAtMs > new Date(current).getTime()) {
+                    latestCacheByGroup[scheduleKey] = freshnessAt;
                     moved = true;
                 }
-                if (!oldest || generatedAtMs < new Date(oldest).getTime()) {
-                    oldestCacheByGroup[scheduleKey] = generatedAt;
+                if (!oldest || freshnessAtMs < new Date(oldest).getTime()) {
+                    oldestCacheByGroup[scheduleKey] = freshnessAt;
                     moved = true;
                 }
                 if (moved) updateRefreshFormulaCell(scheduleKey);
             }
 
-            const ageText = generatedAtMs
-                ? formatRelativeDuration(Date.now() - generatedAtMs)
+            const ageText = freshnessAtMs
+                ? formatRelativeDuration(Date.now() - freshnessAtMs)
                 : (scheduleKey === 'static' ? 'snapshot' : '—');
 
             let nextText = '';
-            const scheduleAnchorMs = Math.max(Date.now(), generatedAtMs || 0);
+            const scheduleAnchorMs = Math.max(Date.now(), freshnessAtMs || 0);
             if (config.cron) {
                 const next = nextCronUtc(config.cron, new Date(scheduleAnchorMs));
                 if (next) {
@@ -306,8 +316,8 @@
                         nextText = ` • prochain ${formatRelativeDuration(delta, { future: true })}`;
                     }
                 }
-            } else if (config.intervalMs && generatedAtMs) {
-                let nextMs = generatedAtMs + config.intervalMs;
+            } else if (config.intervalMs && freshnessAtMs) {
+                let nextMs = freshnessAtMs + config.intervalMs;
                 while (nextMs <= Date.now()) {
                     nextMs += config.intervalMs;
                 }
@@ -317,6 +327,7 @@
             element.classList.add('freshness-badge');
             element.dataset.scheduleKey = scheduleKey || '';
             if (generatedAt) element.dataset.generatedAt = generatedAt;
+            if (verifiedAt) element.dataset.verifiedAt = verifiedAt; else delete element.dataset.verifiedAt;
             if (errorMsg) element.dataset.errorMsg = errorMsg; else delete element.dataset.errorMsg;
 
             if (layerVisible === undefined && element.id && typeof isFreshnessBadgeLayerVisible === 'function') {
@@ -336,7 +347,7 @@
             // à allumer la bonne pour découvrir onze jours de retard.
             if (layerHidden && !isOverdueStatus(status)) {
                 status = 'hidden';
-            } else if (!config.intervalMs && generatedAtMs) {
+            } else if (!config.intervalMs && freshnessAtMs) {
                 status = 'static';
             }
 
@@ -356,6 +367,9 @@
                 config.label || '',
                 config.source ? `Source\u00a0: ${config.source}` : '',
                 generatedAt ? `Intégré le ${formatParisDateTime(generatedAt)}` : '',
+                verifiedAtMs && dataAtMs && verifiedAtMs > dataAtMs
+                    ? `Vérifié inchangé le ${formatParisDateTime(verifiedAt)}`
+                    : '',
                 overdue ? 'En retard\u00a0: le rafraîchissement annoncé n\u2019a pas eu lieu.' : '',
                 errorMsg ? `Erreur\u00a0: ${errorMsg}` : ''
             ].filter(Boolean);
@@ -373,9 +387,10 @@
             document.querySelectorAll('.freshness-badge').forEach(el => {
                 const scheduleKey = el.dataset.scheduleKey;
                 const generatedAt = el.dataset.generatedAt;
+                const verifiedAt = el.dataset.verifiedAt;
                 const errorMsg = el.dataset.errorMsg;
                 if (scheduleKey) {
-                    renderFreshnessBadge(el, { generatedAt, scheduleKey, errorMsg });
+                    renderFreshnessBadge(el, { generatedAt, verifiedAt, scheduleKey, errorMsg });
                 }
             });
             Object.keys(FRESHNESS_SCHEDULES).forEach(updateRefreshFormulaCell);
@@ -403,6 +418,7 @@
                 element.dataset.layerVisible = layerVisible ? 'true' : 'false';
                 renderFreshnessBadge(element, {
                     generatedAt: element.dataset.generatedAt,
+                    verifiedAt: element.dataset.verifiedAt,
                     scheduleKey: element.dataset.scheduleKey,
                     errorMsg: element.dataset.errorMsg || undefined
                 });
@@ -2981,6 +2997,7 @@
                     const data = await window.InforouteApi.fetchGeoJson('road-signs');
                     renderFreshnessBadge(document.getElementById('freshness-road-signs'), {
                         generatedAt: data._cache?.generated_at,
+                        verifiedAt: data._cache?.verified_at,
                         scheduleKey: 'incubator'
                     });
                     roadSignsFeatures = data.features || [];
@@ -3464,6 +3481,7 @@
                     const data = await window.InforouteApi.fetchGeoJson('guideposts');
                     renderFreshnessBadge(document.getElementById('freshness-guideposts'), {
                         generatedAt: data._cache?.generated_at,
+                        verifiedAt: data._cache?.verified_at,
                         scheduleKey: 'incubator'
                     });
                     guidepostsFeatures = data.features || [];
@@ -3683,6 +3701,7 @@
                     const data = await window.InforouteApi.fetchGeoJson('city-limits');
                     renderFreshnessBadge(document.getElementById('freshness-city-limits'), {
                         generatedAt: data._cache?.generated_at,
+                        verifiedAt: data._cache?.verified_at,
                         scheduleKey: 'incubator'
                     });
                     cityLimitsFeatures = data.features || [];
@@ -4181,6 +4200,7 @@
                     const data = await window.InforouteApi.fetchGeoJson('latest-changes');
                     renderFreshnessBadge(document.getElementById('freshness-latest-changes'), {
                         generatedAt: data._cache?.generated_at,
+                        verifiedAt: data._cache?.verified_at,
                         scheduleKey: 'hourly'
                     });
                     latestChangesFeatures = data.features || [];
@@ -5775,6 +5795,7 @@
 
                 renderFreshnessBadge(document.getElementById('freshness-oedb-events'), {
                     generatedAt: data._cache?.generated_at,
+                    verifiedAt: data._cache?.verified_at,
                     scheduleKey: 'external'
                 });
 
@@ -6225,6 +6246,7 @@
                 const data = await window.InforouteApi.fetchGeoJson('roadside-areas');
                 renderFreshnessBadge(document.getElementById('freshness-roadside-areas'), {
                     generatedAt: data._cache?.generated_at,
+                    verifiedAt: data._cache?.verified_at,
                     scheduleKey: 'osm'
                 });
 
@@ -7196,6 +7218,7 @@
                 }
                 renderFreshnessBadge(document.getElementById('freshness-territorial-units'), {
                     generatedAt: territorialData._cache?.generated_at,
+                    verifiedAt: territorialData._cache?.verified_at,
                     scheduleKey: 'external'
                 });
             } catch (error) {
@@ -8035,6 +8058,7 @@
                 const geojsonData = await window.InforouteApi.fetchGeoJson('vaucluse-boundary');
                 renderFreshnessBadge(document.getElementById('freshness-boundary'), {
                     generatedAt: geojsonData._cache?.generated_at,
+                    verifiedAt: geojsonData._cache?.verified_at,
                     scheduleKey: 'static'
                 });
                 
@@ -8104,12 +8128,15 @@
             try {
                 const data = await window.InforouteApi.fetchGeoJson('departmental-roads');
                 const osmGeneratedAt = data._cache?.generated_at;
+                const osmVerifiedAt = data._cache?.verified_at;
                 renderFreshnessBadge(document.getElementById('freshness-hierarchy'), {
                     generatedAt: osmGeneratedAt,
+                    verifiedAt: osmVerifiedAt,
                     scheduleKey: 'osm'
                 });
                 renderFreshnessBadge(document.getElementById('freshness-wikidata'), {
                     generatedAt: osmGeneratedAt,
+                    verifiedAt: osmVerifiedAt,
                     scheduleKey: 'wikidata'
                 });
                 syncLegendChrome();
@@ -11162,6 +11189,7 @@
                     const data = await window.InforouteApi.fetchGeoJson('bridges');
                     renderFreshnessBadge(document.getElementById('freshness-bridges'), {
                         generatedAt: data._cache?.generated_at,
+                        verifiedAt: data._cache?.verified_at,
                         scheduleKey: 'incubator'
                     });
 
@@ -11514,6 +11542,7 @@
                     sourceUsed = 'Données de démonstration (GeoJSON local)';
                     renderFreshnessBadge(document.getElementById('freshness-traffic'), {
                         generatedAt: geojsonData._cache?.generated_at,
+                        verifiedAt: geojsonData._cache?.verified_at,
                         scheduleKey: 'external',
                         errorMsg: 'Source réelle indisponible, démo affichée'
                     });
@@ -11684,6 +11713,7 @@
             const sourceYears = formatYearRange(collectYears(geojsonData.features, ['annee', 'year', 'an']));
             renderFreshnessBadge(document.getElementById('freshness-traffic'), {
                 generatedAt: geojsonData._cache?.generated_at,
+                verifiedAt: geojsonData._cache?.verified_at,
                 scheduleKey: 'external',
                 errorMsg: geojsonData._cache?.error
             });
@@ -11761,6 +11791,7 @@
                 const features = dataToUse.features || [];
                 renderFreshnessBadge(document.getElementById('freshness-accidents'), {
                     generatedAt: dataToUse._cache?.generated_at,
+                    verifiedAt: dataToUse._cache?.verified_at,
                     scheduleKey: 'static'
                 });
                 syncLegendChrome();
@@ -12157,6 +12188,7 @@
                 const data = await window.InforouteApi.fetchGeoJson('declassified-roads');
                 renderFreshnessBadge(document.getElementById('freshness-declassified'), {
                     generatedAt: data._cache?.generated_at,
+                    verifiedAt: data._cache?.verified_at,
                     scheduleKey: 'osm'
                 });
 
@@ -12226,6 +12258,7 @@
                 const data = await window.InforouteApi.fetchGeoJson('construction-roads');
                 renderFreshnessBadge(document.getElementById('freshness-construction'), {
                     generatedAt: data._cache?.generated_at,
+                    verifiedAt: data._cache?.verified_at,
                     scheduleKey: 'osm'
                 });
 
@@ -12346,6 +12379,7 @@
                 const data = await window.InforouteApi.fetchGeoJson('bicycle-routes');
                 renderFreshnessBadge(document.getElementById('freshness-bicycle'), {
                     generatedAt: data._cache?.generated_at,
+                    verifiedAt: data._cache?.verified_at,
                     scheduleKey: 'osm'
                 });
                 syncLegendChrome();
@@ -12404,6 +12438,7 @@
 
                 renderFreshnessBadge(document.getElementById('freshness-bison-fute'), {
                     generatedAt: data._cache?.generated_at,
+                    verifiedAt: data._cache?.verified_at,
                     scheduleKey: 'external',
                     errorMsg: data._cache?.error
                 });
