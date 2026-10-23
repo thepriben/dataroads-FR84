@@ -59,39 +59,60 @@
 
         // ========== FRESHNESS BADGES (integration date + next refresh) ==========
 
-        // Le rendez-vous bi-hebdomadaire tombe les lundis et jeudis : le plus long
-        // intervalle légitime entre deux extractions court du jeudi au lundi, soit
-        // quatre jours. C'est cette borne, et non la moyenne des deux écarts, qui
-        // dit à partir de quand un jeu a manqué son tour — le script de rattrapage
-        // raisonne sur la même.
-        const OSM_SCHEDULE_INTERVAL_MS = 4 * 24 * 60 * 60 * 1000;
+        // Le rendez-vous tombe chaque nuit à 2 h, heure de France : le plus long
+        // intervalle légitime entre deux extractions est de vingt-quatre heures.
+        // C'est cette borne qui dit à partir de quand un jeu a manqué son tour —
+        // le script de rattrapage raisonne sur la même.
+        const OSM_SCHEDULE_INTERVAL_MS = 24 * 60 * 60 * 1000;
+
+        // Six heures de battement, et non l'heure accordée aux autres cadences :
+        // GitHub Actions a déjà fait partir avec plus de cinq heures de retard un
+        // cron nocturne. Avec une marge plus courte, la pastille crierait au retard
+        // chaque matin où l'ordonnanceur traîne, et un signal qui se déclenche sans
+        // motif cesse d'être lu.
+        const OSM_SCHEDULE_GRACE_MS = 6 * 60 * 60 * 1000;
+
+        // GitHub Actions ne sait planifier qu'en UTC : 2 h à Paris valent 00:00 UTC
+        // l'été et 01:00 l'hiver, et le workflow déclare les deux crons en écartant
+        // celui qui ne correspond pas à la saison. La pastille doit annoncer le
+        // rendez-vous qui tournera vraiment cette nuit-là, pas l'autre.
+        function parisUtcOffsetHours(date) {
+            const parts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Europe/Paris',
+                timeZoneName: 'shortOffset'
+            }).formatToParts(date);
+            const name = parts.find(part => part.type === 'timeZoneName');
+            return name ? (Number.parseInt(name.value.replace('GMT', ''), 10) || 0) : 1;
+        }
+
+        function osmCronExpression(date = new Date()) {
+            return parisUtcOffsetHours(date) >= 2 ? '0 0 * * *' : '0 1 * * *';
+        }
+
+        const OSM_SCHEDULE_LABEL = 'Quotidien — 02:00 heure de Paris';
+
+        function osmSchedule(source) {
+            return {
+                label: OSM_SCHEDULE_LABEL,
+                source,
+                get cron() { return osmCronExpression(); },
+                intervalMs: OSM_SCHEDULE_INTERVAL_MS,
+                graceMs: OSM_SCHEDULE_GRACE_MS
+            };
+        }
+
         const EXTERNAL_REFRESH_HOURS = window.APP_CONFIG?.data?.externalRefreshHours || 3;
 
         const FRESHNESS_SCHEDULES = {
-            osm: {
-                label: 'Bi-hebdo — lun. & jeu. 03:17 UTC',
-                source: 'OpenStreetMap via Overpass',
-                cron: '17 3 * * 1,4',
-                intervalMs: OSM_SCHEDULE_INTERVAL_MS
-            },
-            wikidata: {
-                label: 'Bi-hebdo — lun. & jeu. 03:17 UTC',
-                source: 'Liens Wikidata issus du cache OSM',
-                cron: '17 3 * * 1,4',
-                intervalMs: OSM_SCHEDULE_INTERVAL_MS
-            },
+            osm: osmSchedule('OpenStreetMap via Overpass'),
+            wikidata: osmSchedule('Liens Wikidata issus du cache OSM'),
             external: {
                 label: `Toutes les ${EXTERNAL_REFRESH_HOURS} h — à xx:23 UTC`,
                 source: 'data.gouv.fr & Bison Futé',
                 cron: '23 */3 * * *',
                 intervalMs: EXTERNAL_REFRESH_HOURS * 60 * 60 * 1000
             },
-            incubator: {
-                label: 'Bi-hebdo (lun. & jeu.)',
-                source: 'Couche ponts OSM (workflow OSM GeoJSON)',
-                cron: '17 3 * * 1,4',
-                intervalMs: OSM_SCHEDULE_INTERVAL_MS
-            },
+            incubator: osmSchedule('Couche ponts OSM (workflow OSM GeoJSON)'),
             hourly: {
                 label: 'Toutes les heures — à xx:41 UTC',
                 source: 'Augmented diff OpenStreetMap via Overpass',
@@ -128,7 +149,7 @@
         }
 
         // Compute the next UTC occurrence matching a 5-field cron expression.
-        // Only supports the patterns we use (`23 */3 * * *`, `17 3 * * 1,4`).
+        // Only supports the patterns we use (`23 */3 * * *`, `0 1 * * *`).
         function nextCronUtc(cronExpr, from = new Date()) {
             const parts = cronExpr.trim().split(/\s+/);
             if (parts.length !== 5) return null;
@@ -178,7 +199,8 @@
         // ne regarde personne, du rendez-vous réellement manqué, qui doit se voir.
         // Une marge proportionnelle ferait l'inverse : 15 % d'une heure ne couvre
         // même pas le décalage habituel, quand 15 % de quatre jours en couvrent un
-        // demi-jour de trop.
+        // demi-jour de trop. Les cadences de quelques heures s'accommodent d'une
+        // heure ; le passage nocturne, lui, demande la sienne (OSM_SCHEDULE_GRACE_MS).
         const FRESHNESS_GRACE_MS = 60 * 60 * 1000;
 
         function freshnessState(generatedAtMs, scheduleConfig) {
@@ -190,8 +212,9 @@
             }
             const ageMs = Date.now() - generatedAtMs;
             const interval = scheduleConfig.intervalMs;
-            if (ageMs <= interval + FRESHNESS_GRACE_MS) return { status: 'fresh' };
-            if (ageMs <= interval * 2 + FRESHNESS_GRACE_MS) return { status: 'late' };
+            const grace = scheduleConfig.graceMs || FRESHNESS_GRACE_MS;
+            if (ageMs <= interval + grace) return { status: 'fresh' };
+            if (ageMs <= interval * 2 + grace) return { status: 'late' };
             return { status: 'stale' };
         }
 
@@ -216,12 +239,10 @@
             const generatedAt = latestCacheByGroup[scheduleKey];
             const lines = [];
 
-            if (scheduleKey === 'osm' || scheduleKey === 'wikidata') {
-                lines.push('Bi-hebdo · lun. & jeu. 03:17 UTC');
+            if (scheduleKey === 'osm' || scheduleKey === 'wikidata' || scheduleKey === 'incubator') {
+                lines.push('Quotidien · 02:00 heure de Paris');
             } else if (scheduleKey === 'external') {
                 lines.push('Toutes les 3 h · xx:23 UTC');
-            } else if (scheduleKey === 'incubator') {
-                lines.push('Bi-hebdo · lun. & jeu. 03:17 UTC');
             }
 
             if (config.cron) {

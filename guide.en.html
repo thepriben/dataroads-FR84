@@ -151,7 +151,7 @@
 </article>
 <article class="guide-family" data-family="signage" id="signage">
 <h3>Signage &amp; structures</h3>
-<p>Street furniture and civil-engineering structures surveyed in OpenStreetMap, refreshed with the other extracts (twice weekly, Mon. &amp; Thu.).</p>
+<p>Street furniture and civil-engineering structures surveyed in OpenStreetMap, refreshed with the other extracts (every night, 2 a.m. Paris time).</p>
 <div class="guide-layer" id="layer-ponts">
 <h4>Bridges layer</h4>
 <p>OSM civil-engineering structures across the department. Display adapts to zoom:</p>
@@ -320,14 +320,14 @@
             <h2>Data freshness</h2>
 <p>Under most layers, a chip shows when the data was generated and when the next refresh is due. No indicator for sensitive natural areas, iNaturalist or webcams.</p>
 <ul>
-<li><strong>OSM</strong> (roads, cycle routes, municipalities, construction) — twice-weekly update (GitHub workflow).</li>
+<li><strong>OSM</strong> (roads, cycle routes, municipalities, construction) — daily update, every night at 2 a.m. Paris time (GitHub workflow).</li>
 <li><strong>External</strong> (counts, Bison Futé) — every 3 h.</li>
-<li><strong>Signage &amp; structures</strong> (bridges, signs) — twice weekly (Mon. &amp; Thu.).</li>
+<li><strong>Signage &amp; structures</strong> (bridges, signs) — daily, every night at 2 a.m. Paris time.</li>
 <li><strong>Territory</strong> (CD84 maintenance sectors) — recomputed with the OSM extracts.</li>
 <li><strong>Weather</strong> — live in browser, ~10 min.</li>
 <li><strong>Static</strong> (84 boundary, 2019-2024 crashes) — versioned snapshot, manual update.</li>
 </ul>
-<p><strong>When a dataset has missed its appointment, the chip says so.</strong> An age on its own reads as one figure among others: "il y a 11j" only alarms you if you already know that this particular dataset is refreshed twice a week. An overdue chip therefore carries the words <strong>"en retard"</strong> and turns <strong>amber</strong>, the single colour departure in an otherwise grey series — an eleven-day delay is visible from the other end of the legend. The threshold is derived from the dataset's announced cadence plus an hour of grace for scheduling delays: four days and an hour for the OSM extracts, four hours for external data, two hours for the latest changes. The <em>Formule de rafraîchissement</em> section follows, qualified by the oldest dataset of its group. A chip fades out when its layer is switched off, <strong>unless</strong> it is late: since most layers start switched off, waiting for someone to turn on the right one would mean never seeing the delay.</p>
+<p><strong>When a dataset has missed its appointment, the chip says so.</strong> An age on its own reads as one figure among others: "il y a 11j" only alarms you if you already know how often this particular dataset is refreshed. An overdue chip therefore carries the words <strong>"en retard"</strong> and turns <strong>amber</strong>, the single colour departure in an otherwise grey series — an eleven-day delay is visible from the other end of the legend. The threshold is derived from the dataset's announced cadence plus a grace period for scheduling delays: thirty hours for the OSM extracts — a twenty-four-hour cadence and six hours of grace, GitHub having already started a nightly cron five hours late — four hours for external data, two hours for the latest changes. The <em>Formule de rafraîchissement</em> section follows, qualified by the oldest dataset of its group. A chip fades out when its layer is switched off, <strong>unless</strong> it is late: since most layers start switched off, waiting for someone to turn on the right one would mean never seeing the delay.</p>
 <p class="guide-hint">A flagged delay does not mean wrong data, but data older than announced: the OpenStreetMap extraction failed and the previous file was kept rather than replaced by a truncated one. An automatic catch-up passes over the affected datasets alone every day.</p>
 <p class="guide-hint">The full detail is in <em>Tools &amp; meta → Refresh formula</em>.</p>
         </section>

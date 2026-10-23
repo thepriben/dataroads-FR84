@@ -141,7 +141,7 @@ Quand l'aire est cartographiée comme surface dans OSM — que ce soit un contou
 
 === [family:signage] Signalisation & ouvrages ===
 
-Mobilier et ouvrages relevés dans OpenStreetMap, rafraîchis avec les autres extraits (bi-hebdo, lun. & jeu.).
+Mobilier et ouvrages relevés dans OpenStreetMap, rafraîchis avec les autres extraits (chaque nuit, 2 h heure de Paris).
 
 ==== [layer:layer-ponts] Couche ponts ====
 
@@ -362,14 +362,14 @@ Copiez l'URL pour retrouver la même vue après rechargement.
 
 Sous la plupart des couches, une pastille indique quand les données ont été générées et quand le prochain rafraîchissement est prévu. Pas d'indicateur pour les espaces naturels sensibles, iNaturalist ni les webcams.
 
-* '''OSM''' (routes, véloroutes, communes, constructions) — mise à jour bi-hebdomadaire (workflow GitHub).
+* '''OSM''' (routes, véloroutes, communes, constructions) — mise à jour quotidienne, chaque nuit à 2 h heure de Paris (workflow GitHub).
 * '''Externe''' (comptages, Bison Futé) — toutes les 3 h.
-* '''Signalisation & ouvrages''' (ponts, panneaux) — bi-hebdo (lun. & jeu.).
+* '''Signalisation & ouvrages''' (ponts, panneaux) — quotidien, chaque nuit à 2 h heure de Paris.
 * '''Territoire''' (secteurs d'exploitation CD84) — recalculé avec les extraits OSM.
 * '''Météo''' — live navigateur, ~10 min.
 * '''Statique''' (limite 84, accidents 2019-2024) — snapshot versionné, mise à jour manuelle.
 
-'''Quand un jeu a manqué son rendez-vous, la pastille le dit.''' Un âge seul se lit comme un nombre parmi d'autres : « il y a 11j » n'alarme que si l'on sait déjà que cette donnée-là est rafraîchie deux fois par semaine. Une pastille en retard porte donc la mention '''« en retard »''' et passe à l''''ambre''', seul écart de couleur d'une série autrement grise — un retard de onze jours saute aux yeux depuis l'autre bout de la légende. Le seuil se déduit de la cadence annoncée du jeu, augmentée d'une heure de battement pour les retards d'ordonnancement : quatre jours et une heure pour les extraits OSM, quatre heures pour les données externes, deux heures pour les derniers changements. La rubrique ''Formule de rafraîchissement'' suit, qualifiée par le jeu le plus ancien de son groupe. Une couche éteinte voit sa pastille s'effacer, '''sauf''' si elle est en retard : la plupart des couches étant éteintes au chargement, attendre qu'on allume la bonne reviendrait à ne jamais voir le retard.
+'''Quand un jeu a manqué son rendez-vous, la pastille le dit.''' Un âge seul se lit comme un nombre parmi d'autres : « il y a 11j » n'alarme que si l'on sait déjà à quelle cadence cette donnée-là est rafraîchie. Une pastille en retard porte donc la mention '''« en retard »''' et passe à l''''ambre''', seul écart de couleur d'une série autrement grise — un retard de onze jours saute aux yeux depuis l'autre bout de la légende. Le seuil se déduit de la cadence annoncée du jeu, augmentée d'un battement pour les retards d'ordonnancement : trente heures pour les extraits OSM — vingt-quatre heures de cadence et six heures de battement, car GitHub a déjà fait partir un cron nocturne avec cinq heures de retard —, quatre heures pour les données externes, deux heures pour les derniers changements. La rubrique ''Formule de rafraîchissement'' suit, qualifiée par le jeu le plus ancien de son groupe. Une couche éteinte voit sa pastille s'effacer, '''sauf''' si elle est en retard : la plupart des couches étant éteintes au chargement, attendre qu'on allume la bonne reviendrait à ne jamais voir le retard.
 
 {{hint|Un retard signalé n'est pas une donnée fausse, mais une donnée plus ancienne qu'annoncé : l'extraction OpenStreetMap a échoué et l'ancien fichier a été conservé plutôt que remplacé par un fichier tronqué. Un rattrapage automatique repasse chaque jour sur les seuls jeux concernés.}}
 

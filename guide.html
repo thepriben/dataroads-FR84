@@ -147,7 +147,7 @@ Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte 
 </article>
 <article class="guide-family" data-family="signage" id="signage">
 <h3>Signalisation &amp; ouvrages</h3>
-<p>Mobilier et ouvrages relevés dans OpenStreetMap, rafraîchis avec les autres extraits (bi-hebdo, lun. &amp; jeu.).</p>
+<p>Mobilier et ouvrages relevés dans OpenStreetMap, rafraîchis avec les autres extraits (chaque nuit, 2 h heure de Paris).</p>
 <div class="guide-layer" id="layer-ponts">
 <h4>Couche ponts</h4>
 <p>Ouvrages d'art OSM du département. Affichage adapté au zoom :</p>
@@ -311,14 +311,14 @@ Au tout premier affichage, un '''écran d'attente''' occupe la zone de la carte 
             <h2>Fraîcheur des données</h2>
 <p>Sous la plupart des couches, une pastille indique quand les données ont été générées et quand le prochain rafraîchissement est prévu. Pas d'indicateur pour les espaces naturels sensibles, iNaturalist ni les webcams.</p>
 <ul>
-<li><strong>OSM</strong> (routes, véloroutes, communes, constructions) — mise à jour bi-hebdomadaire (workflow GitHub).</li>
+<li><strong>OSM</strong> (routes, véloroutes, communes, constructions) — mise à jour quotidienne, chaque nuit à 2 h heure de Paris (workflow GitHub).</li>
 <li><strong>Externe</strong> (comptages, Bison Futé) — toutes les 3 h.</li>
-<li><strong>Signalisation &amp; ouvrages</strong> (ponts, panneaux) — bi-hebdo (lun. &amp; jeu.).</li>
+<li><strong>Signalisation &amp; ouvrages</strong> (ponts, panneaux) — quotidien, chaque nuit à 2 h heure de Paris.</li>
 <li><strong>Territoire</strong> (secteurs d'exploitation CD84) — recalculé avec les extraits OSM.</li>
 <li><strong>Météo</strong> — live navigateur, ~10 min.</li>
 <li><strong>Statique</strong> (limite 84, accidents 2019-2024) — snapshot versionné, mise à jour manuelle.</li>
 </ul>
-<p><strong>Quand un jeu a manqué son rendez-vous, la pastille le dit.</strong> Un âge seul se lit comme un nombre parmi d'autres : « il y a 11j » n'alarme que si l'on sait déjà que cette donnée-là est rafraîchie deux fois par semaine. Une pastille en retard porte donc la mention <strong>« en retard »</strong> et passe à l'<strong>ambre</strong>, seul écart de couleur d'une série autrement grise — un retard de onze jours saute aux yeux depuis l'autre bout de la légende. Le seuil se déduit de la cadence annoncée du jeu, augmentée d'une heure de battement pour les retards d'ordonnancement : quatre jours et une heure pour les extraits OSM, quatre heures pour les données externes, deux heures pour les derniers changements. La rubrique <em>Formule de rafraîchissement</em> suit, qualifiée par le jeu le plus ancien de son groupe. Une couche éteinte voit sa pastille s'effacer, <strong>sauf</strong> si elle est en retard : la plupart des couches étant éteintes au chargement, attendre qu'on allume la bonne reviendrait à ne jamais voir le retard.</p>
+<p><strong>Quand un jeu a manqué son rendez-vous, la pastille le dit.</strong> Un âge seul se lit comme un nombre parmi d'autres : « il y a 11j » n'alarme que si l'on sait déjà à quelle cadence cette donnée-là est rafraîchie. Une pastille en retard porte donc la mention <strong>« en retard »</strong> et passe à l'<strong>ambre</strong>, seul écart de couleur d'une série autrement grise — un retard de onze jours saute aux yeux depuis l'autre bout de la légende. Le seuil se déduit de la cadence annoncée du jeu, augmentée d'un battement pour les retards d'ordonnancement : trente heures pour les extraits OSM — vingt-quatre heures de cadence et six heures de battement, car GitHub a déjà fait partir un cron nocturne avec cinq heures de retard —, quatre heures pour les données externes, deux heures pour les derniers changements. La rubrique <em>Formule de rafraîchissement</em> suit, qualifiée par le jeu le plus ancien de son groupe. Une couche éteinte voit sa pastille s'effacer, <strong>sauf</strong> si elle est en retard : la plupart des couches étant éteintes au chargement, attendre qu'on allume la bonne reviendrait à ne jamais voir le retard.</p>
 <p class="guide-hint">Un retard signalé n'est pas une donnée fausse, mais une donnée plus ancienne qu'annoncé : l'extraction OpenStreetMap a échoué et l'ancien fichier a été conservé plutôt que remplacé par un fichier tronqué. Un rattrapage automatique repasse chaque jour sur les seuls jeux concernés.</p>
 <p class="guide-hint">Le détail complet est dans <em>Outils &amp; méta → Formule de rafraîchissement</em>.</p>
         </section>

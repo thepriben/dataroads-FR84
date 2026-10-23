@@ -41,17 +41,26 @@ The page indicates external data refreshed every 3 hours. The browser reads loca
 - Direct dynamic data: Open-Meteo weather, requested by the browser at load time and then every 10 minutes.
 - Overpass API: never called by the browser. It is only used by the OSM refresh script.
 
-OSM caches (and their Wikidata links) are refreshed on Mondays and Thursdays. A
-dataset refused by Overpass keeps its previous file rather than writing a truncated
-one, and the run stays green as long as at least one dataset could be read — a
-permanently red light warns of nothing any more.
+OSM caches (and their Wikidata links) are refreshed every night at 2 a.m. French
+time. GitHub Actions crons only understand UTC, so the workflow declares two of
+them, 00:00 and 01:00 UTC, and dismisses on startup whichever does not match the
+day's `Europe/Paris` offset. The verdict is taken on the season, never on the clock
+at launch time — GitHub happily pushes a cron back by several hours, and a delayed
+run must still go through. A dataset refused by Overpass keeps its previous file
+rather than writing a truncated one, and the run stays green as long as at least
+one dataset could be read — a permanently red light warns of nothing any more.
 
-**Daily catch-up.** An extra pass runs every day at 04:47 UTC and takes back only
+**Daily catch-up.** An extra pass runs every day at 12:47 UTC and takes back only
 the datasets that are genuinely overdue
 (`python3 scripts/update_osm_geojson.py --stale-only`). A dataset is overdue when
-its cache is older than **four days and an hour**: four days is the longest
-legitimate gap between two extractions (Thursday to Monday), and the hour absorbs
-GitHub Actions scheduling delays. The timestamp consulted is the OSM cut-off
+its cache is older than **thirty hours**: twenty-four hours is the legitimate gap
+between two extractions, and the six hours of grace absorb GitHub Actions
+scheduling delays, which have already pushed a nightly cron back by more than five
+hours. Midday is not an arbitrary slot: a dataset the night failed to fetch only
+crosses that threshold late in the morning, and waiting for the middle of the day
+gives a merely delayed nightly pass time to land first — otherwise the catch-up
+would re-read the twelve datasets the full pass is about to take back. The
+timestamp consulted is the OSM cut-off
 announced by Overpass (`_cache.source_timestamp`), falling back to the write time;
 a missing or unreadable file counts as overdue. When nothing is late the catch-up
 issues no Overpass request at all and exits in under a second — the full pass makes
@@ -62,7 +71,8 @@ workflow's `stale_only` input.
 
 **Freshness pills.** Under each layer, a pill announces the age of the data and the
 next due date. When a dataset has missed its appointment — age greater than its
-announced period plus an hour of grace — the pill says so explicitly, "en retard",
+announced period plus its grace, an hour for the few-hour cadences and six for the
+nightly pass — the pill says so explicitly, "en retard",
 and turns amber, the single colour departure in an otherwise grey series. The
 *Formule de rafraîchissement* section follows, qualified by the oldest dataset of
 its group. A pill fades out when its layer is switched off, unless it is late:

@@ -8,13 +8,25 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "17 3 * * 1,4"
+    # Le rendez-vous est 2 h du matin, heure de France. Les crons de GitHub
+    # Actions sont en UTC et ignorent les fuseaux : 2 h à Paris vaut 00:00 UTC
+    # l'été (CEST) et 01:00 UTC l'hiver (CET). Un cron unique dériverait donc
+    # d'une heure deux fois l'an. Les deux sont déclarés, et le travail « saison »
+    # ci-dessous écarte celui qui ne correspond pas au décalage du jour.
+    - cron: "0 0 * * *"
+    - cron: "0 1 * * *"
     # Un 502 d'Overpass sur la requête la plus lourde laissait le réseau
-    # départemental périmé jusqu'au rendez-vous suivant, trois jours plus tard —
-    # onze jours la fois où deux passages ont échoué d'affilée. Ce passage
-    # quotidien ne reprend que les jeux qui ont manqué leur tour : une tentative
-    # par jour, jamais davantage, même si Overpass reste durablement en panne.
-    - cron: "47 4 * * *"
+    # départemental périmé jusqu'au rendez-vous suivant — onze jours la fois où
+    # deux passages ont échoué d'affilée. Ce passage ne reprend que les jeux qui
+    # ont manqué leur tour : une tentative par jour, jamais davantage, même si
+    # Overpass reste durablement en panne.
+    # Midi, et non deux heures après la nuit : un jeu que le passage nocturne
+    # n'a pas su rapatrier n'atteint le seuil de péremption (trente heures) qu'en
+    # fin de matinée, et attendre le milieu du jour laisse par ailleurs le temps
+    # à un passage nocturne simplement retardé d'arriver avant — sans quoi le
+    # rattrapage reprendrait les douze jeux que le passage complet s'apprête à
+    # relire.
+    - cron: "47 12 * * *"
 
 permissions:
   contents: write
@@ -24,7 +36,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  saison:
+    runs-on: ubuntu-latest
+    outputs:
+      poursuivre: ${{ steps.verdict.outputs.poursuivre }}
+    steps:
+      - name: Décider si ce cron est celui de la saison
+        id: verdict
+        env:
+          DECLENCHEUR: ${{ github.event.schedule }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
+          from datetime import datetime, timedelta
+          from zoneinfo import ZoneInfo
+
+          # Le verdict se prend sur le décalage horaire de Paris, jamais sur
+          # l'heure qu'il est : GitHub retarde régulièrement un cron de plusieurs
+          # heures — 03:17 parti à 08:23 sur ce dépôt. Un garde-fou du genre « ne
+          # continuer que s'il est bien 2 h à Paris » ferait sauter ces passages
+          # en silence, et c'est précisément la panne muette qu'on cherche à
+          # éviter. Mieux vaut une extraction à 8 h que pas d'extraction.
+          SAISONNIERS = {"0 0 * * *": True, "0 1 * * *": False}
+
+          declencheur = os.environ.get("DECLENCHEUR", "")
+          ete = datetime.now(ZoneInfo("Europe/Paris")).utcoffset() == timedelta(hours=2)
+          # Le rattrapage et le déclenchement manuel ne visent pas une heure
+          # locale : ils passent quelle que soit la saison.
+          poursuivre = SAISONNIERS[declencheur] == ete if declencheur in SAISONNIERS else True
+          print(f"poursuivre={'true' if poursuivre else 'false'}")
+          PY
+
   update:
+    needs: saison
+    if: needs.saison.outputs.poursuivre == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +78,7 @@ jobs:
           fetch-depth: 0
       - name: Update GeoJSON
         env:
-          STALE_ONLY: ${{ github.event.schedule == '47 4 * * *' || inputs.stale_only }}
+          STALE_ONLY: ${{ github.event.schedule == '47 12 * * *' || inputs.stale_only }}
         run: |
           if [ "${STALE_ONLY}" = "true" ]; then
             python3 scripts/update_osm_geojson.py --stale-only

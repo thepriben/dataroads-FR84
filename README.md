@@ -44,18 +44,28 @@ La page indique les données externes rafraîchies toutes les 3 heures. Le navig
 
 - Donnée dérivée : l'appartenance territoriale des tronçons, recalculée dans la foulée de chaque extraction OSM. Elle joint les limites d'exploitation CD84 (DataSud) aux tronçons OSM par proximité, et n'embarque que des indices — 260 Ko, là où la géométrie départementale complète en pèserait 5,6 Mo. Les contours des cinq échelles sont produits par le même passage, dans un second fichier de 514 Ko qui n'est lu qu'au premier secteur sélectionné.
 
-Les caches OSM (et leurs liens Wikidata) sont actualisés les lundis et jeudis.
+Les caches OSM (et leurs liens Wikidata) sont actualisés chaque nuit à 2 h, heure
+de France. Les crons de GitHub Actions ne connaissent que l'UTC : le workflow en
+déclare donc deux, 00:00 et 01:00 UTC, et écarte au démarrage celui qui ne
+correspond pas au décalage de `Europe/Paris` du jour. Le verdict se prend sur la
+saison, jamais sur l'heure qu'il est au lancement — GitHub retarde volontiers un
+cron de plusieurs heures, et un passage retardé doit tourner quand même.
 Chaque fin de workflow de données déclenche une publication GitHub Pages, y compris
 si seuls certains jeux ont pu être rafraîchis. Un jeu en échec conserve son ancien
 fichier plutôt que d'en écrire un tronqué, et l'exécution reste verte tant qu'au
 moins un jeu a pu être lu — un voyant rouge en permanence ne prévient plus de rien.
 
-**Rattrapage quotidien.** Un passage supplémentaire tourne chaque jour à 04:47 UTC
+**Rattrapage quotidien.** Un passage supplémentaire tourne chaque jour à 12:47 UTC
 et ne reprend que les jeux réellement périmés
 (`python3 scripts/update_osm_geojson.py --stale-only`). Un jeu est périmé quand son
-cache dépasse **quatre jours et une heure** : quatre jours sont le plus long
-intervalle légitime entre deux extractions (du jeudi au lundi), l'heure absorbe les
-retards d'ordonnancement de GitHub Actions. L'horodatage consulté est la coupure
+cache dépasse **trente heures** : vingt-quatre heures sont l'intervalle légitime
+entre deux extractions, et les six heures de battement absorbent les retards
+d'ordonnancement de GitHub Actions, qui a déjà fait partir un cron nocturne avec
+plus de cinq heures de décalage. Midi n'est pas un horaire arbitraire : un jeu que
+la nuit n'a pas su rapatrier n'atteint ce seuil qu'en fin de matinée, et attendre le
+milieu du jour laisse le temps à un passage nocturne simplement retardé d'arriver
+avant — sans quoi le rattrapage relirait les douze jeux que le passage complet
+s'apprête à reprendre. L'horodatage consulté est la coupure
 OSM annoncée par Overpass (`_cache.source_timestamp`), à défaut l'heure d'écriture ;
 un fichier absent ou illisible est traité comme périmé. Quand rien n'est en retard,
 le rattrapage n'émet aucune requête Overpass et sort en moins d'une seconde — le
@@ -75,7 +85,8 @@ navigateur.
 
 **Pastilles de fraîcheur.** Sous chaque couche, une pastille annonce l'âge de la
 donnée et la prochaine échéance. Quand un jeu a manqué son rendez-vous — âge
-supérieur à sa cadence annoncée plus une heure de battement — la pastille le dit
+supérieur à sa cadence annoncée plus son battement, une heure pour les cadences de
+quelques heures, six pour le passage nocturne — la pastille le dit
 explicitement, « en retard », et passe à l'ambre, seul écart de couleur d'une série
 autrement grise. La rubrique *Formule de rafraîchissement* suit, qualifiée par le
 jeu le plus ancien de son groupe. Une couche éteinte voit sa pastille s'effacer,
@@ -92,10 +103,10 @@ Vérification des reprises : `python3 -m unittest discover -s tests -v`.
 | --- | --- | --- | --- |
 | Routes départementales | OpenStreetMap | cache du 2026-05-17 22:52 UTC | Données réseau, pas un millésime administratif CD84. |
 | Routes en construction | OpenStreetMap | cache du 2026-05-17 22:53 UTC | Quelques ouvertures indiquées entre 2025 et 2027 selon les tags OSM. |
-| Tronçons déclassés | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 1 386 tronçons, 179 km, 92 anciens numéros : voirie qui a porté un n° de RD et ne le porte plus (issue #38), lus dans `was:ref` et `old_ref` en écartant les nationales transférées au département en 2006. Relevé bénévole, sans source officielle ni date ; jamais compté avec le réseau. |
+| Tronçons déclassés | OpenStreetMap | cache quotidien (02:00 heure de Paris) | 1 386 tronçons, 179 km, 92 anciens numéros : voirie qui a porté un n° de RD et ne le porte plus (issue #38), lus dans `was:ref` et `old_ref` en écartant les nationales transférées au département en 2006. Relevé bénévole, sans source officielle ni date ; jamais compté avec le réseau. |
 | Communes | OpenStreetMap | cache du 2026-05-17 22:53 UTC | 151 communes ; les tags de population pointent vers 2021. |
-| Aires d'arrêt & covoiturage | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 213 aires : covoiturage, aires de repos, parkings-relais et aires d'arrêt (layby) le long des RD (issue #7), nœuds / contours / relations, générées par `scripts/update_osm_geojson.py`. |
-| Panneaux directionnels & agglomération | OpenStreetMap | cache bi-hebdo (lun. & jeu.) | 2 167 mâts directionnels (`information=guidepost`, dont ~1 450 avec photo référencée) et 468 panneaux d'agglomération (`traffic_sign=city_limit`), générés par `scripts/update_osm_geojson.py`. |
+| Aires d'arrêt & covoiturage | OpenStreetMap | cache quotidien (02:00 heure de Paris) | 213 aires : covoiturage, aires de repos, parkings-relais et aires d'arrêt (layby) le long des RD (issue #7), nœuds / contours / relations, générées par `scripts/update_osm_geojson.py`. |
+| Panneaux directionnels & agglomération | OpenStreetMap | cache quotidien (02:00 heure de Paris) | 2 167 mâts directionnels (`information=guidepost`, dont ~1 450 avec photo référencée) et 468 panneaux d'agglomération (`traffic_sign=city_limit`), générés par `scripts/update_osm_geojson.py`. |
 | Derniers changements OSM | OpenStreetMap (*augmented diff*) | cache horaire (xx:41 UTC) | 7 jours glissants de contributions sur `way[highway]`, recadrés sur la limite départementale, générés par `scripts/update_osm_latest_changes.py`. Les tracés déplacés par un sommet sont recrédités à l'auteur du déplacement ; les recalages de moins d'un mètre sont écartés. |
 | Limite du Vaucluse | OpenStreetMap | GeoJSON local | Limite départementale 84, figée dans `data/static/`. |
 | Accidentologie | BAAC / ONISR (data.gouv.fr) | 2019-2024 | 1 923 accidents corporels géolocalisés (dép. 84), généré par `scripts/build_accidents_vaucluse.py`. |

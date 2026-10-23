@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.28.0] - 2026-10-23
+
+### Changed
+
+- **The full OSM extraction now runs every night at 2 a.m. French time, instead of Mondays and Thursdays.** GitHub Actions crons are expressed in UTC and know nothing of time zones, so 2 a.m. in Paris is 00:00 UTC in summer and 01:00 UTC in winter, and a single cron would drift by an hour twice a year. Both are declared, and a first job dismisses whichever does not match the day's `Europe/Paris` offset.
+- That verdict is taken on the season, never on the clock at launch. GitHub routinely pushes a cron back by hours — on this repository one planned for 03:17 UTC started at 08:23 — so a guard of the form "only continue if it really is 2 a.m. in Paris" would have silently dropped every delayed run, which is exactly the mute failure the previous version spent its time eliminating. A delayed pass goes through: an extraction at 8 a.m. beats no extraction. The two changeover nights are the price of the arrangement and both are harmless. In March neither cron recognises its own season, so the night is skipped and the midday catch-up takes all twelve datasets back the same day, every one of them having passed thirty hours by then. In October both recognise it, 2 a.m. local having genuinely struck twice, and the extraction runs twice — once a year.
+- **A dataset is overdue after thirty hours rather than four days and an hour.** The old figure was the Thursday-to-Monday gap and became absurd the moment the pass went daily: a dataset could have been four days stale with nothing saying so. Twenty-four hours is the new legitimate interval; the six hours of grace are sized on the scheduling delays actually observed here, not on the few dozen minutes the previous margin assumed. An hour of grace would have put the pill in "en retard" on every morning the scheduler dragged its feet, and a signal that fires without cause stops being read. The grace is now declared per schedule, the few-hour cadences keeping theirs at an hour: raising it for all of them would have made the hourly latest-changes layer tolerate seven hours of silence.
+- **The catch-up pass moves from 04:47 to 12:47 UTC and keeps its job.** Two hours after a nightly pass it could no longer tell a failure from a delay — a dataset the night failed to fetch is only twenty-six hours old at 3 a.m., below the thirty-hour bar, so the catch-up would have found nothing to do and the safety net would have existed in name only. By midday that same dataset is thirty-six hours old and gets taken back the same day; a nightly pass merely running late has had time to land first, so the catch-up does not re-read the twelve datasets the full pass is about to take back anyway. Deleting it outright was tempting now that a failure costs twenty-four hours rather than three days, but it remains the only recourse when Overpass refuses one or two of the heaviest queries, as it did twice in a row in October.
+- The incubator row of the *Formule de rafraîchissement* section announced "Tous les 5 jours" in the page while the code gave it the OSM period: it rides the same workflow and now says so like the others.
+
+### Added
+
+- **A bench that proves the season gate rather than arguing it.** The gate is written in Python inside the workflow, and the test reads it back out of the YAML and replays it with the clock substituted — a copy of the logic would stay green the day the workflow changes. Sixteen cases cover both seasons on time, both seasons delayed by five and seven hours, both changeover nights, the catch-up cron and a manual dispatch. The staleness threshold is pinned at its two edges on both sides of the fence, in the Python selection and in the browser pill.
+
 ## [0.27.0] - 2026-10-19
 
 ### Added

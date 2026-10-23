@@ -834,12 +834,15 @@ def refresh_cache(name: str, query: str) -> bool:
     return changed
 
 
-# Le passage complet a rendez-vous les lundis et jeudis : le plus long
-# intervalle légitime entre deux extractions court donc du jeudi au lundi, soit
-# quatre jours. Au-delà, un jeu n'a pas attendu son tour, il l'a manqué.
-# L'heure de battement absorbe les retards d'ordonnancement de GitHub Actions,
-# qui décale volontiers un cron planifié de quelques dizaines de minutes.
-STALE_AFTER = timedelta(days=4, hours=1)
+# Le passage complet a rendez-vous chaque nuit à 2 h, heure de France : le plus
+# long intervalle légitime entre deux extractions est donc de vingt-quatre
+# heures. Au-delà du battement, un jeu n'a pas attendu son tour, il l'a manqué.
+# Six heures de battement, et non l'heure qui suffisait à une cadence de quatre
+# jours : GitHub Actions a déjà fait partir avec plus de cinq heures de retard un
+# cron prévu à 03:17. Une marge plus courte signalerait un retard chaque matin où
+# l'ordonnanceur traîne, et un signal qui se déclenche sans motif cesse d'être lu.
+# La pastille du navigateur raisonne sur la même borne.
+STALE_AFTER = timedelta(days=1, hours=6)
 
 
 def parse_timestamp(value: Any) -> datetime | None:
@@ -899,10 +902,10 @@ def main() -> int:
         queries = dict(QUERIES)
 
     if stale_only:
-        # Le rattrapage quotidien ne rejoue que les rendez-vous manqués. Refaire
-        # les douze jeux chaque matin coûterait un quart d'heure d'Overpass pour
-        # rien, et ce service public est gratuit : on ne lui demande que ce que
-        # l'échec de la veille a réellement laissé en arrière.
+        # Le rattrapage ne rejoue que les rendez-vous manqués. Refaire les douze
+        # jeux à midi coûterait un quart d'heure d'Overpass quelques heures après
+        # que le passage nocturne les a déjà relus, et ce service public est
+        # gratuit : on ne lui demande que ce que la nuit a laissé en arrière.
         overdue = set(stale_datasets(list(queries)))
         queries = {name: query for name, query in queries.items() if name in overdue}
         if not queries:
