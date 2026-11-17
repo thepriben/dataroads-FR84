@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.29.2] - 2026-11-16
+
+### Fixed
+
+- **A road ending on the departmental boundary no longer counts as being in Vaucluse.** 0.29.1 tested the vertices of each segment, and a neighbouring road often stops exactly on the boundary: that single shared point was enough to keep D817 in the count, although none of its length lies in the department. The test now takes the midpoint of every segment, which ignores an endpoint resting on the line. D817 joins D827 among the routes outside Vaucluse, and D4096 is the only one left — a single way at the boundary whose name says D 996, which looks like a tagging slip in OSM rather than a missing relation. No route that already has a relation moves: the least inward of them still has two thirds of its length inside.
+- The count reads correctly in the singular ("1 route", "1 tronçon", "Voir la route sans Wikidata"), and the percentage is rounded down, so that 226 out of 227 shows 99 % rather than a 100 % contradicted by the line beneath it.
+- `index.html` now requests `js/app.js` and `js/config.js` with a new version parameter. 0.29.1 left it unchanged, so a browser holding the previous script in cache could keep showing the old count.
+
 ## [0.29.1] - 2026-11-16
 
 ### Changed

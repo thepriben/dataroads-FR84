@@ -8977,10 +8977,20 @@
                 EXTERNAL_ROUTE_OPERATORS.has(String(way.tags?.operator || '').replace(/\s+/g, ''))
             );
             if (external) return 'operator';
-            if (vaucluseScopeRings && !routeWays.some(way =>
-                (way.geometry || []).some(point => pointInRings(point.lat, point.lon, vaucluseScopeRings))
-            )) return 'outside';
+            if (vaucluseScopeRings && !routeWays.some(wayEntersVaucluse)) return 'outside';
             return null;
+        }
+
+        // Le milieu de chaque segment, et non ses sommets : une route voisine
+        // s'arrête souvent pile sur la limite, et ce seul point la ferait compter.
+        function wayEntersVaucluse(way) {
+            const points = way.geometry || [];
+            for (let i = 1; i < points.length; i++) {
+                const lat = (points[i - 1].lat + points[i].lat) / 2;
+                const lon = (points[i - 1].lon + points[i].lon) / 2;
+                if (pointInRings(lat, lon, vaucluseScopeRings)) return true;
+            }
+            return false;
         }
 
         function routeOutOfScopeByRef(ref) {
@@ -9020,7 +9030,7 @@
             }
             const withWd = qualityMetrics.withWikidata || 0;
             const without = total - withWd;
-            const pct = Math.round((withWd / total) * 100);
+            const pct = Math.floor((withWd / total) * 100);
             const withRel = qualityMetrics.withRelation || 0;
             const withoutRel = total - withRel;
 
@@ -9046,16 +9056,16 @@
                 </div>
                 ${sameGap ? `
                     <div style="padding:6px 8px;background:#fdecea;border-radius:4px;color:#922b21;font-size:0.72rem;margin-bottom:8px;">
-                        <strong>${without}</strong> routes <em>sans Wikidata</em>, faute de relation OSM :
+                        <strong>${without}</strong> route${without > 1 ? 's' : ''} <em>sans Wikidata</em>, faute de relation OSM :
                         c'est la relation qui porte l'identifiant.
                     </div>
                 ` : `
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.72rem;margin-bottom:8px;">
                         <div style="padding:6px 8px;background:#fdecea;border-radius:4px;color:#922b21;">
-                            <strong>${without}</strong> routes <em>sans Wikidata</em>
+                            <strong>${without}</strong> route${without > 1 ? 's' : ''} <em>sans Wikidata</em>
                         </div>
                         <div style="padding:6px 8px;background:#fef5e7;border-radius:4px;color:#8a5a00;">
-                            <strong>${withoutRel}</strong> routes <em>sans relation</em>
+                            <strong>${withoutRel}</strong> route${withoutRel > 1 ? 's' : ''} <em>sans relation</em>
                         </div>
                     </div>
                 `}
@@ -9063,7 +9073,7 @@
                     <div style="font-size:0.68rem;color:#7f8c8d;margin-bottom:8px;">${escapeHtml(outOfScopeNote())}</div>
                 ` : ''}
                 <div style="display:flex;gap:6px;">
-                    <button type="button" onclick="toggleWikidataGapPanel()" style="flex:1;border:1px solid #E74C3C;background:white;color:#E74C3C;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">Voir les ${without} routes sans Wikidata</button>
+                    <button type="button" onclick="toggleWikidataGapPanel()" style="flex:1;border:1px solid #E74C3C;background:white;color:#E74C3C;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">${without > 1 ? `Voir les ${without} routes` : 'Voir la route'} sans Wikidata</button>
                 </div>
             `;
 
@@ -9122,7 +9132,7 @@
 
             panel.innerHTML = `
                 <div class="wikidata-gap-head">
-                    <span><strong>${missing.length}</strong> routes sans Wikidata</span>
+                    <span><strong>${missing.length}</strong> route${missing.length > 1 ? 's' : ''} sans Wikidata</span>
                     <button type="button" class="wikidata-gap-close" onclick="toggleWikidataGapPanel()" title="Fermer la liste">✕</button>
                 </div>
                 <div class="wikidata-gap-hint">
@@ -9135,11 +9145,11 @@
                 <div class="wikidata-gap-list" id="wikidataGapList">
                     ${missing.map(route => `
                         <div class="road-item wikidata-gap-item" data-ref="${route.ref}"
-                             title="${route.ref} — ${hierarchyLabels[route.hierarchy]} — ${route.segments} tronçons — ${route.hasRelation
+                             title="${route.ref} — ${hierarchyLabels[route.hierarchy]} — ${route.segments} tronçon${route.segments > 1 ? 's' : ''} — ${route.hasRelation
                                  ? 'relation OSM présente mais sans identifiant Wikidata'
                                  : 'aucune relation OSM, à créer avant de pouvoir la lier'}">
                             <div class="road-badge ${route.hierarchy}">${route.ref}</div>
-                            <span class="wikidata-gap-count">${route.segments} tronçons</span>
+                            <span class="wikidata-gap-count">${route.segments} tronçon${route.segments > 1 ? 's' : ''}</span>
                             ${route.hasRelation
                                 ? '<span class="wikidata-gap-flag">relation nue</span>'
                                 : ''}
