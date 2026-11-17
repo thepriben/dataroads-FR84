@@ -8077,6 +8077,11 @@
                 restrictBasemapToVaucluse(geojsonData);
                 window.settleMapLoader('boundary');
 
+                vaucluseScopeRings = departmentRings(geojsonData);
+                if (Object.keys(routePolylines).length && typeof window.calculateQualityMetrics === 'function') {
+                    window.calculateQualityMetrics();
+                }
+
                 vaucluseDefaultBounds = boundaryLayer.getBounds();
 
                 if (!INITIAL_URL_HAS_VIEW) {
@@ -8941,8 +8946,54 @@
             totalRoutes: 0,
             withWikidata: 0,
             withRelation: 0,
-            totalSegments: 0
+            totalSegments: 0,
+            outOfScope: { operator: [], outside: [] }
         };
+
+        // Les voies restantes ne se comptent que sur le réseau du Vaucluse : une
+        // route que la Drôme gère, ou dont aucun tronçon n'entre dans le
+        // département, n'a pas de relation à recevoir ici.
+        const EXTERNAL_ROUTE_OPERATORS = new Set(['CD26']);
+        let vaucluseScopeRings = null;
+
+        function pointInRings(lat, lon, rings) {
+            let inside = false;
+            rings.forEach(ring => {
+                for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+                    const [latI, lonI] = ring[i];
+                    const [latJ, lonJ] = ring[j];
+                    if ((latI > lat) !== (latJ > lat)
+                        && lon < (lonJ - lonI) * (lat - latI) / (latJ - latI) + lonI) {
+                        inside = !inside;
+                    }
+                }
+            });
+            return inside;
+        }
+
+        function routeOutOfScopeReason(routeWays) {
+            if (!routeWays?.length) return null;
+            const external = routeWays.every(way =>
+                EXTERNAL_ROUTE_OPERATORS.has(String(way.tags?.operator || '').replace(/\s+/g, ''))
+            );
+            if (external) return 'operator';
+            if (vaucluseScopeRings && !routeWays.some(way =>
+                (way.geometry || []).some(point => pointInRings(point.lat, point.lon, vaucluseScopeRings))
+            )) return 'outside';
+            return null;
+        }
+
+        function routeOutOfScopeByRef(ref) {
+            return routeOutOfScopeReason(routeDataByRef(ref)?.ways);
+        }
+
+        function outOfScopeNote() {
+            const { operator = [], outside = [] } = qualityMetrics.outOfScope || {};
+            const parts = [];
+            if (operator.length) parts.push(`${operator.length} gérée${operator.length > 1 ? 's' : ''} par la Drôme (${operator.join(', ')})`);
+            if (outside.length) parts.push(`${outside.length} hors Vaucluse (${outside.join(', ')})`);
+            return parts.length ? `Non comptées : ${parts.join(' ; ')}.` : '';
+        }
 
         function syncDashboardQualityMetrics() {
             if (typeof window.patchDashboardMetrics !== 'function') return;
@@ -9008,6 +9059,9 @@
                         </div>
                     </div>
                 `}
+                ${outOfScopeNote() ? `
+                    <div style="font-size:0.68rem;color:#7f8c8d;margin-bottom:8px;">${escapeHtml(outOfScopeNote())}</div>
+                ` : ''}
                 <div style="display:flex;gap:6px;">
                     <button type="button" onclick="toggleWikidataGapPanel()" style="flex:1;border:1px solid #E74C3C;background:white;color:#E74C3C;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">Voir les ${without} routes sans Wikidata</button>
                 </div>
@@ -9027,6 +9081,7 @@
         // emmène à la route sur la carte.
         function routesWithoutWikidata() {
             return Object.keys(routePolylines)
+                .filter(ref => !routeOutOfScopeByRef(ref))
                 .map(ref => ({ ref, flags: routeQualityByRef(ref) }))
                 .filter(entry => entry.flags && !entry.flags.hasWikidata)
                 .map(entry => ({
@@ -9075,6 +9130,7 @@
                         ? 'Aucune n\'a de relation OSM : c\'est elle qu\'il faut créer, puis taguer.'
                         : `${orphans} sans relation OSM, ${missing.length - orphans} avec une relation qui ne porte pas d'identifiant.`}
                     Cliquez une route pour la suivre sur la carte.
+                    ${outOfScopeNote() ? `<br>${escapeHtml(outOfScopeNote())}` : ''}
                 </div>
                 <div class="wikidata-gap-list" id="wikidataGapList">
                     ${missing.map(route => `
@@ -9145,9 +9201,17 @@
         window.calculateQualityMetrics = function() {
             console.log('📊 Calcul des métriques de qualité OSM...');
             
-            qualityMetrics = { totalRoutes: 0, withWikidata: 0, withRelation: 0, totalSegments: 0 };
+            qualityMetrics = {
+                totalRoutes: 0, withWikidata: 0, withRelation: 0, totalSegments: 0,
+                outOfScope: { operator: [], outside: [] }
+            };
 
             Object.keys(routePolylines).forEach(ref => {
+                const outOfScope = routeOutOfScopeByRef(ref);
+                if (outOfScope) {
+                    qualityMetrics.outOfScope[outOfScope].push(ref);
+                    return;
+                }
                 qualityMetrics.totalRoutes++;
                 qualityMetrics.totalSegments += routePolylines[ref].length;
 
@@ -9387,6 +9451,7 @@
             // Highlight matching routes
             const matchingRoutes = Object.keys(routePolylines).filter(
                 ref => routeQualityByRef(ref)?.hasWikidata === hasWikidata
+                    && (hasWikidata || !routeOutOfScopeByRef(ref))
             );
 
             matchingRoutes.forEach(ref => {

@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.29.1] - 2026-11-16
+
+### Changed
+
+- **The count of remaining roads now covers only the Vaucluse network.** Six routes were listed as lacking an OSM relation, but four of them are not Vaucluse's to fix: D193, D576 and D869 are managed by the Drôme (`operator=CD26` on every segment), and no segment of D827 enters the department. They are no longer counted in the Wikidata and relation totals, in the list of routes without Wikidata, in the red highlight on the map or in the dashboard figures. Only D817 and D4096 remain.
+- A route is set aside only when the rule holds for all of it: every segment managed by CD26, or not a single point inside the departmental boundary already loaded for the map. A route that merely crosses the border stays counted, as D33 does with one segment out of seventy-eight. The routes set aside are named under the count rather than silently dropped, so the figure can always be checked.
+
 ## [0.29.0] - 2026-10-23
 
 ### Changed
