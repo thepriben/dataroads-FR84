@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.31.0] - 2026-11-16
+
+### Added
+
+- **The sector panel now lists every departmental road it contains, not only the five longest.** Choosing a sector gave its key figures and its "Principales routes", which said what weighs most and left out the rest: the CEER of Carpentras has 56 roads, and 51 of them did not appear anywhere in its panel. They now follow, in numerical order as one looks them up, as a row of numbers that wraps — 1, 4, 5, 7 … 942, 974, 975 — each outlined in the colour of its network level in the sector, its length there in the tooltip.
+- Clicking a number highlights that road on the map, and clicking it again gives the sector back as it was. The highlight keeps to the sector: the halo and the framing used to cover the whole road, including the parts the sector hides, which drew glows over empty map. Without a sector chosen, highlighting a road is unchanged.
+
 ## [0.30.0] - 2026-11-16
 
 ### Added

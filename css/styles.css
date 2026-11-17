@@ -6339,6 +6339,31 @@
             margin-bottom: 3px;
         }
 
+        .digest-refs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+        }
+
+        .digest-ref {
+            min-width: 2.4em;
+            padding: 1px 4px;
+            border: 1.5px solid var(--ref-color);
+            border-radius: 4px;
+            background: #fff;
+            color: var(--text-dark);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .digest-ref:hover,
+        .digest-ref.is-active {
+            background: var(--ref-color);
+            color: #fff;
+        }
+
         /* Trois colonnes de largeur fixe pour l'intitulé et la valeur : les
            barres partent alors du même bord et se comparent à l'œil, ce qui est
            tout ce qu'on demande à une barre. */

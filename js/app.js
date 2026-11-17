@@ -7275,6 +7275,22 @@
             search?.addEventListener('input', renderTerritoryList);
             document.getElementById('digestPanelClose')
                 ?.addEventListener('click', closeTerritorialDigest);
+            // Un second clic sur la même route rend le secteur tel quel.
+            document.getElementById('digestPanelBody')?.addEventListener('click', event => {
+                const chip = event.target.closest('[data-digest-ref]');
+                if (!chip) return;
+                const ref = chip.dataset.digestRef;
+                if (window.highlightedRoute === ref) {
+                    window.clearHighlight();
+                    window.highlightedRoute = null;
+                    territorialFitBounds(territorialCurrentUnit());
+                } else {
+                    window.highlightRoute(ref);
+                }
+                chip.parentElement.querySelectorAll('[data-digest-ref]').forEach(other => {
+                    other.classList.toggle('is-active', other.dataset.digestRef === window.highlightedRoute);
+                });
+            });
         });
 
         // Update route display according to hierarchy
@@ -9760,10 +9776,14 @@
             }
             
             // Highlight the new route
-            if (routePolylines[ref]) {
+            // Un secteur choisi masque le reste de la route : le halo et le
+            // cadrage s'en tiennent à ce qui est affiché.
+            const allParts = routePolylines[ref] || [];
+            const inSector = allParts.filter(window.passesTerritorialFilter);
+            if (allParts.length) {
                 window.highlightedRoute = ref;
                 
-                const polylines = routePolylines[ref];
+                const polylines = inSector.length ? inSector : allParts;
                 const hierarchy = polylines[0].options.roadHierarchy;
                 
                 // Initialiser le tableau d'ombres pour cette route
@@ -13004,6 +13024,19 @@
                                            topRefs[0][1]))
                 .join('');
 
+            // Les cinq principales ne disent pas tout le secteur : toutes ses
+            // routes suivent, rangées par numéro comme on les cherche, chacune
+            // dans la couleur de son niveau et cliquable pour la retrouver.
+            const refNumber = ref => Number.parseInt(String(ref).replace(/\D/g, ''), 10) || 0;
+            const refChips = [...byRef.entries()]
+                .sort((a, b) => refNumber(a[0]) - refNumber(b[0]))
+                .map(([ref, value]) => `<button type="button" class="digest-ref${
+                        window.highlightedRoute === ref ? ' is-active' : ''}"
+                        data-digest-ref="${escapeHtml(ref)}"
+                        style="--ref-color:${hierarchyColors[levelOf(ref)] || '#7F8C8D'}"
+                        title="${escapeHtml(ref)} — ${km(value)} km dans le secteur">${refNumber(ref)}</button>`)
+                .join('');
+
             const scaleLabel = territorialData?.scales?.[territorialScale]?.label || '';
             const derived = territorialScaleIsDerived(territorialScale);
             const gap = territorialData?._cache?.derived_offset_percent?.[territorialScale];
@@ -13033,6 +13066,9 @@
                         <div class="digest-group-title">Vitesse autorisée</div>${speedBars}</div>` : ''}
                     ${refBars ? `<div class="digest-group">
                         <div class="digest-group-title">Principales routes</div>${refBars}</div>` : ''}
+                    ${refChips ? `<div class="digest-group">
+                        <div class="digest-group-title">Toutes les RD du secteur (${byRef.size})</div>
+                        <div class="digest-refs">${refChips}</div></div>` : ''}
                     ${caveat ? `<div class="digest-caveat">${caveat}</div>` : ''}
                 </div>`;
         };
