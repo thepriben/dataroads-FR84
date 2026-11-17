@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.34.0] - 2026-11-17
+
+### Added
+
+- **Fotoshi photos show up in popups.** Some milestones, guideposts and town-boundary signs carry `image:fotoshi` photos in OSM — five milestones, twelve guideposts and four signs in Vaucluse so far, several with four views of the same post. The tag holds a bare identifier rather than a URL, so these photos were silently dropped. The popup now shows them in the same carousel as the Panoramax, Mapillary and Commons ones, captioned "Fotoshi" and linking to the photo page. Fotoshi's data API requires a key a static site cannot hide, but the thumbnail and the photo page follow from the identifier alone, and the photos are published under CC BY 4.0. The proposed `fotoshi=*` key is read too.
+
+### Changed
+
+- **A milestone's outline tells the level of its road.** All PR looked alike, so the milestone of a regional road could not be told from that of a local lane without opening it. The outline now thickens by one stroke per level: one for local roads, two for territorial ones, three for regional ones. The 367 milestones whose road is not a classified departmental road keep the thin outline. The level is read from the road network once it has loaded, and milestones drawn before that are redrawn when it arrives.
+
+### Documentation
+
+- The user guide gains a section on the milestones layer, in French and English, and covers what 0.33.0 changed: departmental bridges set apart from the others, repeated road numbers and earlier labels for a level shown on its own. The READMEs list the milestones and departmental bridges among what the map shows.
+
 ## [0.33.0] - 2026-11-16
 
 ### Added

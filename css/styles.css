@@ -5584,6 +5584,16 @@
             line-height: 1.2;
             text-align: center;
         }
+        /* Un niveau de route de plus, un trait de plus : la borne d'une route
+           d'intérêt régional se lit avant celle d'une voie locale. */
+        .milestone-wrapper.is-territorial .milestone-cap,
+        .milestone-wrapper.is-territorial .milestone-num { border-width: 2px; }
+        .milestone-wrapper.is-regional .milestone-cap,
+        .milestone-wrapper.is-regional .milestone-num { border-width: 3px; }
+        .milestone-wrapper.is-territorial .milestone-cap,
+        .milestone-wrapper.is-regional .milestone-cap { border-bottom: none; }
+        .milestone-wrapper.is-territorial .milestone-num,
+        .milestone-wrapper.is-regional .milestone-num { border-top: none; }
         .milestone-wrapper.has-photo .milestone-cap {
             box-shadow: inset 0 -2px 0 #8E44AD;
         }

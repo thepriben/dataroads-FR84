@@ -106,6 +106,8 @@ Trois niveaux de routes départementales, chacun avec une couleur :
 
 '''Panonceaux de numéro.''' Chaque niveau devient pleinement lisible à son propre zoom, avec un fondu sur les trois quarts de niveau qui précèdent : '''rouge dès le zoom 10''', '''orange dès le zoom 12''', '''bleu dès le zoom 13'''. Les panonceaux se posent sur la '''portion de route réellement visible''' : ils restent donc affichés et suivent l'axe quand vous vous déplacez sur la carte. Quand plusieurs numéros se chevauchent malgré le repositionnement, ils fusionnent en une '''pastille de groupe''' cliquable listant les routes concernées.
 
+'''Répétition et couche seule.''' À partir du '''zoom 13''', une longue route reçoit son numéro tous les 320 pixels environ, jusqu'à trois fois de plus : la D942 ou la D938 restent nommées sur toute leur traversée de l'écran. Une répétition qui ne trouve pas de place près de sa route est abandonnée plutôt que de bousculer les autres numéros. Quand '''un seul niveau''' est affiché, ses numéros apparaissent '''dès le zoom 10''', comme ceux du réseau rouge : le réseau local se lit seul sans descendre à l'échelle du village.
+
 ==== [layer:layer-veloroutes] Véloroutes ====
 
 Itinéraires cyclables OSM ({{{route=bicycle}}}). Totaux en kilomètres : Via Rhôna (EV17), Méditerranée (EV8), Via Venaissia (V861), itinéraires locaux.
@@ -153,6 +155,8 @@ Ouvrages d'art OSM du département. Affichage adapté au zoom :
 
 '''Comment :''' activer la couche puis zoomer. Au zoom lointain, cliquer une grappe pour zoomer progressivement ; cliquer un pont ouvre la '''vue 3D plein écran'''.
 
+'''Ponts du réseau départemental.''' Un pont compte comme départemental quand OSM lui donne <code>operator=CD84</code> ou qu'un tronçon de RD passe dessus — 382 des 945 ouvrages. Il garde son tablier sombre et sa grappe un '''contour épais''' ; les ponts autoroutiers, ferroviaires ou communaux passent en '''gris clair'''. La légende en donne le décompte (« dont réseau départemental »).
+
 <h5>Vue 3D du pont</h5>
 
 Cliquer un pont ouvre une scène 3D plein écran où l'ouvrage est reconstruit et entouré de ses photos. On tourne autour à la souris (orbite), molette pour zoomer.
@@ -192,13 +196,21 @@ Mâts directionnels issus d'OpenStreetMap (nœuds <code>information=guidepost</c
 
 '''Trier par usage.''' Un mât de randonnée et un mât de véloroute ne servent pas la même lecture de la carte. Chaque mât porte donc au pied de son poteau une '''pastille d'usage''' — 🚶 randonnée (<code>hiking</code>), 🚲 vélo (<code>bicycle</code>), 🚵 VTT, 🐴 équestre — et la légende propose un '''filtre par usage''' avec le décompte de chacun (1 575 randonnée, 120 vélo, 509 sans usage déclaré en Vaucluse). Couper « Randonnée » ne laisse que le reste à l'écran ; un mât qui cumule deux usages reste visible tant que l'un d'eux est actif. Seuls les usages réellement présents dans la donnée sont proposés.
 
-'''Photos du panneau.''' Beaucoup de mâts portent dans OSM une ou plusieurs photos du panneau lui-même (tags <code>panoramax</code>, <code>mapillary</code>, <code>wikimedia_commons</code>, <code>image</code>) — environ 1 450 des 2 170 mâts du Vaucluse. Elles s'affichent alors dans le popup ; au-delà d'une photo, le bloc devient un '''carrousel''' (flèches ‹ › et compteur), car un même mât en cumule jusqu'à huit — une par lame, par orientation ou par millésime. La légende de chaque vue reprend la provenance et le suffixe du tag quand il en porte un (<code>panoramax:N</code> → « vers le nord », <code>mapillary:2017</code> → l'année). Cliquer la photo ouvre l'original chez le fournisseur. Une '''pastille violette''' sur le mât signale ce cas. À défaut de photo référencée, on retombe sur la recherche d'une '''photo Mapillary à proximité''' (pastille verte), qui montre l'environnement plutôt que le panneau.
+'''Photos du panneau.''' Beaucoup de mâts portent dans OSM une ou plusieurs photos du panneau lui-même (tags <code>panoramax</code>, <code>mapillary</code>, <code>wikimedia_commons</code>, <code>image:fotoshi</code>, <code>image</code>) — environ 1 450 des 2 170 mâts du Vaucluse. Elles s'affichent alors dans le popup ; au-delà d'une photo, le bloc devient un '''carrousel''' (flèches ‹ › et compteur), car un même mât en cumule jusqu'à huit — une par lame, par orientation ou par millésime. La légende de chaque vue reprend la provenance et le suffixe du tag quand il en porte un (<code>panoramax:N</code> → « vers le nord », <code>mapillary:2017</code> → l'année). Cliquer la photo ouvre l'original chez le fournisseur. Une '''pastille violette''' sur le mât signale ce cas. À défaut de photo référencée, on retombe sur la recherche d'une '''photo Mapillary à proximité''' (pastille verte), qui montre l'environnement plutôt que le panneau.
 
 ==== [layer:layer-city-limits] Panneaux d'agglomération ====
 
 Entrées et sorties de village issues d'OpenStreetMap (nœuds <code>traffic_sign=city_limit</code>, 468 en Vaucluse dont 446 nommés) : les panneaux EB10 / EB20 qui marquent le basculement du régime de vitesse en traversée. Complément naturel du mode ''Limitations''.
 
 '''Comment :''' activer la couche. Au dézoom, les points sont regroupés en '''grappes rouges''' (cliquer = zoomer) ; à partir du '''zoom ≥ 13''', chaque panneau s'affiche sous la forme de la '''plaque réelle''' — nom de la localité sur fond blanc bordé de rouge. Une plaque '''barrée d'une diagonale rouge''' correspond à une '''sortie''' d'agglomération (<code>city_limit=end</code>). Le popup donne le sens, les noms alternatifs (dont l'occitan), la référence et le gestionnaire quand ils existent, les '''photos du panneau''' référencées dans OSM, et un lien '''OpenStreetMap''' (''voir'' / ''compléter'' dans l'éditeur iD) pour corriger le panneau depuis la carte.
+
+==== [layer:layer-milestones] Points de repère (PR) ====
+
+Bornes PR issues d'OpenStreetMap (nœuds <code>highway=milestone</code>, 2 859 en Vaucluse, presque toutes importées du CRIGE PACA) : la borne au bord de la route qui sert à localiser une intervention.
+
+'''Comment :''' activer la couche. Au dézoom, les bornes sont regroupées en '''grappes jaunes''' (cliquer = zoomer) ; à partir du '''zoom ≥ 14''', chaque borne s'affiche comme sur le terrain — tête jaune, fût blanc portant son numéro. Le '''contour s'épaissit avec le niveau de la route''' : un trait pour le réseau local, deux pour le territorial, trois pour l'intérêt régional. L'infobulle donne la route et le numéro (« D942 · PR 7 ») ; le popup le côté, le gestionnaire, la date de dernière vérification sur le terrain — « jamais sur le terrain (import CRIGE) » pour 2 512 d'entre elles — et les '''photos de la borne''' référencées dans OSM, dont celles de '''Fotoshi''' (<code>image:fotoshi</code>). Un liseré violet sous la tête signale une borne photographiée.
+
+{{hint|Fotoshi publie ses photos sous CC BY 4.0 ; la vignette et le lien vers la page de la photo se déduisent de l'identifiant, sans clé d'API.}}
 
 === [family:stats] Données statistiques ===
 

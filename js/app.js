@@ -3184,7 +3184,16 @@
             const photos = [];
 
             const push = (base, value, note) => {
-                if (base === 'panoramax') {
+                if (base === 'fotoshi') {
+                    // Identifiant public Fotoshi : vignette CDN et page photo se
+                    // déduisent de l'identifiant, sans clé d'API.
+                    if (!/^[A-Za-z0-9_-]{8,64}$/.test(value)) return;
+                    photos.push({
+                        source: 'Fotoshi', note,
+                        thumb: `https://cdn.fotoshi.com/thumbnails/${value}.jpeg`,
+                        href: `https://fotoshi.com/photo/${value}`
+                    });
+                } else if (base === 'panoramax') {
                     if (!UUID_RE.test(value)) return;
                     photos.push({
                         source: 'Panoramax', note,
@@ -3216,8 +3225,10 @@
             };
 
             Object.keys(p).forEach(key => {
-                const [base, ...rest] = key.split(':');
-                if (!['panoramax', 'mapillary', 'wikimedia_commons', 'image'].includes(base)) return;
+                let [base, ...rest] = key.split(':');
+                // image:fotoshi=* est la clé documentée, fotoshi=* la clé proposée.
+                if (base === 'image' && rest[0] === 'fotoshi') [base, ...rest] = rest;
+                if (!['panoramax', 'mapillary', 'wikimedia_commons', 'image', 'fotoshi'].includes(base)) return;
                 const note = photoSuffixLabel(rest.join(':'));
                 String(p[key] || '').split(';').map(s => s.trim()).filter(Boolean)
                     .forEach(value => push(base, value, note));
@@ -3578,11 +3589,25 @@
             return p.road ? `${p.road} · ${pr}` : pr;
         }
 
+        // Le réseau se charge indépendamment des PR : l'index est reconstruit dès
+        // que le nombre de routes classées change.
+        let milestoneHierarchyIndex = { size: -1, byRef: new Map() };
+        function milestoneHierarchy(road) {
+            const byLevel = window.routesByHierarchy;
+            if (!byLevel) return null;
+            const routes = [...byLevel.regional, ...byLevel.territorial, ...byLevel.local];
+            if (routes.length !== milestoneHierarchyIndex.size) {
+                milestoneHierarchyIndex = { size: routes.length, byRef: new Map(routes.map(r => [r.ref, r.hierarchy])) };
+            }
+            return milestoneHierarchyIndex.byRef.get(road) || null;
+        }
+
         function milestoneDivIcon(props) {
             const p = props || {};
+            const hierarchy = milestoneHierarchy(p.road);
             return L.divIcon({
                 html: `<span class="milestone-cap"></span><span class="milestone-num">${escapeHtml(p.distance || '?')}</span>`,
-                className: 'milestone-wrapper' + (osmNodePhotos(p).length ? ' has-photo' : ''),
+                className: 'milestone-wrapper' + (hierarchy ? ` is-${hierarchy}` : '') + (osmNodePhotos(p).length ? ' has-photo' : ''),
                 iconSize: null,
                 iconAnchor: [12, 26]
             });
@@ -3653,6 +3678,7 @@
             });
         }
 
+        window.renderMilestones = renderMilestones;
         function renderMilestones() {
             milestonesLayer.clearLayers();
             if (!milestonesVisible || !milestonesDataLoaded || !window.map) return;
@@ -8375,6 +8401,7 @@
         // Load roads by hierarchy category
         let roadLabels = []; // Store labels for zoom management
         let routesByHierarchy = { regional: [], territorial: [], local: [] }; // Store routes by hierarchy
+        window.routesByHierarchy = routesByHierarchy;
         window.routePolylines = {}; // Store polylines by route ref (global for toggleHierarchy)
         let allRoadsList = []; // Full route list for search
         window.highlightedRoute = null; // Currently highlighted route (global for toggleHierarchy)
@@ -8759,6 +8786,7 @@
                     // Des ponts chargés avant le réseau n'ont pas encore pu être
                     // rattachés aux routes qui les franchissent.
                     window.markDepartmentalBridges?.();
+                    window.renderMilestones?.();
 
                     // Compute OSM/Wikidata quality metrics and feed sidebar summary
                     if (typeof window.calculateQualityMetrics === 'function') {
