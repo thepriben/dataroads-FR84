@@ -1004,6 +1004,30 @@
             };
         }
 
+        // L'indice A marque un ancien tracé, recalé ailleurs dans la numérotation
+        // sans avoir disparu : un liseré bleu de part et d'autre le signale sans
+        // retirer à la voie la couleur de sa hiérarchie. Son volet, juste sous
+        // celui des tracés, le garde derrière toutes les voies. Le réseau local
+        // est déjà bleu : un filet blanc sépare le liseré du tracé pour qu'il
+        // reste lisible sur toutes les hiérarchies.
+        const FORMER_INDEX_PANE = 'formerIndexCasing';
+        const FORMER_INDEX_COLOR = '#1A3A8F';
+
+        function attachFormerIndexCasing(polyline, coords) {
+            if (!window.map.getPane(FORMER_INDEX_PANE)) {
+                const pane = window.map.createPane(FORMER_INDEX_PANE);
+                pane.style.zIndex = 395;
+                pane.style.pointerEvents = 'none';
+            }
+            const weight = polyline.options.weight;
+            const casing = L.layerGroup([
+                L.polyline(coords, { pane: FORMER_INDEX_PANE, color: FORMER_INDEX_COLOR, weight: weight + 8, opacity: 0.95, interactive: false }),
+                L.polyline(coords, { pane: FORMER_INDEX_PANE, color: '#fff', weight: weight + 3, opacity: 1, interactive: false })
+            ]);
+            polyline.on('add', () => casing.addTo(window.map));
+            polyline.on('remove', () => casing.remove());
+        }
+
         function haversineKm(a, b) {
             const R = 6371;
             const toRad = d => d * Math.PI / 180;
@@ -8199,6 +8223,7 @@
                                     wayTags: way.tags || {},
                                     wayId: way.id
                                 });
+                                if (way.tags.ref_index === 'A') attachFormerIndexCasing(polyline, coords);
 
                                 if (hierarchyVisibility[hierarchy]
                                     && window.passesTerritorialFilter(polyline)) {
@@ -8299,6 +8324,12 @@
                                     <div class="route-popup">
                                         <h3>${roadName}</h3>
                                         <div class="detail"><strong>Référence&nbsp;:</strong> ${ref}</div>
+                                        ${way.tags.ref_index ? `
+                                            <div class="detail"><strong>Indice&nbsp;:</strong>
+                                                <span class="ref-index-chip${way.tags.ref_index === 'A' ? ' is-former' : ''}">${escapeHtml(way.tags.ref_index)}</span>
+                                                ${way.tags.ref_index === 'A' ? 'ancien tracé, ' : ''}${escapeHtml(way.tags.osm_ref || '')}
+                                            </div>
+                                        ` : ''}
                                         <div class="detail"><strong>Type&nbsp;:</strong> ${hierarchyLabel}</div>
                                         
                                         ${way.tags.description || way.relationTags?.description ? `

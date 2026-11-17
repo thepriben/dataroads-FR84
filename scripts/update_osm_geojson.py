@@ -34,7 +34,7 @@ QUERIES = {
         [out:json][timeout:60];
         area["ISO3166-2"="FR-84"]->.dept;
         (
-          way(area.dept)["highway"]["ref"~"^D ?[0-9]+$"];
+          way(area.dept)["highway"]["ref"~"^D ?[0-9]+ ?[A-Za-z]?$"];
           relation(area.dept)["type"="route"]["route"="road"]["ref"~"^D ?[0-9]+$"];
         );
         out geom;
@@ -336,6 +336,18 @@ def collection(features: list[dict[str, Any]], source_elements_count: int) -> di
     }
 
 
+# Une voie garde un seul numéro et rattache ses tronçons indicés (« D 975 A »)
+# à sa relation : ils s'affichent avec elle, l'indice porté à part.
+INDEXED_REF = re.compile(r"^\s*([Dd])\s*(\d+)\s*([A-Za-z])\s*$")
+
+
+def split_ref_index(value: str | None) -> tuple[str, str | None]:
+    found = INDEXED_REF.match(value or "")
+    if not found:
+        return value or "", None
+    return f"D {found.group(2)}", found.group(3).upper()
+
+
 def departmental_roads_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     elements = data.get("elements", [])
     relations_by_ref = {
@@ -349,9 +361,12 @@ def departmental_roads_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
         if element.get("type") != "way":
             continue
 
-        ref = normalize_ref(element.get("tags", {}).get("ref"))
-        relation = relations_by_ref.get(ref)
+        osm_ref = element.get("tags", {}).get("ref")
+        base_ref, index = split_ref_index(osm_ref)
+        relation = relations_by_ref.get(normalize_ref(base_ref))
         extra_properties: dict[str, Any] = {}
+        if index:
+            extra_properties.update({"ref": base_ref, "ref_index": index, "osm_ref": osm_ref})
 
         if relation:
             extra_properties.update(

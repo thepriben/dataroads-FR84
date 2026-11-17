@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.30.0] - 2026-11-16
+
+### Added
+
+- **Indexed sections are on the map, and index A stands out with a blue edging.** In OSM a route keeps a single number and attaches its indexed sections — "D 975 A", "D 2 R", "D 902 G" — to its relation, the A sections with the role `former`. The extraction filter only admitted a bare number, so all 348 of them were missing from the map, the 36 sections of D 975 A at Orange among them. They are now extracted, displayed with their parent route and counted with it, the index kept apart in `ref_index` and the OSM value in `osm_ref`, so that nothing else in the app has to learn a second numbering.
+- Index A marks a former alignment, moved elsewhere in the route's numbering without having disappeared. Its sections keep the colour of their hierarchy and gain a navy edging on both sides, separated from the line by a thin white gap: the local network is already blue, and an edging the same colour would have vanished on it. The edging lives in its own pane just below the road lines, follows them when a hierarchy or territorial filter hides them, and has its entry in the legend. The section popup shows the index as a chip beside the OSM reference. The other letters (R, D, X, C, G, B) are displayed and labelled in the popup, without a style of their own yet.
+- Five tests cover the parsing of every spelling met in Vaucluse ("D 975 A", "D 975A", "D975A", "D 975a"), the attachment of an indexed section to its parent relation, and the nightly diff, which must re-extract the network when an indexed section is edited.
+
 ## [0.29.2] - 2026-11-16
 
 ### Fixed

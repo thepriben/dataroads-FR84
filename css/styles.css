@@ -4376,6 +4376,29 @@
         .route-popup .detail strong {
             color: var(--text-dark);
         }
+
+        .ref-index-chip {
+            display: inline-block;
+            min-width: 1.4em;
+            padding: 0 5px;
+            border-radius: 4px;
+            background: #ecf0f1;
+            color: var(--text-dark);
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .ref-index-chip.is-former {
+            background: #1A3A8F;
+            color: #fff;
+        }
+
+        .legend-color.is-former-index {
+            background: #7f8c8d;
+            height: 4px;
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1A3A8F;
+        }
         
         .route-popup a {
             transition: all 0.2s ease;
