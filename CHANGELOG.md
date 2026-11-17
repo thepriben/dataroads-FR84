@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.33.0] - 2026-11-16
+
+### Added
+
+- **The header credits its sources.** The map is built entirely on OpenStreetMap and its road identifiers come from Wikidata, yet neither appeared anywhere a visitor would look. Both logos now sit in the header, each linking to its project. They step aside on narrow screens, where the header has no room to spare (issue #11).
+- **Departmental bridges stand out from the others.** The bridge layer showed every `bridge=*` structure in Vaucluse alike, so the 382 the department actually maintains were lost among motorway, railway and municipal ones. A bridge now counts as departmental when OSM gives it `operator=CD84` or when a section of an RD runs across it. It keeps its dark deck and its cluster marker gains a bold outline, while the others fade to a light grey. The legend gives the count separately ("dont réseau départemental"), and the tooltip of a single bridge says it belongs to the network (issue #25).
+
+### Changed
+
+- **Road numbers repeat along long roads.** A single label per road left long stretches of the D942 or the D938 unnamed once zoomed in. From zoom 13, a road crossing the view is labelled again every 320 pixels or so, up to three extra times. Each repeat must find room near its road and is dropped otherwise, so the extra labels never push the main ones aside.
+- **A layer shown on its own is labelled earlier.** Local roads only received their number from zoom 13, a threshold that keeps a full map readable. When only one level of the hierarchy is displayed, its labels now appear from zoom 10, where regional roads start. Someone looking at the local network alone no longer has to zoom down to the scale of a village to read it (issue #20).
+
 ## [0.32.0] - 2026-11-16
 
 ### Added

@@ -35,7 +35,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261116-5">
+    <link rel="stylesheet" href="css/styles.css?v=20261117-1">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -50,6 +50,14 @@
             <div class="header-titles">
                 <h1>Réseau Routier Départemental</h1>
                 <div class="subtitle">Département de Vaucluse • Outils Numériques Routiers</div>
+            </div>
+            <div class="header-sources" aria-label="Sources principales">
+                <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer" title="Données routières : OpenStreetMap">
+                    <img src="assets/osm-logo.svg" width="24" height="24" alt="OpenStreetMap">
+                </a>
+                <a href="https://www.wikidata.org/" target="_blank" rel="noopener noreferrer" title="Identifiants des routes : Wikidata">
+                    <img src="assets/wikidata-logo.svg" width="38" height="22" alt="Wikidata">
+                </a>
             </div>
             <div class="header-actions">
                 <button type="button" class="header-legend-btn" id="headerLegendBtn" title="Ouvrir la légende" aria-label="Ouvrir la légende" aria-controls="appSidebar" aria-expanded="false">
@@ -313,6 +321,11 @@
                         <div class="legend-color" style="background: rgba(44, 62, 80, 0.12); border: 2px solid #2C3E50; height: 13px; width: 24px; border-radius: 3px;"></div>
                         <div class="legend-label">Ponts OSM</div>
                         <div class="legend-count" id="count-bridges-total">-</div>
+                    </div>
+                    <div class="legend-item" data-bridge="cd84" style="pointer-events: none; opacity: 0.5;" title="Ouvrages franchis par une route départementale ou gérés par le CD84 (operator=CD84) ; les autres restent affichés en gris">
+                        <div class="legend-color bridge-cd84-swatch" aria-hidden="true"></div>
+                        <div class="legend-label">dont réseau départemental</div>
+                        <div class="legend-count" id="count-bridges-cd84">-</div>
                     </div>
                 </div>
 
@@ -1019,7 +1032,7 @@
 
     </div>
 
-    <script src="js/config.js?v=20261116-5"></script>
+    <script src="js/config.js?v=20261117-1"></script>
     <script>
         (function () {
             var el = document.getElementById('siteVersion');
@@ -1030,7 +1043,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260825-2"></script>
-    <script src="js/app.js?v=20261116-5"></script>
+    <script src="js/app.js?v=20261117-1"></script>
     <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260826-4"></script>
 </body>

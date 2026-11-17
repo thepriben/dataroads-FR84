@@ -97,6 +97,43 @@
             object-fit: cover;
         }
 
+        /* Les sources sans lesquelles la carte n'existerait pas, à côté du
+           Département qui la porte. Pastille claire : le logo Wikidata est
+           sombre et disparaîtrait sur le bandeau. */
+        .header-sources {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.92);
+            position: relative;
+            z-index: 2;
+            flex-shrink: 0;
+        }
+
+        .header-sources a {
+            display: flex;
+            opacity: 0.85;
+            transition: opacity 0.2s ease;
+        }
+
+        .header-sources a:hover {
+            opacity: 1;
+        }
+
+        .header-sources img {
+            display: block;
+            height: 22px;
+            width: auto;
+        }
+
+        @media (max-width: 720px) {
+            .header-sources {
+                display: none;
+            }
+        }
+
         .header-actions {
             display: flex;
             align-items: center;
@@ -2092,6 +2129,24 @@
 
         .bridge-group-marker.is-solo.has-photos {
             background: rgba(243, 156, 18, 0.9);
+        }
+
+        /* Ouvrage du réseau départemental : liseré bleu nuit, les autres en retrait. */
+        .bridge-group-marker.is-cd84 {
+            border-color: #1f2933;
+            border-width: 3px;
+        }
+
+        .bridge-group-marker.is-solo:not(.is-cd84) {
+            opacity: 0.6;
+        }
+
+        .legend-color.bridge-cd84-swatch {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(127, 140, 141, 0.82);
+            border: 3px solid #1f2933;
         }
 
         .bridge-group-marker:hover {

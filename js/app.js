@@ -2571,10 +2571,11 @@
             }
 
             const group = cluster.groups[0];
+            const owner = group.isDepartmental ? ' · réseau départemental' : '';
             if (cluster.photoCount > 0) {
-                return `${group.title} · ${cluster.photoCount} photo${cluster.photoCount > 1 ? 's' : ''}`;
+                return `${group.title}${owner} · ${cluster.photoCount} photo${cluster.photoCount > 1 ? 's' : ''}`;
             }
-            return group.title;
+            return `${group.title}${owner}`;
         }
 
         function updateBridgeGeometryVisibility(zoom = window.map?.getZoom?.()) {
@@ -2638,7 +2639,7 @@
                     html: `
                         <button
                             type="button"
-                            class="bridge-group-marker${cluster.isCluster ? ' is-cluster' : ' is-solo'}${cluster.photoCount ? ' has-photos' : ''}"
+                            class="bridge-group-marker${cluster.isCluster ? ' is-cluster' : ' is-solo'}${cluster.photoCount ? ' has-photos' : ''}${cluster.groups.some(group => group.isDepartmental) ? ' is-cd84' : ''}"
                             style="width:${diameter}px;height:${diameter}px;"
                             aria-label="${tooltip.replace(/"/g, '&quot;')}"
                         >
@@ -8755,6 +8756,10 @@
                     // Build route list
                     createRoadList();
 
+                    // Des ponts chargés avant le réseau n'ont pas encore pu être
+                    // rattachés aux routes qui les franchissent.
+                    window.markDepartmentalBridges?.();
+
                     // Compute OSM/Wikidata quality metrics and feed sidebar summary
                     if (typeof window.calculateQualityMetrics === 'function') {
                         window.calculateQualityMetrics();
@@ -8818,6 +8823,40 @@
         // l'écran : une étiquette doit suivre la route quand on se déplace le long
         // d'elle, et non rester accrochée à un point fixe qui sort du cadre.
         function getRouteLabelCandidates(route, bounds) {
+            const inView = routeLabelPointsInView(route, bounds);
+            if (inView.length === 0) return inView;
+
+            // Le milieu de la portion visible d'abord, puis deux replis écartés
+            // pour laisser de la marge à la résolution des chevauchements.
+            const pick = fraction => inView[Math.min(inView.length - 1, Math.round((inView.length - 1) * fraction))];
+            const candidates = [pick(0.5)];
+            if (inView.length > 2) candidates.push(pick(0.28), pick(0.72));
+            return candidates;
+        }
+
+        // Une seule étiquette par route rendait l'outil élégant mais avare : au
+        // zoom des carrefours, on suit une route sur plusieurs écrans de long
+        // sans jamais revoir son numéro. Au-delà de ce zoom, une route longue à
+        // l'écran le répète, à distance suffisante pour ne pas faire bruit.
+        const ROUTE_LABEL_REPEAT_MIN_ZOOM = 13;
+        const ROUTE_LABEL_REPEAT_SPACING_PX = 320;
+        const ROUTE_LABEL_REPEAT_MAX = 3;
+
+        function getRouteLabelRepeatAnchors(route, bounds, primary) {
+            const placed = [map.latLngToContainerPoint(primary)];
+            const anchors = [];
+            for (const point of routeLabelPointsInView(route, bounds)) {
+                if (anchors.length >= ROUTE_LABEL_REPEAT_MAX) break;
+                const screen = map.latLngToContainerPoint(point);
+                if (placed.every(other => other.distanceTo(screen) >= ROUTE_LABEL_REPEAT_SPACING_PX)) {
+                    placed.push(screen);
+                    anchors.push(point);
+                }
+            }
+            return anchors;
+        }
+
+        function routeLabelPointsInView(route, bounds) {
             const inView = [];
             if (!route.ways) return inView;
             // Sous filtre territorial, une route qui ne traverse le secteur que
@@ -8835,20 +8874,25 @@
                     }
                 }
             }
-            if (inView.length === 0) return inView;
+            return inView;
+        }
 
-            // Le milieu de la portion visible d'abord, puis deux replis écartés
-            // pour laisser de la marge à la résolution des chevauchements.
-            const pick = fraction => inView[Math.min(inView.length - 1, Math.round((inView.length - 1) * fraction))];
-            const candidates = [pick(0.5)];
-            if (inView.length > 2) candidates.push(pick(0.28), pick(0.72));
-            return candidates;
+        // Les seuils échelonnés arbitrent entre niveaux qui se disputent la place.
+        // Un niveau affiché seul n'a personne à qui la céder : ses numéros
+        // viennent dès le zoom du réseau régional.
+        const ROUTE_LABEL_SINGLE_LAYER_ZOOM = ROUTE_LABEL_ZOOM_THRESHOLDS.regional;
+
+        function routeLabelThreshold(hierarchy) {
+            const threshold = ROUTE_LABEL_ZOOM_THRESHOLDS[hierarchy];
+            const shownLevels = Object.keys(ROUTE_LABEL_ZOOM_THRESHOLDS)
+                .filter(level => hierarchyVisibility[level]).length;
+            return shownLevels === 1 ? Math.min(threshold, ROUTE_LABEL_SINGLE_LAYER_ZOOM) : threshold;
         }
 
         // The fade runs up to the threshold, not from it: a level asked for at zoom 10
         // must be fully readable at zoom 10, not start appearing there.
         function getRouteLabelZoomOpacity(hierarchy, zoom) {
-            const threshold = ROUTE_LABEL_ZOOM_THRESHOLDS[hierarchy];
+            const threshold = routeLabelThreshold(hierarchy);
             const fadeStart = threshold - ROUTE_LABEL_ZOOM_FADE_SPAN;
             if (zoom >= threshold) return 1;
             if (zoom <= fadeStart) return 0;
@@ -8942,6 +8986,21 @@
                         anchor: candidates[0],
                         candidates
                     });
+                    if (zoom < ROUTE_LABEL_REPEAT_MIN_ZOOM) return;
+                    // Les répétitions passent après toutes les premières
+                    // étiquettes : aucune ne doit en déloger une autre.
+                    getRouteLabelRepeatAnchors(route, bounds, candidates[0]).forEach(anchor => {
+                        entries.push({
+                            route,
+                            hierarchy,
+                            ref: route.ref,
+                            priority: 0,
+                            repeat: true,
+                            opacity,
+                            anchor,
+                            candidates: [anchor]
+                        });
+                    });
                 });
             });
             entries.sort((a, b) => {
@@ -8975,8 +9034,9 @@
                 const anchorPoints = entry.candidates.length > 0 ? entry.candidates : [entry.anchor];
                 let placed = false;
 
+                const offsets = entry.repeat ? routeLabelSpiralOffsets.slice(0, 25) : routeLabelSpiralOffsets;
                 for (const anchor of anchorPoints) {
-                    for (const [dx, dy] of routeLabelSpiralOffsets) {
+                    for (const [dx, dy] of offsets) {
                         const position = offsetLatLngByPixels(anchor, dx, dy);
                         entry.marker.setLatLng(position);
                         const rect = getRouteLabelScreenRect(entry.marker);
@@ -8996,7 +9056,10 @@
                     if (placed) break;
                 }
 
-                if (!placed) {
+                if (!placed && entry.repeat) {
+                    map.removeLayer(entry.marker);
+                    entry.dropped = true;
+                } else if (!placed) {
                     const rect = getRouteLabelScreenRect(entry.marker);
                     if (rect) {
                         entry.resolvedLatLng = entry.marker.getLatLng();
@@ -9006,6 +9069,9 @@
                     }
                 }
             });
+            for (let i = placedEntries.length - 1; i >= 0; i -= 1) {
+                if (placedEntries[i].dropped) placedEntries.splice(i, 1);
+            }
         }
 
         function findRouteLabelOverlapGroups(entries) {
@@ -10851,6 +10917,58 @@
             });
         }
 
+        // Un pont relève du Département quand OSM le dit (operator=CD84) ou
+        // quand une route départementale le franchit : la plupart des emprises
+        // ne portent ni gestionnaire ni numéro, mais le tronçon de RD qui passe
+        // dessus est tagué bridge. Les autres restent affichés, en retrait.
+        const BRIDGE_OTHER_COLOR = '#95A5A6';
+
+        function departmentalBridgePoints() {
+            const points = [];
+            Object.values(window.routePolylines || {}).forEach(polylines => polylines.forEach(polyline => {
+                const bridge = polyline.options.wayTags?.bridge;
+                if (!bridge || bridge === 'no') return;
+                const latLngs = polyline.getLatLngs();
+                for (let i = 1; i < latLngs.length; i++) {
+                    points.push(L.latLng(
+                        (latLngs[i - 1].lat + latLngs[i].lat) / 2,
+                        (latLngs[i - 1].lng + latLngs[i].lng) / 2
+                    ));
+                }
+            }));
+            return points;
+        }
+
+        function bridgeInfoCarriesRoad(info, points) {
+            const candidates = points.filter(point => info.bounds.contains(point));
+            if (!candidates.length) return false;
+            const geometry = info.feature.geometry || {};
+            const polygons = geometry.type === 'Polygon' ? [geometry.coordinates]
+                : geometry.type === 'MultiPolygon' ? geometry.coordinates : null;
+            if (!polygons) return true;
+            const rings = polygons.map(polygon => polygon[0].map(([lng, lat]) => [lat, lng]));
+            return candidates.some(point => pointInRings(point.lat, point.lng, rings));
+        }
+
+        function markDepartmentalBridges() {
+            if (!bridgeGroups.length) return;
+            const points = departmentalBridgePoints();
+            bridgeGroups.forEach(group => {
+                group.isDepartmental = group.features.some(info =>
+                    String(info.tags.operator || '').replace(/\s+/g, '') === 'CD84'
+                    || bridgeInfoCarriesRoad(info, points));
+            });
+            const element = document.getElementById('count-bridges-cd84');
+            if (element) {
+                element.textContent = bridgeGroups.filter(group => group.isDepartmental).length.toLocaleString('fr-FR');
+            }
+            if (bridgeDataLoaded) {
+                resetBridgeFeatureHighlight();
+                updateBridgeGroupMarkerLayer();
+            }
+        }
+        window.markDepartmentalBridges = markDepartmentalBridges;
+
         function bridgeFeatureStyle(feature, selected = false) {
             const role = bridgeRoleFromTags(feature.properties || {});
             const style = bridgeRoleStyle(role);
@@ -10860,13 +10978,14 @@
             const group = info ? bridgeGroupById.get(info.groupId) : null;
             const photoBoost = group ? bridgeGeometryWeightBoost(group.photos.length) : 0;
             const baseWeight = style.weight + photoBoost;
+            const muted = !selected && group && group.isDepartmental === false;
 
             return {
-                color: selected ? '#111827' : style.color,
-                weight: selected ? Math.max(baseWeight + 2, 5) : baseWeight,
-                opacity: selected ? 1 : 0.9,
-                fillColor: style.color,
-                fillOpacity: isPolygon ? (selected ? 0.32 : style.fillOpacity) : 0,
+                color: selected ? '#111827' : muted ? BRIDGE_OTHER_COLOR : style.color,
+                weight: selected ? Math.max(baseWeight + 2, 5) : muted ? Math.max(baseWeight - 1, 1) : baseWeight + 1,
+                opacity: selected ? 1 : muted ? 0.55 : 0.95,
+                fillColor: muted ? BRIDGE_OTHER_COLOR : style.color,
+                fillOpacity: isPolygon ? (selected ? 0.32 : muted ? 0.08 : style.fillOpacity) : 0,
                 dashArray: selected ? '' : (style.dashArray || ''),
                 interactive: true
             };
@@ -11532,6 +11651,7 @@
 
                     bridgeGroups = buildBridgeGroups(data.features || []);
                     bridgeGroupById = new Map(bridgeGroups.map(group => [group.id, group]));
+                    markDepartmentalBridges();
                     createBridgeLayers(data);
                     setBridgeLegendCounts(bridgeGroups);
                     bridgeDataLoaded = true;
