@@ -129,19 +129,24 @@ jobs:
               ;;
           esac
           python3 scripts/update_territorial_units.py
+      - name: Compare milestones with the CD84 reference
+        # Le verdict se recalcule sur les bornes tout juste extraites ; un
+        # DataSud injoignable laisse le fichier précédent en place.
+        if: always()
+        run: python3 scripts/update_milestones_reference.py
       - name: Commit changes
         # Un jeu refusé par Overpass fait échouer l'étape précédente, mais ce
         # qui a été rapatrié avant doit être publié quand même : le garder sur
         # le disque du runner ne servirait personne.
         if: always()
         run: |
-          if git diff --quiet -- data/osm data/external/territorial-units.json data/external/territorial-boundaries.json; then
+          if git diff --quiet -- data/osm data/external/territorial-units.json data/external/territorial-boundaries.json data/external/milestones-reference.geojson; then
             echo "No GeoJSON changes."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/osm data/external/territorial-units.json data/external/territorial-boundaries.json
+          git add data/osm data/external/territorial-units.json data/external/territorial-boundaries.json data/external/milestones-reference.geojson
           git commit -m "Update OSM GeoJSON"
           for attempt in 1 2 3; do
             # These files are regenerated wholesale, so when the branch has

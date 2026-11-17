@@ -5594,6 +5594,20 @@
         .milestone-wrapper.is-regional .milestone-cap { border-bottom: none; }
         .milestone-wrapper.is-territorial .milestone-num,
         .milestone-wrapper.is-regional .milestone-num { border-top: none; }
+        /* En désaccord avec le référentiel CD84 : même trait, en rouge. */
+        .milestone-wrapper.is-mismatch .milestone-cap,
+        .milestone-wrapper.is-mismatch .milestone-num { border-color: #C0392B; }
+        .legend-color.milestone-dot-swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #F1C40F;
+            border: 2px solid #C0392B;
+        }
+        .legend-color.milestone-dot-swatch.is-missing {
+            background: #fff;
+            border: 1.5px dashed #7d6608;
+        }
         .milestone-wrapper.has-photo .milestone-cap {
             box-shadow: inset 0 -2px 0 #8E44AD;
         }

@@ -3588,6 +3588,116 @@
             return p.road ? `${p.road} · ${pr}` : pr;
         }
 
+        // Référentiel CD84 (PLO DataSud), comparé aux bornes OSM à l'extraction :
+        // chaque PR du référentiel porte son verdict et la borne OSM appariée.
+        let milestonesReferenceByOsmId = new Map();
+        let milestonesReferenceMissing = [];
+        let milestonesReferenceLoaded = false;
+        const MILESTONE_GAP_LINE_MAX_M = 1000;
+        const MILESTONE_MISMATCH_COLOR = '#C0392B';
+
+        async function loadMilestonesReference() {
+            if (milestonesReferenceLoaded) return;
+            milestonesReferenceLoaded = true;
+            try {
+                const data = await window.InforouteApi.fetchGeoJson('milestones-reference');
+                const byOsmId = new Map();
+                const missing = [];
+                (data.features || []).forEach(feature => {
+                    const [lng, lat] = feature.geometry.coordinates;
+                    const entry = { ...feature.properties, lat, lng };
+                    if (entry.osm_id) byOsmId.set(String(entry.osm_id), entry);
+                    else if (entry.status === 'absent') missing.push(entry);
+                });
+                milestonesReferenceByOsmId = byOsmId;
+                milestonesReferenceMissing = missing;
+                setMilestonesReferenceLegend(data._cache?.counts);
+                renderMilestones();
+            } catch (error) {
+                console.warn('Référentiel PR indisponible:', error);
+                setMilestonesReferenceLegend(null);
+            }
+        }
+
+        function milestoneReference(props) {
+            return milestonesReferenceByOsmId.get(String((props || {}).osm_id || '')) || null;
+        }
+
+        // Une borne en désaccord avec le référentiel : écart de position, ou
+        // rattachée par OSM à une autre route que celle du CD84.
+        function milestoneMismatch(props) {
+            const ref = milestoneReference(props);
+            return !!ref && (ref.status === 'ecart' || ref.status === 'route');
+        }
+
+        function milestoneReferenceText(props) {
+            if (!milestonesReferenceByOsmId.size) return null;
+            const ref = milestoneReference(props);
+            if (!ref) {
+                return /^D\d/.test((props || {}).road || '') ? 'absente du référentiel CD84' : null;
+            }
+            if (ref.status === 'ok') return `concordante (à ${ref.distance} m)`;
+            if (ref.status === 'route') return `rattachée à la ${ref.road} par le CD84 — numéro de route à corriger dans OSM`;
+            if (ref.distance > MILESTONE_GAP_LINE_MAX_M) {
+                return `même PR à ${(ref.distance / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km dans le référentiel — numérotation à vérifier`;
+            }
+            return `à ${ref.distance} m de la position DataSud — à vérifier`;
+        }
+
+        function setMilestonesReferenceLegend(counts) {
+            const gap = document.getElementById('count-milestones-mismatch');
+            const missing = document.getElementById('count-milestones-missing');
+            if (gap) gap.textContent = counts ? (counts.ecart + counts.route).toLocaleString('fr-FR') : '-';
+            if (missing) missing.textContent = counts ? counts.absent.toLocaleString('fr-FR') : '-';
+        }
+
+        function milestoneMissingPopupHtml(entry) {
+            const edit = `https://www.openstreetmap.org/edit?editor=id#map=19/${entry.lat.toFixed(6)}/${entry.lng.toFixed(6)}`;
+            return `
+                <div class="route-popup speed-sign-popup milestone-popup">
+                    <h3>${escapeHtml(`${entry.road} · PR ${entry.pr}`)}</h3>
+                    <div class="detail"><strong>Référentiel CD84&nbsp;:</strong> PR publié sur DataSud, absent d'OpenStreetMap</div>
+                    <div class="node-osm-link"><span class="node-osm-label">OpenStreetMap</span>
+                        <a href="${edit}" target="_blank" rel="noopener noreferrer">l'ajouter dans iD</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderMilestonesReference(bounds, zoom) {
+            if (!milestonesReferenceByOsmId.size) return;
+            const renderer = milestoneDotCanvas();
+            const radius = zoom >= 14 ? 5 : zoom >= 12 ? 4 : zoom >= 10 ? 3 : 2.2;
+            milestonesReferenceMissing.forEach(entry => {
+                if (!bounds.contains([entry.lat, entry.lng])) return;
+                const ghost = L.circleMarker([entry.lat, entry.lng], {
+                    renderer, radius,
+                    color: '#7d6608', weight: 1.5, dashArray: '2 2',
+                    fillColor: '#fff', fillOpacity: 0.9
+                });
+                ghost.bindTooltip(`${entry.road} · PR ${entry.pr} — absent d'OSM`, { direction: 'top' });
+                ghost.on('click', () => {
+                    window.map.openPopup(milestoneMissingPopupHtml(entry), [entry.lat, entry.lng], { minWidth: 200, maxWidth: 300 });
+                });
+                ghost.addTo(milestonesLayer);
+            });
+            if (zoom < 13) return;
+            for (const feature of milestonesFeatures) {
+                const ref = milestoneReference(feature.properties);
+                if (!ref || ref.status !== 'ecart' || ref.distance > MILESTONE_GAP_LINE_MAX_M) continue;
+                const [lng, lat] = feature.geometry.coordinates;
+                if (!bounds.contains([lat, lng]) && !bounds.contains([ref.lat, ref.lng])) continue;
+                // Trait sombre : un rouge se perdrait sur le réseau régional.
+                L.polyline([[lat, lng], [ref.lat, ref.lng]], {
+                    renderer, color: '#1f2933', weight: 2, dashArray: '5 4', interactive: false
+                }).addTo(milestonesLayer);
+                L.circleMarker([ref.lat, ref.lng], {
+                    renderer, radius: 4, color: MILESTONE_MISMATCH_COLOR, weight: 2,
+                    fillColor: '#fff', fillOpacity: 1, interactive: false
+                }).addTo(milestonesLayer);
+            }
+        }
+
         // Le réseau se charge indépendamment des PR : l'index est reconstruit dès
         // que le nombre de routes classées change.
         let milestoneHierarchyIndex = { size: -1, byRef: new Map() };
@@ -3606,7 +3716,8 @@
             const hierarchy = milestoneHierarchy(p.road);
             return L.divIcon({
                 html: `<span class="milestone-cap"></span><span class="milestone-num">${escapeHtml(p.distance || '?')}</span>`,
-                className: 'milestone-wrapper' + (hierarchy ? ` is-${hierarchy}` : '') + (osmNodePhotos(p).length ? ' has-photo' : ''),
+                className: 'milestone-wrapper' + (hierarchy ? ` is-${hierarchy}` : '')
+                    + (milestoneMismatch(p) ? ' is-mismatch' : '') + (osmNodePhotos(p).length ? ' has-photo' : ''),
                 iconSize: null,
                 iconAnchor: [12, 26]
             });
@@ -3619,6 +3730,8 @@
             if (p.side && MILESTONE_SIDES[p.side]) rows.push(['Côté', MILESTONE_SIDES[p.side]]);
             if (p.operator) rows.push(['Gestionnaire', p.operator]);
             rows.push(['Position vérifiée', verified || 'jamais sur le terrain (import CRIGE)']);
+            const reference = milestoneReferenceText(p);
+            if (reference) rows.push(['Référentiel CD84', reference]);
             if (p.fixme) rows.push(['À vérifier', p.fixme]);
             const details = rows.map(([k, v]) =>
                 `<div class="detail"><strong>${k}&nbsp;:</strong> ${escapeHtml(String(v))}</div>`).join('');
@@ -3652,19 +3765,24 @@
         let milestoneDotRenderer = null;
         const MILESTONE_DOT_WEIGHT = { local: 1, territorial: 1.5, regional: 2 };
 
-        function renderMilestoneDots(visible, zoom) {
+        function milestoneDotCanvas() {
             if (!milestoneDotRenderer) {
                 if (!window.map.getPane('milestoneDots')) {
                     window.map.createPane('milestoneDots').style.zIndex = 450;
                 }
                 milestoneDotRenderer = L.canvas({ pane: 'milestoneDots', padding: 0.3 });
             }
+            return milestoneDotRenderer;
+        }
+
+        function renderMilestoneDots(visible, zoom) {
+            const renderer = milestoneDotCanvas();
             const radius = zoom >= 12 ? 4 : zoom >= 10 ? 3 : 2.2;
             visible.forEach(sign => {
                 const dot = L.circleMarker([sign.lat, sign.lng], {
-                    renderer: milestoneDotRenderer,
+                    renderer,
                     radius,
-                    color: '#1f2933',
+                    color: milestoneMismatch(sign.props) ? MILESTONE_MISMATCH_COLOR : '#1f2933',
                     weight: MILESTONE_DOT_WEIGHT[milestoneHierarchy(sign.props.road)] || 1,
                     fillColor: '#F1C40F',
                     fillOpacity: 1
@@ -3696,6 +3814,7 @@
             } else {
                 renderMilestoneDots(visible, zoom);
             }
+            renderMilestonesReference(bounds, zoom);
         }
 
         function setMilestonesLegendCounts(features) {
@@ -3750,6 +3869,7 @@
                     milestonesFeatures = data.features || [];
                     milestonesDataLoaded = true;
                     setMilestonesLegendCounts(milestonesFeatures);
+                    loadMilestonesReference();
                     if (show) milestonesVisible = true;
                     syncMilestonesOnMap();
                     tryApplyAppUrlState();

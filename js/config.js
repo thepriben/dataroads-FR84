@@ -75,7 +75,7 @@
 
     window.APP_CONFIG = Object.freeze({
         appName: 'dataroads-FR84',
-        version: '0.34.1',
+        version: '0.35.0',
         repository,
         // Le fond par défaut, et celui que prend la visionneuse 3D des ponts, qui
         // peint son sol tuile par tuile sur un canvas : le Plan IGN, carte de
@@ -119,6 +119,7 @@
                 'road-signs': 'data/osm/road-signs.geojson',
                 guideposts: 'data/osm/guideposts.geojson',
                 milestones: 'data/osm/milestones.geojson',
+                'milestones-reference': 'data/external/milestones-reference.geojson',
                 'city-limits': 'data/osm/city-limits.geojson',
                 'latest-changes': 'data/osm/latest-changes.geojson',
                 'roadside-areas': 'data/osm/roadside-areas.geojson',

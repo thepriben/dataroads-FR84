@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.35.0] - 2026-11-17
+
+### Added
+
+- **Milestones are checked against the Department's own reference.** Issue #36 asked whether the more recent DataSud milestones showed positions that had moved. The CD84 publishes its location points (PLO) on DataSud's WFS service: 2,847 PR of the network it maintains, each with its road and number. A new script matches them with the OSM milestones by road and number every night, right after the OSM extraction. 2,554 agree within 25 m, with a median gap of 5 m, which says the CRIGE import holds up well. 77 stand further away, 62 are tied by OSM to another road — most of the D907 milestones still carry the N7 number the road had before it was handed over — and 154 are missing from OSM altogether, mostly along the ViaRhôna and the Via Venaissia.
+- On the map, a milestone in disagreement is ringed in red, dot or post alike. From zoom 13, a dashed line links a displaced milestone to a small red ring at the DataSud position; gaps beyond a kilometre are numbering mismatches rather than displacements, and the popup says so instead of drawing a line across the department. A reference PR missing from OSM is a white dot with a dashed rim, and its popup opens the iD editor at that spot. Each OSM milestone's popup gains a "Référentiel CD84" line with the verdict, and the legend counts the disagreements and the missing PR.
+- Road spellings are reconciled before matching: spaces and case are ignored, "D162bis" matches "D162B", and a PR noted on two roads ("D63 - D63a") matches either. Seven tests cover the verdicts and the spellings. When DataSud cannot be reached, the previous comparison stays in place.
+
 ## [0.34.1] - 2026-11-17
 
 ### Changed
