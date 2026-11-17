@@ -3579,7 +3579,6 @@
         let milestonesZoomHandler = null;
         let milestonesLoadPromise = null;
         const MILESTONES_SIGN_ZOOM = 14;
-        const MILESTONES_CLUSTER_CELL_PX = 58;
         const MILESTONES_MAX_MARKERS = 1500;
         const MILESTONE_SIDES = { left: 'gauche', right: 'droite', both: 'des deux côtés' };
 
@@ -3647,34 +3646,35 @@
             return marker;
         }
 
-        function renderMilestoneClusters(visible, zoom) {
-            const cell = MILESTONES_CLUSTER_CELL_PX;
-            const buckets = new Map();
+        // Sous le zoom des bornes, un point par PR plutôt qu'une grappe : la
+        // répartition des PR le long des routes est l'information. Canvas dédié,
+        // les 2 859 points tiennent sans un nœud DOM chacun.
+        let milestoneDotRenderer = null;
+        const MILESTONE_DOT_WEIGHT = { local: 1, territorial: 1.5, regional: 2 };
+
+        function renderMilestoneDots(visible, zoom) {
+            if (!milestoneDotRenderer) {
+                if (!window.map.getPane('milestoneDots')) {
+                    window.map.createPane('milestoneDots').style.zIndex = 450;
+                }
+                milestoneDotRenderer = L.canvas({ pane: 'milestoneDots', padding: 0.3 });
+            }
+            const radius = zoom >= 12 ? 4 : zoom >= 10 ? 3 : 2.2;
             visible.forEach(sign => {
-                const p = window.map.project([sign.lat, sign.lng], zoom);
-                const key = `${Math.floor(p.x / cell)}|${Math.floor(p.y / cell)}`;
-                let bucket = buckets.get(key);
-                if (!bucket) { bucket = { sx: 0, sy: 0, n: 0 }; buckets.set(key, bucket); }
-                bucket.sx += p.x; bucket.sy += p.y; bucket.n++;
-            });
-            buckets.forEach(bucket => {
-                const center = window.map.unproject([bucket.sx / bucket.n, bucket.sy / bucket.n], zoom);
-                const size = bucket.n >= 100 ? 40 : bucket.n >= 20 ? 34 : 28;
-                const marker = L.marker(center, {
-                    icon: L.divIcon({
-                        html: `<div class="milestone-cluster" style="width:${size}px;height:${size}px;">${bucket.n}</div>`,
-                        className: 'milestone-cluster-wrapper',
-                        iconSize: [size, size],
-                        iconAnchor: [size / 2, size / 2]
-                    }),
-                    keyboard: false,
-                    zIndexOffset: 310
+                const dot = L.circleMarker([sign.lat, sign.lng], {
+                    renderer: milestoneDotRenderer,
+                    radius,
+                    color: '#1f2933',
+                    weight: MILESTONE_DOT_WEIGHT[milestoneHierarchy(sign.props.road)] || 1,
+                    fillColor: '#F1C40F',
+                    fillOpacity: 1
                 });
-                marker.bindTooltip(`${bucket.n} PR — cliquer pour zoomer`, { direction: 'top' });
-                marker.on('click', () => {
-                    window.map.flyTo(center, Math.min(window.map.getZoom() + 3, MILESTONES_SIGN_ZOOM + 1), { duration: 0.6 });
+                dot.bindTooltip(milestoneLabel(sign.props), { direction: 'top' });
+                dot.on('click', () => {
+                    window.map.openPopup(milestonePopupHtml(sign.props, osmNodePhotos(sign.props)),
+                        [sign.lat, sign.lng], { minWidth: 200, maxWidth: 300 });
                 });
-                marker.addTo(milestonesLayer);
+                dot.addTo(milestonesLayer);
             });
         }
 
@@ -3694,7 +3694,7 @@
                 visible.slice(0, MILESTONES_MAX_MARKERS)
                     .forEach(sign => makeMilestoneMarker(sign.lat, sign.lng, sign.props).addTo(milestonesLayer));
             } else {
-                renderMilestoneClusters(visible, zoom);
+                renderMilestoneDots(visible, zoom);
             }
         }
 

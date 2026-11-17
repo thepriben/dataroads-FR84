@@ -5,6 +5,12 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.34.1] - 2026-11-17
+
+### Changed
+
+- **Milestones are no longer clustered.** Below zoom 14, PR were gathered into yellow count bubbles, which hid the very thing worth seeing at that scale: how the milestones mark out each road, and where they are missing. Each milestone is now a yellow dot ringed in black, like the speed-limit mode which dropped its clusters for the same reason. The ring thickens with the level of the road, as on the posts drawn from zoom 14, and a click opens the milestone's popup directly. The dots are drawn on a canvas of their own, so the 2,859 of them cost no DOM node each.
+
 ## [0.34.0] - 2026-11-17
 
 ### Added
