@@ -449,6 +449,7 @@
                 ['bridgesToggleIcon', bridgeVisible],
                 ['roadSignsToggleIcon', roadSignsVisible],
                 ['guidepostsToggleIcon', guidepostsVisible],
+                ['milestonesToggleIcon', milestonesVisible],
                 ['cityLimitsToggleIcon', cityLimitsVisible],
                 ['latestChangesToggleIcon', latestChangesVisible],
                 ['sensitiveZonesToggleIcon', sensitiveZonesVisible],
@@ -569,11 +570,13 @@
                         ensureLayerToggle(bridgeVisible, window.toggleBridges);
                         ensureLayerToggle(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerToggle(guidepostsVisible, window.toggleGuideposts);
+                        ensureLayerToggle(milestonesVisible, window.toggleMilestones);
                         ensureLayerToggle(cityLimitsVisible, window.toggleCityLimits);
                     } else {
                         ensureLayerOff(bridgeVisible, window.toggleBridges);
                         ensureLayerOff(roadSignsVisible, window.toggleRoadSigns);
                         ensureLayerOff(guidepostsVisible, window.toggleGuideposts);
+                        ensureLayerOff(milestonesVisible, window.toggleMilestones);
                         ensureLayerOff(cityLimitsVisible, window.toggleCityLimits);
                     }
                     break;
@@ -1769,6 +1772,7 @@
             }
             if (roadSignsVisible) active.push('signs');
             if (guidepostsVisible) active.push('guide');
+            if (milestonesVisible) active.push('pr');
             if (cityLimitsVisible) active.push('agglo');
             if (latestChangesVisible) active.push('osmdiff');
             if (declassifiedVisible) active.push('exrd');
@@ -1916,6 +1920,9 @@
                 case 'guide':
                     setBooleanLayerIfNeeded(guidepostsVisible, desired, window.toggleGuideposts);
                     return guidepostsVisible === desired;
+                case 'pr':
+                    setBooleanLayerIfNeeded(milestonesVisible, desired, window.toggleMilestones);
+                    return milestonesVisible === desired;
                 case 'agglo':
                     setBooleanLayerIfNeeded(cityLimitsVisible, desired, window.toggleCityLimits);
                     return cityLimitsVisible === desired;
@@ -1958,7 +1965,7 @@
 
             const pendingKeys = [
                 'construction', 'bicycle', 'cities', 'aires', 'limits', 'accidents', 'traffic', 'waze',
-                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'guide', 'agglo', 'osmdiff', 'exrd', 'ens', 'inat', 'wcam', 'oedb'
+                'weather', 'bison', 'bridges', 'pnx', 'mly', 'signs', 'guide', 'pr', 'agglo', 'osmdiff', 'exrd', 'ens', 'inat', 'wcam', 'oedb'
             ];
             let allReady = true;
             pendingKeys.forEach(key => {
@@ -2078,10 +2085,11 @@
                 }
                 case 'signage': {
                     let visible = 0;
-                    const total = 4;
+                    const total = 5;
                     if (bridgeVisible) visible++;
                     if (roadSignsVisible) visible++;
                     if (guidepostsVisible) visible++;
+                    if (milestonesVisible) visible++;
                     if (cityLimitsVisible) visible++;
                     return { visible, total };
                 }
@@ -2127,6 +2135,8 @@
                     return roadSignsVisible;
                 case 'freshness-guideposts':
                     return guidepostsVisible;
+                case 'freshness-milestones':
+                    return milestonesVisible;
                 case 'freshness-latest-changes':
                     return latestChangesVisible;
                 case 'freshness-city-limits':
@@ -3543,6 +3553,207 @@
                 return;
             }
             syncGuidepostsOnMap();
+        };
+
+        // ========== POINTS DE REPÈRE (highway=milestone, issue #36) ==========
+        // Le bureau de l'intervention routière localise ses interventions par le
+        // PR posé sur le terrain (~2900 en 84, importés du CRIGE PACA). Grappes au
+        // dézoom, bornes numérotées au zoom : un numéro seul ne se lit qu'avec sa
+        // route, que le survol et la fiche donnent.
+        const milestonesLayer = L.layerGroup();
+        let milestonesVisible = false;
+        let milestonesDataLoaded = false;
+        let milestonesFeatures = [];
+        let milestonesZoomHandler = null;
+        let milestonesLoadPromise = null;
+        const MILESTONES_SIGN_ZOOM = 14;
+        const MILESTONES_CLUSTER_CELL_PX = 58;
+        const MILESTONES_MAX_MARKERS = 1500;
+        const MILESTONE_SIDES = { left: 'gauche', right: 'droite', both: 'des deux côtés' };
+
+        function milestoneLabel(props) {
+            const p = props || {};
+            const pr = p.distance ? `PR ${p.distance}` : 'PR';
+            return p.road ? `${p.road} · ${pr}` : pr;
+        }
+
+        function milestoneDivIcon(props) {
+            const p = props || {};
+            return L.divIcon({
+                html: `<span class="milestone-cap"></span><span class="milestone-num">${escapeHtml(p.distance || '?')}</span>`,
+                className: 'milestone-wrapper' + (osmNodePhotos(p).length ? ' has-photo' : ''),
+                iconSize: null,
+                iconAnchor: [12, 26]
+            });
+        }
+
+        function milestonePopupHtml(props, photos) {
+            const p = props || {};
+            const verified = p['check_date:position'] || p['checked_date:position'] || p['survey:date'] || p.check_date;
+            const rows = [];
+            if (p.side && MILESTONE_SIDES[p.side]) rows.push(['Côté', MILESTONE_SIDES[p.side]]);
+            if (p.operator) rows.push(['Gestionnaire', p.operator]);
+            rows.push(['Position vérifiée', verified || 'jamais sur le terrain (import CRIGE)']);
+            if (p.fixme) rows.push(['À vérifier', p.fixme]);
+            const details = rows.map(([k, v]) =>
+                `<div class="detail"><strong>${k}&nbsp;:</strong> ${escapeHtml(String(v))}</div>`).join('');
+            return `
+                <div class="route-popup speed-sign-popup milestone-popup">
+                    <h3>${escapeHtml(milestoneLabel(p))}</h3>
+                    ${details}
+                    ${photos.length ? `<div class="speed-sign-photo">${osmNodePhotosHtml(photos)}</div>` : ''}
+                    ${osmNodeLinkHtml(p)}
+                </div>
+            `;
+        }
+
+        function makeMilestoneMarker(lat, lng, props) {
+            const photos = osmNodePhotos(props);
+            const marker = L.marker([lat, lng], {
+                icon: milestoneDivIcon(props),
+                keyboard: false,
+                riseOnHover: true,
+                zIndexOffset: 330
+            });
+            marker.bindTooltip(milestoneLabel(props), { direction: 'top', offset: [0, -24] });
+            marker.bindPopup(milestonePopupHtml(props, photos), { minWidth: 200, maxWidth: 300 });
+            resolveMapillaryThumbsOnOpen(marker, photos, () => milestonePopupHtml(props, photos));
+            return marker;
+        }
+
+        function renderMilestoneClusters(visible, zoom) {
+            const cell = MILESTONES_CLUSTER_CELL_PX;
+            const buckets = new Map();
+            visible.forEach(sign => {
+                const p = window.map.project([sign.lat, sign.lng], zoom);
+                const key = `${Math.floor(p.x / cell)}|${Math.floor(p.y / cell)}`;
+                let bucket = buckets.get(key);
+                if (!bucket) { bucket = { sx: 0, sy: 0, n: 0 }; buckets.set(key, bucket); }
+                bucket.sx += p.x; bucket.sy += p.y; bucket.n++;
+            });
+            buckets.forEach(bucket => {
+                const center = window.map.unproject([bucket.sx / bucket.n, bucket.sy / bucket.n], zoom);
+                const size = bucket.n >= 100 ? 40 : bucket.n >= 20 ? 34 : 28;
+                const marker = L.marker(center, {
+                    icon: L.divIcon({
+                        html: `<div class="milestone-cluster" style="width:${size}px;height:${size}px;">${bucket.n}</div>`,
+                        className: 'milestone-cluster-wrapper',
+                        iconSize: [size, size],
+                        iconAnchor: [size / 2, size / 2]
+                    }),
+                    keyboard: false,
+                    zIndexOffset: 310
+                });
+                marker.bindTooltip(`${bucket.n} PR — cliquer pour zoomer`, { direction: 'top' });
+                marker.on('click', () => {
+                    window.map.flyTo(center, Math.min(window.map.getZoom() + 3, MILESTONES_SIGN_ZOOM + 1), { duration: 0.6 });
+                });
+                marker.addTo(milestonesLayer);
+            });
+        }
+
+        function renderMilestones() {
+            milestonesLayer.clearLayers();
+            if (!milestonesVisible || !milestonesDataLoaded || !window.map) return;
+            const zoom = window.map.getZoom();
+            const bounds = window.map.getBounds();
+            const visible = [];
+            for (const feature of milestonesFeatures) {
+                const coords = feature.geometry && feature.geometry.coordinates;
+                if (!coords || !bounds.contains([coords[1], coords[0]])) continue;
+                visible.push({ lat: coords[1], lng: coords[0], props: feature.properties || {} });
+            }
+            if (zoom >= MILESTONES_SIGN_ZOOM) {
+                visible.slice(0, MILESTONES_MAX_MARKERS)
+                    .forEach(sign => makeMilestoneMarker(sign.lat, sign.lng, sign.props).addTo(milestonesLayer));
+            } else {
+                renderMilestoneClusters(visible, zoom);
+            }
+        }
+
+        function setMilestonesLegendCounts(features) {
+            const el = document.getElementById('count-milestones');
+            if (el) el.textContent = (features || []).length.toLocaleString('fr-FR');
+        }
+
+        function applyMilestonesUi(visible) {
+            const icon = document.getElementById('milestonesToggleIcon');
+            setToggleIcon(icon, visible);
+            if (icon) icon.style.opacity = '';
+            document.querySelectorAll('[data-milestone]').forEach(item => {
+                item.style.opacity = visible ? '1' : '0.5';
+            });
+        }
+
+        function syncMilestonesOnMap() {
+            if (milestonesVisible) {
+                if (!window.map.hasLayer(milestonesLayer)) milestonesLayer.addTo(window.map);
+                if (!milestonesZoomHandler) {
+                    milestonesZoomHandler = makeViewportRenderHandler(milestonesLayer, renderMilestones);
+                    window.map.on('zoomend moveend popupclose', milestonesZoomHandler);
+                }
+                renderMilestones();
+            } else {
+                milestonesLayer.clearLayers();
+                if (window.map.hasLayer(milestonesLayer)) window.map.removeLayer(milestonesLayer);
+                if (milestonesZoomHandler) {
+                    window.map.off('zoomend moveend popupclose', milestonesZoomHandler);
+                    milestonesZoomHandler = null;
+                }
+            }
+            applyMilestonesUi(milestonesVisible);
+            syncLegendChrome();
+        }
+
+        window.loadMilestones = function({ show } = {}) {
+            if (milestonesDataLoaded) {
+                if (show) milestonesVisible = true;
+                syncMilestonesOnMap();
+                return Promise.resolve(milestonesFeatures);
+            }
+            if (milestonesLoadPromise) return milestonesLoadPromise;
+            milestonesLoadPromise = (async () => {
+                try {
+                    const data = await window.InforouteApi.fetchGeoJson('milestones');
+                    renderFreshnessBadge(document.getElementById('freshness-milestones'), {
+                        generatedAt: data._cache?.generated_at,
+                        verifiedAt: data._cache?.verified_at,
+                        scheduleKey: 'incubator'
+                    });
+                    milestonesFeatures = data.features || [];
+                    milestonesDataLoaded = true;
+                    setMilestonesLegendCounts(milestonesFeatures);
+                    if (show) milestonesVisible = true;
+                    syncMilestonesOnMap();
+                    tryApplyAppUrlState();
+                    return milestonesFeatures;
+                } catch (error) {
+                    console.error('Erreur chargement PR:', error);
+                    setMilestonesLegendCounts([]);
+                    renderFreshnessBadge(document.getElementById('freshness-milestones'), {
+                        scheduleKey: 'incubator',
+                        errorMsg: error.message
+                    });
+                    milestonesVisible = false;
+                    applyMilestonesUi(false);
+                    syncLegendChrome();
+                    return [];
+                } finally {
+                    milestonesLoadPromise = null;
+                }
+            })();
+            return milestonesLoadPromise;
+        };
+
+        window.toggleMilestones = function() {
+            milestonesVisible = !milestonesVisible;
+            if (milestonesVisible && !milestonesDataLoaded) {
+                const icon = document.getElementById('milestonesToggleIcon');
+                if (icon) icon.style.opacity = '0.5';
+                window.loadMilestones({ show: true });
+                return;
+            }
+            syncMilestonesOnMap();
         };
 
         // ========== PANNEAUX D'AGGLOMÉRATION (traffic_sign=city_limit) ==========

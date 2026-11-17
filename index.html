@@ -35,7 +35,7 @@
     <script src="https://unpkg.com/leaflet.vectorgrid@1.3.0/dist/Leaflet.VectorGrid.bundled.js"></script>
     <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20261116-4">
+    <link rel="stylesheet" href="css/styles.css?v=20261116-5">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -352,6 +352,21 @@
                     </div>
                     <div class="guidepost-usages" id="guidepostUsages" data-guidepost="guidepost" style="pointer-events: none; opacity: 0.5;"></div>
                     <div class="sensitive-zones-hint"><code>information=guidepost</code></div>
+                </div>
+
+<div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleMilestones && window.toggleMilestones();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Points de repère<small class="legend-title-sub">PR</small></span>
+                        <span id="milestonesToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <span class="freshness-badge" id="freshness-milestones" data-schedule-key="incubator"></span>
+
+                    <div class="legend-item" data-milestone="milestone" style="pointer-events: none; opacity: 0.5;">
+                        <div class="legend-color milestone-swatch" aria-hidden="true">12</div>
+                        <div class="legend-label">Bornes PR des routes départementales</div>
+                        <div class="legend-count" id="count-milestones">-</div>
+                    </div>
+                    <div class="sensitive-zones-hint"><code>highway=milestone</code> · import CRIGE PACA</div>
                 </div>
 
 <div class="legend-section">
@@ -1004,7 +1019,7 @@
 
     </div>
 
-    <script src="js/config.js?v=20261116-4"></script>
+    <script src="js/config.js?v=20261116-5"></script>
     <script>
         (function () {
             var el = document.getElementById('siteVersion');
@@ -1015,7 +1030,7 @@
     </script>
     <script src="js/api.js?v=20260620-5"></script>
     <script src="js/dashboard.js?v=20260825-2"></script>
-    <script src="js/app.js?v=20261116-4"></script>
+    <script src="js/app.js?v=20261116-5"></script>
     <script src="js/waze.js?v=20260722-1"></script>
     <script src="js/bridge3d.js?v=20260826-4"></script>
 </body>

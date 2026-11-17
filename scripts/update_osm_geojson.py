@@ -123,6 +123,16 @@ QUERIES = {
         );
         out geom;
     """,
+    # Points de repère (PR, issue #36) : le bureau de l'intervention routière
+    # localise ses interventions par la borne posée sur le terrain.
+    "milestones": """
+        [out:json][timeout:90];
+        area["ISO3166-2"="FR-84"]->.dept;
+        (
+          node(area.dept)["highway"="milestone"];
+        );
+        out geom;
+    """,
     # Panneaux d'entrée / sortie d'agglomération (EB10 / EB20) : ils marquent le
     # basculement du régime de vitesse en traversée de village, donc utiles en
     # regard des limitations.
@@ -651,6 +661,46 @@ def guideposts_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
     return collection(features, len(data.get("elements", [])))
 
 
+# PR : la route et le numéro de la borne d'abord, puis ce qui dit si sa position
+# a été vérifiée sur le terrain, et quand.
+MILESTONE_KEEP = (
+    "distance",
+    "ref:highway",
+    "ref",
+    "side",
+    "operator",
+    "traffic_sign",
+    "survey:date",
+    "check_date",
+    "check_date:position",
+    "checked_date:position",
+    "source:position",
+    "fixme",
+    "mapillary",
+    "panoramax",
+    "wikimedia_commons",
+    "image",
+)
+
+
+def milestones_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    features: list[dict[str, Any]] = []
+    for element in data.get("elements", []):
+        if element.get("type") != "node":
+            continue
+        tags = element.get("tags") or {}
+        if tags.get("highway") != "milestone":
+            continue
+        # La jointure avec le réseau se fait sur la forme qu'il affiche, « D975 ».
+        road = normalize_ref(tags.get("ref:highway") or tags.get("ref"))
+        feature = node_to_point_feature(element, MILESTONE_KEEP)
+        if feature:
+            if road:
+                feature["properties"]["road"] = road
+            features.append(feature)
+    return collection(features, len(data.get("elements", [])))
+
+
 # Panneaux d'agglomération : le nom porté par le panneau, le sens (entrée/sortie)
 # et l'orientation suffisent à l'affichage.
 CITY_LIMIT_KEEP = (
@@ -816,6 +866,7 @@ CONVERTERS = {
     "bridges": bridge_features_to_geojson,
     "road-signs": road_signs_to_geojson,
     "guideposts": guideposts_to_geojson,
+    "milestones": milestones_to_geojson,
     "city-limits": city_limits_to_geojson,
     "roadside-areas": roadside_areas_to_geojson,
 }

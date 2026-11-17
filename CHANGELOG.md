@@ -5,6 +5,15 @@ All notable changes to this project are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+## [0.32.0] - 2026-11-16
+
+### Added
+
+- **The PR (points de repère) are on the map.** The road intervention bureau locates its work by the milestone standing on the verge, and dataroads had no way of showing one. The 2,859 `highway=milestone` nodes mapped in Vaucluse — almost all imported from the CRIGE PACA — now form a layer of their own under "Signalisation & ouvrages": clusters when zoomed out, and from zoom 14 a small yellow-capped post carrying its number, as on the ground. A number alone means nothing without its road, so the tooltip reads "D942 · PR 7".
+- The popup gives the side of the road, the operator, the date the position was last checked on the ground and the photos referenced in OSM, with links to view or complete the node. A milestone never surveyed says so plainly — "jamais sur le terrain (import CRIGE)" — since that is the case of 2,512 of them, and it is what decides whether a position can be trusted. Only 347 carry a survey or check date and 215 a photo.
+- The extraction joins each milestone to its road in the form the network displays (`D942`), read from `ref:highway` or `ref`, so that the two layers can be matched. The layer follows the URL (`pr`), the section count and the freshness badge like the other signage layers. Comparing positions with the more recent DataSud milestones, the second half of issue #36, is left for later.
+- Two tests cover the join to the road and the nightly diff, which must re-extract the layer when a milestone is edited.
+
 ## [0.31.0] - 2026-11-16
 
 ### Added
