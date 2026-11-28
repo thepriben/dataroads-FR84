@@ -9238,8 +9238,12 @@
         // Ancres candidates prises sur la portion de l'itinéraire réellement à
         // l'écran : une étiquette doit suivre la route quand on se déplace le long
         // d'elle, et non rester accrochée à un point fixe qui sort du cadre.
-        function getRouteLabelCandidates(route, bounds) {
-            const inView = routeLabelPointsInView(route, bounds);
+        function getRouteLabelCandidates(route, bounds, preferPlain) {
+            let inView = routeLabelPointsInView(route, bounds);
+            if (preferPlain) {
+                const plain = inView.filter(point => !point.labelRef);
+                if (plain.length) inView = plain;
+            }
             if (inView.length === 0) return inView;
 
             // Le milieu de la portion visible d'abord, puis deux replis écartés
@@ -9262,6 +9266,7 @@
             const placed = [map.latLngToContainerPoint(primary)];
             const anchors = [];
             for (const point of routeLabelPointsInView(route, bounds)) {
+                if (point.labelRef) continue;
                 if (anchors.length >= ROUTE_LABEL_REPEAT_MAX) break;
                 const screen = map.latLngToContainerPoint(point);
                 if (placed.every(other => other.distanceTo(screen) >= ROUTE_LABEL_REPEAT_SPACING_PX)) {
@@ -9272,23 +9277,33 @@
             return anchors;
         }
 
+        function formatIndexedRef(osmRef) {
+            const parts = String(osmRef || '').trim().split(/\s+/);
+            if (parts.length >= 2 && /^[A-Za-z]$/.test(parts[parts.length - 1])) {
+                const index = parts.pop().toUpperCase();
+                return `${parts.join('')} ${index}`;
+            }
+            return String(osmRef || '').replace(/\s+/g, '');
+        }
+
         function inViewIndexed(route, bounds) {
-            const seen = new Map();
+            const groups = new Map();
             for (const way of route.ways || []) {
                 if (way.tags.ref_index !== 'A' || !way.tags.osm_ref) continue;
-                const label = String(way.tags.osm_ref).replace(/\s+/g, '');
+                const label = formatIndexedRef(way.tags.osm_ref);
                 const geometry = way.geometry || [];
                 for (let i = 0; i < geometry.length; i += ROUTE_LABEL_POINT_STRIDE) {
                     const point = geometry[i];
                     if (!bounds.contains([point.lat, point.lon])) continue;
-                    if (!seen.has(label)) {
-                        const at = L.latLng(point.lat, point.lon);
-                        at.labelRef = label;
-                        seen.set(label, at);
-                    }
+                    if (!groups.has(label)) groups.set(label, []);
+                    groups.get(label).push(L.latLng(point.lat, point.lon));
                 }
             }
-            return [...seen.values()];
+            return [...groups.entries()].map(([label, points]) => {
+                const at = points[Math.floor(points.length / 2)];
+                at.labelRef = label;
+                return at;
+            });
         }
 
         function routeLabelPointsInView(route, bounds) {
@@ -9303,7 +9318,7 @@
                 const geometry = way.geometry;
                 if (!geometry || geometry.length === 0) continue;
                 const indexed = way.tags.ref_index === 'A' && way.tags.osm_ref
-                    ? String(way.tags.osm_ref).replace(/\s+/g, '')
+                    ? formatIndexedRef(way.tags.osm_ref)
                     : null;
                 for (let i = 0; i < geometry.length; i += ROUTE_LABEL_POINT_STRIDE) {
                     const point = geometry[i];
@@ -9415,7 +9430,7 @@
                     // Une route dont plus aucun tronçon n'est à l'écran garderait
                     // son numéro flottant au-dessus du secteur voisin.
                     if (!routeHasVisibleSegment(route.ref)) return;
-                    const candidates = getRouteLabelCandidates(route, bounds);
+                    const candidates = getRouteLabelCandidates(route, bounds, true);
                     if (candidates.length === 0) return;
                     const primaryRef = candidates[0].labelRef || route.ref;
                     entries.push({
@@ -9427,8 +9442,8 @@
                         anchor: candidates[0],
                         candidates
                     });
-                    // Un tronçon indicé A porte « D975A », pas le numéro de la voie
-                    // à laquelle il est rattaché.
+                    // Un tronçon indicé A porte « D975 A », à côté du numéro de la
+                    // voie quand les deux sont à l'écran.
                     const indexedSeen = new Set([primaryRef]);
                     for (const point of inViewIndexed(route, bounds)) {
                         if (indexedSeen.has(point.labelRef)) continue;
@@ -13238,14 +13253,17 @@
         }
 
         const declassifiedLabels = L.layerGroup();
-        const DECLASSIFIED_LABEL_ZOOM = 14;
+        const DECLASSIFIED_LABEL_ZOOM = 16;
+        const DECLASSIFIED_LABEL_ZOOM_SELECTED = 13;
 
         function syncDeclassifiedLabels() {
             declassifiedLabels.clearLayers();
-            if (!declassifiedVisible || !window.map || window.map.getZoom() < DECLASSIFIED_LABEL_ZOOM) return;
+            if (!declassifiedVisible || !window.map) return;
+            const highlighted = window.highlightedRoute;
+            const zoom = window.map.getZoom();
+            if (zoom < (highlighted ? DECLASSIFIED_LABEL_ZOOM_SELECTED : DECLASSIFIED_LABEL_ZOOM)) return;
             if (!window.map.hasLayer(declassifiedLabels)) declassifiedLabels.addTo(window.map);
             const bounds = window.map.getBounds();
-            const highlighted = window.highlightedRoute;
             const best = new Map();
             declassifiedPolylines.forEach(polyline => {
                 const refs = highlighted
@@ -13260,12 +13278,13 @@
                 for (let i = 1; i < latlngs.length; i += 1) length += haversineKm(latlngs[i - 1], latlngs[i]);
                 refs.forEach(ref => {
                     const current = best.get(ref);
-                    if (!current || length > current.length) best.set(ref, { ref, mid, length });
+                    if (!current || length > current.length) best.set(ref, { ref, mid, length, polyline });
                 });
             });
-            best.forEach(({ ref, mid }) => {
+            best.forEach(({ ref, mid, polyline }) => {
                 const marker = L.marker(mid, {
                     keyboard: false,
+                    zIndexOffset: 400,
                     icon: L.divIcon({
                         className: 'route-label-container',
                         html: `<div class="route-label is-former">${escapeHtml(ref)}</div>`,
@@ -13274,6 +13293,7 @@
                 });
                 marker.on('click', () => {
                     if (window.routePolylines?.[ref]) highlightRoute(ref);
+                    else polyline.openPopup(mid);
                 });
                 marker.addTo(declassifiedLabels);
             });
