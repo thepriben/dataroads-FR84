@@ -9919,7 +9919,7 @@
                 const kind = segmentSpeedKind(polyline);
                 kmByKind[kind] += length;
                 if (kind === 'explicit') explicitSegments += 1;
-                else regimeKm[likelyRegime(polyline.options.wayTags)] += length;
+                else if (kind === 'missing') regimeKm[likelyRegime(polyline.options.wayTags)] += length;
             });
             const km = kmByKind.explicit + kmByKind.implicit + kmByKind.missing;
             const rest = regimeKm.agglo + regimeKm.rural;
@@ -9948,8 +9948,8 @@
             const kmImplicit = rows.reduce((sum, row) => sum + row.kmImplicit, 0);
             const complete = rows.filter(row => row.withSpeed === row.segments);
             const incomplete = rows
-                .filter(row => row.missingKm > 0.05 || row.kmImplicit > 0.05)
-                .map(row => ({ ...row, gainPts: km ? ((row.kmAgglo + row.kmRural) / km) * 100 : 0 }))
+                .filter(row => row.missingKm > 0.05)
+                .map(row => ({ ...row, gainPts: km ? (row.missingKm / km) * 100 : 0 }))
                 .sort((a, b) => {
                     if (a.easy !== b.easy) return a.easy ? -1 : 1;
                     return b.gainPts - a.gainPts;
@@ -9965,18 +9965,20 @@
                 container.innerHTML = '<div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>';
                 return;
             }
-            const pct = coverage.km ? Math.floor((coverage.kmWith / coverage.km) * 100) : 0;
+            const knownKm = coverage.kmWith + coverage.kmImplicit;
+            const pct = coverage.km ? Math.floor((knownKm / coverage.km) * 100) : 0;
+            const explicitPct = coverage.km ? (coverage.kmWith / coverage.km) * 100 : 0;
             const implicitPct = coverage.km ? (coverage.kmImplicit / coverage.km) * 100 : 0;
-            const missingKm = Math.max(0, coverage.km - coverage.kmWith - coverage.kmImplicit);
+            const missingKm = Math.max(0, coverage.km - knownKm);
             const missingPct = coverage.km ? (missingKm / coverage.km) * 100 : 0;
             const missing = coverage.incomplete.length;
             container.innerHTML = `
                 <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
                     <span style="font-family:'JetBrains Mono', monospace;font-size:1.4rem;font-weight:700;color:#27AE60;">${pct}%</span>
-                    <span style="font-size:0.8rem;color:#7f8c8d;">de km avec une vitesse explicite</span>
+                    <span style="font-size:0.8rem;color:#7f8c8d;">des km renseignés — chiffre ou <code>FR:urban</code> / <code>FR:rural</code></span>
                 </div>
                 <div style="height:6px;border-radius:3px;background:#E74C3C;overflow:hidden;display:flex;margin-bottom:8px;">
-                    <div style="width:${pct}%;background:#27AE60;"></div>
+                    <div style="width:${explicitPct}%;background:#27AE60;"></div>
                     <div style="width:${implicitPct}%;background:#F1C40F;"></div>
                     <div style="width:${missingPct}%;background:#E74C3C;"></div>
                 </div>
@@ -10007,8 +10009,8 @@
                     <button type="button" class="wikidata-gap-close" onclick="toggleSpeedGapPanel()" title="Fermer la liste">✕</button>
                 </div>
                 <div class="wikidata-gap-hint">
-                    Axes faciles d'abord : un seul régime probable, donc une vitesse pour tout le reste.
-                    Agglo ≈ 50, hors agglomération ≈ 80. Le gain est en points du pourcentage départemental.
+                    Seul un tronçon sans rien compte comme non renseigné. Un <code>FR:urban</code> ou <code>FR:rural</code> est déjà pris.
+                    Axes faciles d'abord : le reste vide est d'un seul régime probable. Agglo ≈ 50, hors agglomération ≈ 80.
                 </div>
                 <div class="wikidata-gap-list" id="speedGapList">
                     ${missing.map(route => {
