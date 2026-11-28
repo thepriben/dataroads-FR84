@@ -177,7 +177,7 @@
 
                     <div class="legend-item" title="Tronçon indicé A : ancien tracé, recalé ailleurs dans la numérotation de la voie">
                         <div class="legend-color is-former-index"></div>
-                        <div class="legend-label">Indice A — ancien tracé</div>
+                        <div class="legend-label">Indice A — même couleur, désaturée</div>
                     </div>
                     
                 </div>
@@ -412,6 +412,19 @@
                         <div class="legend-label">Vues rattachées aux PR, mâts, ponts et aires</div>
                         <div class="legend-count" id="count-fotoshi">-</div>
                     </div>
+                </div>
+
+<div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleInatCoverage && window.toggleInatCoverage();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">iNaturalist<small class="legend-title-sub">vue courante</small></span>
+                        <span id="inatCoverageToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color inaturalist-swatch"></div>
+                        <div class="legend-label">Observations photographiées dans le cadre</div>
+                        <div class="legend-count" id="count-inat-coverage">-</div>
+                    </div>
+                    <div class="sensitive-zones-hint">API publique, sans clé. À partir du zoom 12.</div>
                 </div>
 
 <div class="legend-section">
@@ -784,6 +797,11 @@
                         <div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>
                     </div>
                     <div id="wikidataGapPanel" class="wikidata-gap-panel" hidden></div>
+                    <div class="legend-title" style="margin-top:14px;">Complétude des vitesses</div>
+                    <div id="speedSummary" style="background:white;border-radius:8px;border:1px solid #dfe6e9;padding:10px;">
+                        <div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>
+                    </div>
+                    <div id="speedGapPanel" class="wikidata-gap-panel" hidden></div>
                 </div>
 
                 <div class="legend-section">

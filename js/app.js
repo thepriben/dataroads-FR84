@@ -1007,44 +1007,52 @@
             };
         }
 
-        // L'indice A marque un ancien tracé, recalé ailleurs dans la numérotation
-        // sans avoir disparu. Au dézoom le liseré large noyait le réseau : à
-        // partir du zoom 14, le même trait que la voie, en bleu foncé, suffit
-        // (issue #41).
-        const FORMER_INDEX_PANE = 'formerIndexCasing';
-        const FORMER_INDEX_COLOR = '#1A3A8F';
-        const FORMER_INDEX_ZOOM = 14;
-        const formerIndexOverlays = [];
-
-        function attachFormerIndexCasing(polyline, coords) {
-            if (!window.map.getPane(FORMER_INDEX_PANE)) {
-                const pane = window.map.createPane(FORMER_INDEX_PANE);
-                pane.style.zIndex = 395;
-                pane.style.pointerEvents = 'none';
+        // L'indice A est un ancien tracé. Pas de second trait : la même couleur
+        // de hiérarchie, moins saturée, pour qu'il reste lisible sans dominer.
+        function desaturateHex(hex, factor) {
+            const raw = String(hex || '').replace('#', '');
+            if (!/^[0-9a-fA-F]{6}$/.test(raw)) return hex;
+            const n = parseInt(raw, 16);
+            let r = ((n >> 16) & 255) / 255;
+            let g = ((n >> 8) & 255) / 255;
+            let b = (n & 255) / 255;
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h = 0;
+            let s = 0;
+            const l = (max + min) / 2;
+            const d = max - min;
+            if (d !== 0) {
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+                else if (max === g) h = ((b - r) / d + 2) / 6;
+                else h = ((r - g) / d + 4) / 6;
             }
-            const overlay = L.polyline(coords, {
-                pane: FORMER_INDEX_PANE,
-                color: FORMER_INDEX_COLOR,
-                weight: polyline.options.weight,
-                opacity: 0.95,
-                interactive: false
-            });
-            formerIndexOverlays.push({ polyline, overlay });
-            polyline.on('remove', () => overlay.remove());
+            s *= factor;
+            const hue = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1 / 6) return p + (q - p) * 6 * t;
+                if (t < 1 / 2) return q;
+                if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+                return p;
+            };
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue(p, q, h + 1 / 3);
+                g = hue(p, q, h);
+                b = hue(p, q, h - 1 / 3);
+            }
+            const byte = v => Math.round(v * 255).toString(16).padStart(2, '0');
+            return `#${byte(r)}${byte(g)}${byte(b)}`;
         }
 
-        function syncFormerIndexOverlays() {
-            if (!window.map) return;
-            const close = window.map.getZoom() >= FORMER_INDEX_ZOOM;
-            formerIndexOverlays.forEach(({ polyline, overlay }) => {
-                const onMap = window.map.hasLayer(polyline);
-                overlay.setStyle({ weight: polyline.options.weight || overlay.options.weight });
-                if (close && onMap) {
-                    if (!window.map.hasLayer(overlay)) overlay.addTo(window.map);
-                } else if (window.map.hasLayer(overlay)) {
-                    overlay.remove();
-                }
-            });
+        function roadStrokeColor(hierarchy, former) {
+            const base = hierarchyColors[hierarchy] || '#7f8c8d';
+            return former ? desaturateHex(base, 0.32) : base;
         }
 
         function haversineKm(a, b) {
@@ -4014,6 +4022,99 @@
                 }
             } else if (window.map.hasLayer(fotoshiLayer)) {
                 window.map.removeLayer(fotoshiLayer);
+            }
+        };
+
+        // Observations iNaturalist du cadre courant. L'API de lecture est
+        // publique : pas de clé, une requête par déplacement, photos seulement.
+        const inatCoverageLayer = L.layerGroup();
+        let inatCoverageVisible = false;
+        let inatCoverageTimer = null;
+        let inatCoverageAbort = null;
+
+        function inatObservationProps(obs) {
+            const taxon = obs.taxon || {};
+            const photo = (obs.photos || [])[0];
+            let photoUrl = photo && photo.url;
+            if (photoUrl) photoUrl = photoUrl.replace('/square.', '/medium.');
+            return {
+                taxon_name: taxon.preferred_common_name || taxon.name || obs.species_guess || 'Observation',
+                scientific_name: taxon.name,
+                iconic_taxon: taxon.iconic_taxon_name,
+                quality_grade: obs.quality_grade,
+                observed_on: obs.observed_on,
+                user_login: (obs.user || {}).login,
+                photo_url: photoUrl,
+                url: obs.uri || `https://www.inaturalist.org/observations/${obs.id}`
+            };
+        }
+
+        async function renderInatCoverage() {
+            const count = document.getElementById('count-inat-coverage');
+            if (!inatCoverageVisible || !window.map) return;
+            inatCoverageLayer.clearLayers();
+            if (window.map.getZoom() < 12) {
+                if (count) count.textContent = 'zoom';
+                return;
+            }
+            if (inatCoverageAbort) inatCoverageAbort.abort();
+            const controller = new AbortController();
+            inatCoverageAbort = controller;
+            const b = window.map.getBounds();
+            const params = new URLSearchParams({
+                swlat: b.getSouth(), swlng: b.getWest(),
+                nelat: b.getNorth(), nelng: b.getEast(),
+                photos: 'true', per_page: '80', order: 'desc', order_by: 'observed_on'
+            });
+            try {
+                const response = await fetch(`https://api.inaturalist.org/v1/observations?${params}`, {
+                    signal: controller.signal, credentials: 'omit'
+                });
+                if (!response.ok) throw new Error(response.status);
+                const data = await response.json();
+                const observations = data.results || [];
+                if (count) count.textContent = String(observations.length);
+                observations.forEach(obs => {
+                    const loc = String(obs.location || '').split(',');
+                    const lat = Number(loc[0]);
+                    const lng = Number(loc[1]);
+                    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+                    const props = inatObservationProps(obs);
+                    const marker = L.marker([lat, lng], {
+                        icon: makeInaturalistMarkerIcon({ properties: props }, window.map.getZoom()),
+                        riseOnHover: true
+                    });
+                    marker.bindPopup(() => buildInaturalistPopup(props), { minWidth: 220, maxWidth: 280 });
+                    marker.addTo(inatCoverageLayer);
+                });
+            } catch (error) {
+                if (error.name === 'AbortError') return;
+                console.warn('iNaturalist indisponible:', error);
+                if (count) count.textContent = '—';
+            }
+        }
+
+        function scheduleInatCoverage() {
+            if (!inatCoverageVisible) return;
+            clearTimeout(inatCoverageTimer);
+            inatCoverageTimer = setTimeout(renderInatCoverage, 400);
+        }
+
+        window.toggleInatCoverage = function() {
+            inatCoverageVisible = !inatCoverageVisible;
+            const icon = document.getElementById('inatCoverageToggleIcon');
+            setToggleIcon(icon, inatCoverageVisible);
+            if (inatCoverageVisible) {
+                if (!window.map.hasLayer(inatCoverageLayer)) inatCoverageLayer.addTo(window.map);
+                if (!window._inatCoverageZoom) {
+                    window._inatCoverageZoom = true;
+                    window.map.on('zoomend moveend', scheduleInatCoverage);
+                }
+                scheduleInatCoverage();
+            } else {
+                if (inatCoverageAbort) inatCoverageAbort.abort();
+                inatCoverageLayer.clearLayers();
+                if (window.map.hasLayer(inatCoverageLayer)) window.map.removeLayer(inatCoverageLayer);
             }
         };
 
@@ -7285,7 +7386,7 @@
                 polylines.forEach(polyline => {
                     const hierarchy = polyline.options.roadHierarchy;
                     polyline.setStyle({
-                        color: hierarchyColors[hierarchy],
+                        color: roadStrokeColor(hierarchy, polyline.options.formerIndex),
                         weight: hierarchyWeights[hierarchy],
                         opacity: 0.8
                     });
@@ -8753,18 +8854,18 @@
                             if (way.geometry && way.geometry.length > 0) {
                                 const coords = way.geometry.map(point => [point.lat, point.lon]);
                                 
+                                const formerIndex = way.tags.ref_index === 'A';
                                 const polyline = L.polyline(coords, {
-                                    color: hierarchyColors[hierarchy],
+                                    color: roadStrokeColor(hierarchy, formerIndex),
                                     weight: hierarchyWeights[hierarchy],
                                     opacity: 0.8,
                                     smoothFactor: 1,
                                     roadRef: ref,
                                     roadHierarchy: hierarchy,
+                                    formerIndex,
                                     wayTags: way.tags || {},
                                     wayId: way.id
                                 });
-                                if (way.tags.ref_index === 'A') attachFormerIndexCasing(polyline, coords);
-                                syncFormerIndexOverlays();
 
                                 if (hierarchyVisibility[hierarchy]
                                     && window.passesTerritorialFilter(polyline)) {
@@ -9573,7 +9674,6 @@
 
         map.on('zoom', scheduleRouteLabelRefresh);
         map.on('zoomend', scheduleRouteLabelRefresh);
-        map.on('zoomend', syncFormerIndexOverlays);
         map.on('moveend', scheduleRouteLabelRefresh);
 
         map.on('zoomend', renderLatestChangesRecap);
@@ -9720,7 +9820,151 @@
             // des chiffres périmés.
             const panel = document.getElementById('wikidataGapPanel');
             if (panel && !panel.hidden) renderWikidataGapPanel();
+            updateSpeedSummary();
         }
+
+        function routeSpeedStats(ref) {
+            const lines = routePolylines[ref] || [];
+            let km = 0;
+            let kmWith = 0;
+            let withSpeed = 0;
+            lines.forEach(polyline => {
+                const pts = polyline.getLatLngs();
+                let length = 0;
+                for (let i = 1; i < pts.length; i += 1) length += haversineKm(pts[i - 1], pts[i]);
+                km += length;
+                if (parseMaxspeed((polyline.options.wayTags || {}).maxspeed) !== null) {
+                    withSpeed += 1;
+                    kmWith += length;
+                }
+            });
+            return {
+                ref,
+                segments: lines.length,
+                withSpeed,
+                km,
+                kmWith,
+                missingKm: Math.max(0, km - kmWith),
+                hierarchy: lines[0]?.options?.roadHierarchy || 'local'
+            };
+        }
+
+        function speedCoverage() {
+            const refs = Object.keys(routePolylines).filter(ref => !routeOutOfScopeByRef(ref));
+            const rows = refs.map(routeSpeedStats).filter(row => row.segments > 0);
+            const km = rows.reduce((sum, row) => sum + row.km, 0);
+            const kmWith = rows.reduce((sum, row) => sum + row.kmWith, 0);
+            const complete = rows.filter(row => row.withSpeed === row.segments);
+            const incomplete = rows
+                .filter(row => row.withSpeed < row.segments)
+                .sort((a, b) => b.missingKm - a.missingKm);
+            return { rows, km, kmWith, complete, incomplete };
+        }
+
+        function updateSpeedSummary() {
+            const container = document.getElementById('speedSummary');
+            if (!container) return;
+            const coverage = speedCoverage();
+            if (!coverage.rows.length) {
+                container.innerHTML = '<div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>';
+                return;
+            }
+            const pct = coverage.km ? Math.floor((coverage.kmWith / coverage.km) * 100) : 0;
+            const missing = coverage.incomplete.length;
+            container.innerHTML = `
+                <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
+                    <span style="font-family:'JetBrains Mono', monospace;font-size:1.4rem;font-weight:700;color:#27AE60;">${Math.round(coverage.kmWith).toLocaleString('fr-FR')}</span>
+                    <span style="font-size:0.8rem;color:#7f8c8d;">/ ${Math.round(coverage.km).toLocaleString('fr-FR')} km avec une vitesse explicite</span>
+                    <span style="margin-left:auto;font-family:'JetBrains Mono', monospace;font-weight:700;color:#2C3E50;">${pct}%</span>
+                </div>
+                <div style="height:6px;border-radius:3px;background:#ecf0f1;overflow:hidden;display:flex;margin-bottom:8px;">
+                    <div style="width:${pct}%;background:linear-gradient(90deg,#27AE60,#2ECC71);"></div>
+                    <div style="width:${100 - pct}%;background:linear-gradient(90deg,#E74C3C,#C0392B);"></div>
+                </div>
+                <div style="padding:6px 8px;background:#fef5e7;border-radius:4px;color:#8a5a00;font-size:0.72rem;margin-bottom:8px;">
+                    <strong>${coverage.complete.length}</strong> route${coverage.complete.length > 1 ? 's' : ''} entièrement renseignée${coverage.complete.length > 1 ? 's' : ''},
+                    <strong>${missing}</strong> encore incomplète${missing > 1 ? 's' : ''}.
+                    Seul un <code>maxspeed</code> chiffré compte — une vitesse implicite reste un manque.
+                </div>
+                <div style="display:flex;gap:6px;">
+                    <button type="button" onclick="toggleSpeedGapPanel()" style="flex:1;border:1px solid #E74C3C;background:white;color:#E74C3C;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">${missing > 1 ? `Voir les ${missing} routes` : 'Voir la route'} sans vitesse complète</button>
+                </div>
+            `;
+            const panel = document.getElementById('speedGapPanel');
+            if (panel && !panel.hidden) renderSpeedGapPanel();
+        }
+
+        function renderSpeedGapPanel() {
+            const panel = document.getElementById('speedGapPanel');
+            if (!panel) return;
+            const missing = speedCoverage().incomplete;
+            if (!missing.length) {
+                panel.innerHTML = '<div class="wikidata-gap-empty">Toutes les routes chargées portent une vitesse sur chaque tronçon.</div>';
+                return;
+            }
+            panel.innerHTML = `
+                <div class="wikidata-gap-head">
+                    <span><strong>${missing.length}</strong> route${missing.length > 1 ? 's' : ''} à compléter</span>
+                    <button type="button" class="wikidata-gap-close" onclick="toggleSpeedGapPanel()" title="Fermer la liste">✕</button>
+                </div>
+                <div class="wikidata-gap-hint">
+                    Classées par kilomètres encore sans <code>maxspeed</code>. Cliquez une route pour la suivre.
+                </div>
+                <div class="wikidata-gap-list" id="speedGapList">
+                    ${missing.map(route => `
+                        <div class="road-item wikidata-gap-item" data-ref="${route.ref}"
+                             title="${route.ref} — ${route.withSpeed}/${route.segments} tronçons avec vitesse">
+                            <div class="road-badge ${route.hierarchy}">${route.ref}</div>
+                            <span class="wikidata-gap-count">${route.missingKm.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km</span>
+                            <span class="wikidata-gap-flag">${route.withSpeed}/${route.segments}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="wikidata-gap-actions">
+                    <button type="button" onclick="highlightRoutesMissingSpeed()">Toutes en rouge sur la carte</button>
+                    <button type="button" onclick="clearHighlight()">Réinitialiser</button>
+                </div>
+            `;
+            panel.querySelectorAll('.wikidata-gap-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    panel.querySelectorAll('.wikidata-gap-item').forEach(other => {
+                        other.classList.toggle('active', other === item);
+                    });
+                    highlightRoute(item.getAttribute('data-ref'));
+                });
+            });
+        }
+
+        window.highlightRoutesMissingSpeed = function() {
+            const missing = new Set(speedCoverage().incomplete.map(row => row.ref));
+            Object.keys(routePolylines).forEach(ref => {
+                routePolylines[ref].forEach(polyline => {
+                    const hierarchy = polyline.options.roadHierarchy;
+                    polyline.setStyle({
+                        opacity: missing.has(ref) ? 1 : 0.15,
+                        weight: hierarchyWeights[hierarchy] + (missing.has(ref) ? 2 : 0),
+                        color: missing.has(ref) ? '#E74C3C' : roadStrokeColor(hierarchy, polyline.options.formerIndex)
+                    });
+                    if (missing.has(ref)) polyline.bringToFront();
+                });
+            });
+        };
+
+        window.toggleSpeedGapPanel = function() {
+            const panel = document.getElementById('speedGapPanel');
+            if (!panel) return;
+            const opening = panel.hidden;
+            panel.hidden = !opening;
+            if (opening) {
+                const other = document.getElementById('wikidataGapPanel');
+                if (other) other.hidden = true;
+                renderSpeedGapPanel();
+                window.highlightRoutesMissingSpeed();
+                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                clearHighlight();
+            }
+        };
 
         // ========== ROUTES SANS WIKIDATA ==========
 
@@ -9818,6 +10062,8 @@
             const opening = panel.hidden;
             panel.hidden = !opening;
             if (opening) {
+                const other = document.getElementById('speedGapPanel');
+                if (other) other.hidden = true;
                 renderWikidataGapPanel();
                 // La carte accompagne la liste : on voit d'un coup où sont les
                 // manques, avant d'en choisir un.
@@ -10177,7 +10423,7 @@
                     polyline.setStyle({ 
                         opacity: 0.8, 
                         weight: hierarchyWeights[hierarchy],
-                        color: hierarchyColors[hierarchy]
+                        color: roadStrokeColor(hierarchy, polyline.options.formerIndex)
                     });
                 });
             });
@@ -10360,7 +10606,7 @@
                 routePolylines[window.highlightedRoute].forEach(polyline => {
                     const hierarchy = polyline.options.roadHierarchy;
                     polyline.setStyle({
-                        color: hierarchyColors[hierarchy],
+                        color: roadStrokeColor(hierarchy, polyline.options.formerIndex),
                         weight: hierarchyWeights[hierarchy],
                         opacity: 0.8
                     });
@@ -13771,8 +14017,9 @@
                     const tags = polyline.options.wayTags || {};
                     const kmh = resolveWaySpeed(tags).kmh;
                     const active = isSpeedStepVisible(speedStepFor(kmh));
+                    const speedColor = active ? colorForSpeed(kmh) : SPEED_MUTED_COLOR;
                     polyline.setStyle({
-                        color: active ? colorForSpeed(kmh) : SPEED_MUTED_COLOR,
+                        color: polyline.options.formerIndex ? desaturateHex(speedColor, 0.32) : speedColor,
                         opacity: active ? (kmh === null ? 0.45 : 0.9) : 0.15,
                         weight: hierarchyWeights[polyline.options.roadHierarchy]
                     });
@@ -13789,7 +14036,7 @@
                 window.routePolylines[ref].forEach(polyline => {
                     const hierarchy = polyline.options.roadHierarchy;
                     polyline.setStyle({
-                        color: hierarchyColors[hierarchy],
+                        color: roadStrokeColor(hierarchy, polyline.options.formerIndex),
                         weight: hierarchyWeights[hierarchy],
                         opacity: 0.8
                     });
