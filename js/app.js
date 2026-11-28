@@ -9437,6 +9437,7 @@
                         route,
                         hierarchy,
                         ref: primaryRef,
+                        indexed: primaryRef !== route.ref,
                         priority: ROUTE_LABEL_PRIORITY[hierarchy],
                         opacity,
                         anchor: candidates[0],
@@ -9452,6 +9453,7 @@
                             route,
                             hierarchy,
                             ref: point.labelRef,
+                            indexed: true,
                             priority: 1,
                             repeat: true,
                             opacity,
@@ -9467,6 +9469,7 @@
                             route,
                             hierarchy,
                             ref: anchor.labelRef || route.ref,
+                            indexed: Boolean(anchor.labelRef),
                             priority: 0,
                             repeat: true,
                             opacity,
@@ -9584,7 +9587,9 @@
         function buildRouteLabelHtml(entry, zoom) {
             const opacity = entry.opacity ?? getRouteLabelZoomOpacity(entry.hierarchy, zoom);
             const scale = getRouteLabelZoomScale(zoom);
-            return `<div class="route-label ${entry.hierarchy}" style="opacity:${opacity.toFixed(2)};transform:scale(${scale.toFixed(2)})">${entry.ref}</div>`;
+            const trace = entry.indexed ? roadStrokeColor(entry.hierarchy, true) : '';
+            const color = trace ? `color:${trace};border-color:${trace};` : '';
+            return `<div class="route-label ${entry.hierarchy}" style="opacity:${opacity.toFixed(2)};transform:scale(${scale.toFixed(2)});${color}">${entry.ref}</div>`;
         }
 
         function buildRouteLabelClusterHtml(group, zoom) {
@@ -9889,9 +9894,23 @@
             return speed.implicit ? 'implicit' : 'explicit';
         }
 
+        // Hors vitesse explicite : agglomération probable (50) ou hors agglo (80),
+        // pour remplir un axe d'un seul coup sans rouvrir chaque tronçon.
+        function likelyRegime(tags) {
+            const t = tags || {};
+            const blob = [t['maxspeed:type'], t['source:maxspeed'], t['zone:maxspeed'], t.maxspeed]
+                .filter(Boolean).join(' ').toLowerCase();
+            if (/urban|zone\s*30|zone30|zone20|living|agglom/.test(blob)) return 'agglo';
+            if (/rural|motorway/.test(blob)) return 'rural';
+            if (t.highway === 'residential' || t.highway === 'living_street') return 'agglo';
+            if (t.lit === 'yes' && /tertiary|unclassified|residential/.test(t.highway || '')) return 'agglo';
+            return 'rural';
+        }
+
         function routeSpeedStats(ref) {
             const lines = routePolylines[ref] || [];
             const kmByKind = { explicit: 0, implicit: 0, missing: 0 };
+            const regimeKm = { agglo: 0, rural: 0 };
             let explicitSegments = 0;
             lines.forEach(polyline => {
                 const pts = polyline.getLatLngs();
@@ -9900,8 +9919,11 @@
                 const kind = segmentSpeedKind(polyline);
                 kmByKind[kind] += length;
                 if (kind === 'explicit') explicitSegments += 1;
+                else regimeKm[likelyRegime(polyline.options.wayTags)] += length;
             });
             const km = kmByKind.explicit + kmByKind.implicit + kmByKind.missing;
+            const rest = regimeKm.agglo + regimeKm.rural;
+            const dominant = Math.max(regimeKm.agglo, regimeKm.rural);
             return {
                 ref,
                 segments: lines.length,
@@ -9910,6 +9932,10 @@
                 kmWith: kmByKind.explicit,
                 kmImplicit: kmByKind.implicit,
                 missingKm: kmByKind.missing,
+                kmAgglo: regimeKm.agglo,
+                kmRural: regimeKm.rural,
+                easy: rest > 0.2 && dominant / rest >= 0.8,
+                regime: regimeKm.agglo >= regimeKm.rural ? 'agglo' : 'rural',
                 hierarchy: lines[0]?.options?.roadHierarchy || 'local'
             };
         }
@@ -9923,7 +9949,11 @@
             const complete = rows.filter(row => row.withSpeed === row.segments);
             const incomplete = rows
                 .filter(row => row.missingKm > 0.05 || row.kmImplicit > 0.05)
-                .sort((a, b) => (b.missingKm + b.kmImplicit) - (a.missingKm + a.kmImplicit));
+                .map(row => ({ ...row, gainPts: km ? ((row.kmAgglo + row.kmRural) / km) * 100 : 0 }))
+                .sort((a, b) => {
+                    if (a.easy !== b.easy) return a.easy ? -1 : 1;
+                    return b.gainPts - a.gainPts;
+                });
             return { rows, km, kmWith, kmImplicit, complete, incomplete };
         }
 
@@ -9977,17 +10007,23 @@
                     <button type="button" class="wikidata-gap-close" onclick="toggleSpeedGapPanel()" title="Fermer la liste">✕</button>
                 </div>
                 <div class="wikidata-gap-hint">
-                    Classées par kilomètres encore sans <code>maxspeed</code>. Cliquez une route pour la suivre.
+                    Axes faciles d'abord : un seul régime probable, donc une vitesse pour tout le reste.
+                    Agglo ≈ 50, hors agglomération ≈ 80. Le gain est en points du pourcentage départemental.
                 </div>
                 <div class="wikidata-gap-list" id="speedGapList">
-                    ${missing.map(route => `
+                    ${missing.map(route => {
+                        const km = n => n.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
+                        const where = route.easy
+                            ? `${km(route.kmAgglo + route.kmRural)} km ${route.regime === 'agglo' ? 'agglo' : 'hors agglo'}`
+                            : `${km(route.kmAgglo)} agglo · ${km(route.kmRural)} hors agglo`;
+                        return `
                         <div class="road-item wikidata-gap-item" data-ref="${route.ref}"
-                             title="${route.ref} — ${route.withSpeed}/${route.segments} tronçons avec vitesse">
+                             title="${route.ref} — ${where}">
                             <div class="road-badge ${route.hierarchy}">${route.ref}</div>
-                            <span class="wikidata-gap-count">${route.missingKm.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km</span>
-                            <span class="wikidata-gap-flag">${route.withSpeed}/${route.segments}</span>
-                        </div>
-                    `).join('')}
+                            <span class="wikidata-gap-count">+${route.gainPts.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} pt · ${where}</span>
+                            <span class="wikidata-gap-flag">${route.easy ? 'facile' : 'mixte'}</span>
+                        </div>`;
+                    }).join('')}
                 </div>
                 <div class="wikidata-gap-actions">
                     <button type="button" onclick="paintSpeedQuality()">Colorer la carte</button>
