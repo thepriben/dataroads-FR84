@@ -5616,6 +5616,8 @@
             background: #5c7700;
             color: #fff;
             border-color: #3d5100;
+            pointer-events: auto;
+            cursor: pointer;
         }
         .calming-marker {
             width: 18px;
@@ -6179,7 +6181,8 @@
 
         /* Boutons compacts Mapillary (M) / Panoramax (P) */
         .map-tool--mapillary .map-tool-mly,
-        .map-tool--panoramax .map-tool-pnx {
+        .map-tool--panoramax .map-tool-pnx,
+        .map-tool--fotoshi .map-tool-foto {
             font-family: 'Oswald', 'DM Sans', sans-serif;
             font-weight: 800;
             font-size: 1rem;
@@ -6196,6 +6199,43 @@
             border-color: #7C3AED;
             box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
         }
+        .map-tool--fotoshi.is-active {
+            background: #8E44AD;
+            border-color: #8E44AD;
+            box-shadow: 0 2px 8px rgba(142, 68, 173, 0.3);
+        }
+        .speed-quality-key {
+            position: absolute;
+            top: 64px;
+            right: 14px;
+            z-index: 998;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+            padding: 10px 12px;
+            font-size: 0.75rem;
+            color: #2C3E50;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .speed-quality-key[hidden] { display: none; }
+        .speed-quality-key-title {
+            font-weight: 700;
+            font-size: 0.72rem;
+            letter-spacing: 0.02em;
+        }
+        .speed-quality-swatch {
+            display: inline-block;
+            width: 18px;
+            height: 4px;
+            margin-right: 8px;
+            border-radius: 2px;
+            vertical-align: middle;
+        }
+        .speed-quality-swatch.is-explicit { background: #27AE60; }
+        .speed-quality-swatch.is-implicit { background: #F1C40F; }
+        .speed-quality-swatch.is-missing { background: #E74C3C; }
 
         /* Popup photo Mapillary du panneau de vitesse */
         .speed-sign-popup .speed-sign-photo {

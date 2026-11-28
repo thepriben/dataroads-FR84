@@ -4012,6 +4012,7 @@
             fotoshiVisible = !fotoshiVisible;
             const icon = document.getElementById('fotoshiToggleIcon');
             setToggleIcon(icon, fotoshiVisible);
+            setToolActive('fotoshiBtn', fotoshiVisible);
             if (fotoshiVisible) {
                 if (!window.map.hasLayer(fotoshiLayer)) fotoshiLayer.addTo(window.map);
                 await loadFotoshiPoints();
@@ -9271,6 +9272,25 @@
             return anchors;
         }
 
+        function inViewIndexed(route, bounds) {
+            const seen = new Map();
+            for (const way of route.ways || []) {
+                if (way.tags.ref_index !== 'A' || !way.tags.osm_ref) continue;
+                const label = String(way.tags.osm_ref).replace(/\s+/g, '');
+                const geometry = way.geometry || [];
+                for (let i = 0; i < geometry.length; i += ROUTE_LABEL_POINT_STRIDE) {
+                    const point = geometry[i];
+                    if (!bounds.contains([point.lat, point.lon])) continue;
+                    if (!seen.has(label)) {
+                        const at = L.latLng(point.lat, point.lon);
+                        at.labelRef = label;
+                        seen.set(label, at);
+                    }
+                }
+            }
+            return [...seen.values()];
+        }
+
         function routeLabelPointsInView(route, bounds) {
             const inView = [];
             if (!route.ways) return inView;
@@ -9282,10 +9302,15 @@
                 if (shown && !shown.has(String(way.id))) continue;
                 const geometry = way.geometry;
                 if (!geometry || geometry.length === 0) continue;
+                const indexed = way.tags.ref_index === 'A' && way.tags.osm_ref
+                    ? String(way.tags.osm_ref).replace(/\s+/g, '')
+                    : null;
                 for (let i = 0; i < geometry.length; i += ROUTE_LABEL_POINT_STRIDE) {
                     const point = geometry[i];
                     if (bounds.contains([point.lat, point.lon])) {
-                        inView.push(L.latLng(point.lat, point.lon));
+                        const at = L.latLng(point.lat, point.lon);
+                        at.labelRef = indexed;
+                        inView.push(at);
                     }
                 }
             }
@@ -9392,15 +9417,33 @@
                     if (!routeHasVisibleSegment(route.ref)) return;
                     const candidates = getRouteLabelCandidates(route, bounds);
                     if (candidates.length === 0) return;
+                    const primaryRef = candidates[0].labelRef || route.ref;
                     entries.push({
                         route,
                         hierarchy,
-                        ref: route.ref,
+                        ref: primaryRef,
                         priority: ROUTE_LABEL_PRIORITY[hierarchy],
                         opacity,
                         anchor: candidates[0],
                         candidates
                     });
+                    // Un tronçon indicé A porte « D975A », pas le numéro de la voie
+                    // à laquelle il est rattaché.
+                    const indexedSeen = new Set([primaryRef]);
+                    for (const point of inViewIndexed(route, bounds)) {
+                        if (indexedSeen.has(point.labelRef)) continue;
+                        indexedSeen.add(point.labelRef);
+                        entries.push({
+                            route,
+                            hierarchy,
+                            ref: point.labelRef,
+                            priority: 1,
+                            repeat: true,
+                            opacity,
+                            anchor: point,
+                            candidates: [point]
+                        });
+                    }
                     if (zoom < ROUTE_LABEL_REPEAT_MIN_ZOOM) return;
                     // Les répétitions passent après toutes les premières
                     // étiquettes : aucune ne doit en déloger une autre.
@@ -9408,7 +9451,7 @@
                         entries.push({
                             route,
                             hierarchy,
-                            ref: route.ref,
+                            ref: anchor.labelRef || route.ref,
                             priority: 0,
                             repeat: true,
                             opacity,
@@ -9823,28 +9866,35 @@
             updateSpeedSummary();
         }
 
+        const SPEED_QUALITY_COLOR = { explicit: '#27AE60', implicit: '#F1C40F', missing: '#E74C3C' };
+
+        function segmentSpeedKind(polyline) {
+            const speed = resolveWaySpeed(polyline.options.wayTags || {});
+            if (speed.kmh === null) return 'missing';
+            return speed.implicit ? 'implicit' : 'explicit';
+        }
+
         function routeSpeedStats(ref) {
             const lines = routePolylines[ref] || [];
-            let km = 0;
-            let kmWith = 0;
-            let withSpeed = 0;
+            const kmByKind = { explicit: 0, implicit: 0, missing: 0 };
+            let explicitSegments = 0;
             lines.forEach(polyline => {
                 const pts = polyline.getLatLngs();
                 let length = 0;
                 for (let i = 1; i < pts.length; i += 1) length += haversineKm(pts[i - 1], pts[i]);
-                km += length;
-                if (parseMaxspeed((polyline.options.wayTags || {}).maxspeed) !== null) {
-                    withSpeed += 1;
-                    kmWith += length;
-                }
+                const kind = segmentSpeedKind(polyline);
+                kmByKind[kind] += length;
+                if (kind === 'explicit') explicitSegments += 1;
             });
+            const km = kmByKind.explicit + kmByKind.implicit + kmByKind.missing;
             return {
                 ref,
                 segments: lines.length,
-                withSpeed,
+                withSpeed: explicitSegments,
                 km,
-                kmWith,
-                missingKm: Math.max(0, km - kmWith),
+                kmWith: kmByKind.explicit,
+                kmImplicit: kmByKind.implicit,
+                missingKm: kmByKind.missing,
                 hierarchy: lines[0]?.options?.roadHierarchy || 'local'
             };
         }
@@ -9854,11 +9904,12 @@
             const rows = refs.map(routeSpeedStats).filter(row => row.segments > 0);
             const km = rows.reduce((sum, row) => sum + row.km, 0);
             const kmWith = rows.reduce((sum, row) => sum + row.kmWith, 0);
+            const kmImplicit = rows.reduce((sum, row) => sum + row.kmImplicit, 0);
             const complete = rows.filter(row => row.withSpeed === row.segments);
             const incomplete = rows
-                .filter(row => row.withSpeed < row.segments)
-                .sort((a, b) => b.missingKm - a.missingKm);
-            return { rows, km, kmWith, complete, incomplete };
+                .filter(row => row.missingKm > 0.05 || row.kmImplicit > 0.05)
+                .sort((a, b) => (b.missingKm + b.kmImplicit) - (a.missingKm + a.kmImplicit));
+            return { rows, km, kmWith, kmImplicit, complete, incomplete };
         }
 
         function updateSpeedSummary() {
@@ -9870,24 +9921,27 @@
                 return;
             }
             const pct = coverage.km ? Math.floor((coverage.kmWith / coverage.km) * 100) : 0;
+            const implicitPct = coverage.km ? (coverage.kmImplicit / coverage.km) * 100 : 0;
+            const missingKm = Math.max(0, coverage.km - coverage.kmWith - coverage.kmImplicit);
+            const missingPct = coverage.km ? (missingKm / coverage.km) * 100 : 0;
             const missing = coverage.incomplete.length;
             container.innerHTML = `
                 <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px;">
-                    <span style="font-family:'JetBrains Mono', monospace;font-size:1.4rem;font-weight:700;color:#27AE60;">${Math.round(coverage.kmWith).toLocaleString('fr-FR')}</span>
-                    <span style="font-size:0.8rem;color:#7f8c8d;">/ ${Math.round(coverage.km).toLocaleString('fr-FR')} km avec une vitesse explicite</span>
-                    <span style="margin-left:auto;font-family:'JetBrains Mono', monospace;font-weight:700;color:#2C3E50;">${pct}%</span>
+                    <span style="font-family:'JetBrains Mono', monospace;font-size:1.4rem;font-weight:700;color:#27AE60;">${pct}%</span>
+                    <span style="font-size:0.8rem;color:#7f8c8d;">de km avec une vitesse explicite</span>
                 </div>
-                <div style="height:6px;border-radius:3px;background:#ecf0f1;overflow:hidden;display:flex;margin-bottom:8px;">
-                    <div style="width:${pct}%;background:linear-gradient(90deg,#27AE60,#2ECC71);"></div>
-                    <div style="width:${100 - pct}%;background:linear-gradient(90deg,#E74C3C,#C0392B);"></div>
+                <div style="height:6px;border-radius:3px;background:#E74C3C;overflow:hidden;display:flex;margin-bottom:8px;">
+                    <div style="width:${pct}%;background:#27AE60;"></div>
+                    <div style="width:${implicitPct}%;background:#F1C40F;"></div>
+                    <div style="width:${missingPct}%;background:#E74C3C;"></div>
                 </div>
-                <div style="padding:6px 8px;background:#fef5e7;border-radius:4px;color:#8a5a00;font-size:0.72rem;margin-bottom:8px;">
-                    <strong>${coverage.complete.length}</strong> route${coverage.complete.length > 1 ? 's' : ''} entièrement renseignée${coverage.complete.length > 1 ? 's' : ''},
-                    <strong>${missing}</strong> encore incomplète${missing > 1 ? 's' : ''}.
-                    Seul un <code>maxspeed</code> chiffré compte — une vitesse implicite reste un manque.
+                <div style="display:flex;gap:8px;font-size:0.68rem;color:#5d6d7e;margin-bottom:8px;">
+                    <span><b style="color:#27AE60;">${Math.round(coverage.kmWith).toLocaleString('fr-FR')}</b> explicite</span>
+                    <span><b style="color:#B7950B;">${Math.round(coverage.kmImplicit).toLocaleString('fr-FR')}</b> implicite</span>
+                    <span><b style="color:#E74C3C;">${Math.round(missingKm).toLocaleString('fr-FR')}</b> non renseigné</span>
                 </div>
                 <div style="display:flex;gap:6px;">
-                    <button type="button" onclick="toggleSpeedGapPanel()" style="flex:1;border:1px solid #E74C3C;background:white;color:#E74C3C;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">${missing > 1 ? `Voir les ${missing} routes` : 'Voir la route'} sans vitesse complète</button>
+                    <button type="button" onclick="toggleSpeedGapPanel()" style="flex:1;border:1px solid #2C3E50;background:white;color:#2C3E50;border-radius:5px;padding:6px;font-size:0.7rem;font-weight:600;cursor:pointer;">${missing ? `Voir les ${missing} routes incomplètes` : 'Colorer la carte'}</button>
                 </div>
             `;
             const panel = document.getElementById('speedGapPanel');
@@ -9921,7 +9975,7 @@
                     `).join('')}
                 </div>
                 <div class="wikidata-gap-actions">
-                    <button type="button" onclick="highlightRoutesMissingSpeed()">Toutes en rouge sur la carte</button>
+                    <button type="button" onclick="paintSpeedQuality()">Colorer la carte</button>
                     <button type="button" onclick="clearHighlight()">Réinitialiser</button>
                 </div>
             `;
@@ -9935,19 +9989,23 @@
             });
         }
 
-        window.highlightRoutesMissingSpeed = function() {
-            const missing = new Set(speedCoverage().incomplete.map(row => row.ref));
+        function setSpeedQualityKey(visible) {
+            const key = document.getElementById('speedQualityKey');
+            if (key) key.hidden = !visible;
+        }
+
+        window.paintSpeedQuality = function() {
             Object.keys(routePolylines).forEach(ref => {
                 routePolylines[ref].forEach(polyline => {
-                    const hierarchy = polyline.options.roadHierarchy;
+                    const kind = segmentSpeedKind(polyline);
                     polyline.setStyle({
-                        opacity: missing.has(ref) ? 1 : 0.15,
-                        weight: hierarchyWeights[hierarchy] + (missing.has(ref) ? 2 : 0),
-                        color: missing.has(ref) ? '#E74C3C' : roadStrokeColor(hierarchy, polyline.options.formerIndex)
+                        opacity: 0.92,
+                        weight: hierarchyWeights[polyline.options.roadHierarchy],
+                        color: SPEED_QUALITY_COLOR[kind]
                     });
-                    if (missing.has(ref)) polyline.bringToFront();
                 });
             });
+            setSpeedQualityKey(true);
         };
 
         window.toggleSpeedGapPanel = function() {
@@ -9959,7 +10017,7 @@
                 const other = document.getElementById('wikidataGapPanel');
                 if (other) other.hidden = true;
                 renderSpeedGapPanel();
-                window.highlightRoutesMissingSpeed();
+                window.paintSpeedQuality();
                 panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             } else {
                 clearHighlight();
@@ -10440,6 +10498,7 @@
             // routes garde une ligne active et les tronçons déclassés restent
             // épaissis au nom d'une sélection qui n'existe plus.
             window.highlightedRoute = null;
+            setSpeedQualityKey(false);
             if (typeof refreshDeclassifiedStyles === 'function') refreshDeclassifiedStyles();
 
             clearStationAxisTrace();
@@ -13187,18 +13246,34 @@
             if (!window.map.hasLayer(declassifiedLabels)) declassifiedLabels.addTo(window.map);
             const bounds = window.map.getBounds();
             const highlighted = window.highlightedRoute;
+            const best = new Map();
             declassifiedPolylines.forEach(polyline => {
-                if (highlighted && !polyline.formerRefs.includes(highlighted)) return;
+                const refs = highlighted
+                    ? polyline.formerRefs.filter(ref => ref === highlighted)
+                    : polyline.formerRefs;
+                if (!refs.length) return;
                 const latlngs = polyline.getLatLngs();
-                if (!latlngs.length) return;
+                if (latlngs.length < 2) return;
                 const mid = latlngs[Math.floor(latlngs.length / 2)];
                 if (!bounds.contains(mid)) return;
-                const html = polyline.formerRefs.map(ref =>
-                    `<div class="route-label is-former">${escapeHtml(ref)}</div>`).join('');
+                let length = 0;
+                for (let i = 1; i < latlngs.length; i += 1) length += haversineKm(latlngs[i - 1], latlngs[i]);
+                refs.forEach(ref => {
+                    const current = best.get(ref);
+                    if (!current || length > current.length) best.set(ref, { ref, mid, length });
+                });
+            });
+            best.forEach(({ ref, mid }) => {
                 const marker = L.marker(mid, {
-                    interactive: false,
                     keyboard: false,
-                    icon: L.divIcon({ className: 'route-label-container', html, iconSize: null })
+                    icon: L.divIcon({
+                        className: 'route-label-container',
+                        html: `<div class="route-label is-former">${escapeHtml(ref)}</div>`,
+                        iconSize: null
+                    })
+                });
+                marker.on('click', () => {
+                    if (window.routePolylines?.[ref]) highlightRoute(ref);
                 });
                 marker.addTo(declassifiedLabels);
             });

@@ -785,6 +785,14 @@
                 </div>
 
                 <div class="legend-section">
+                    <div class="legend-title">Complétude des vitesses</div>
+                    <div id="speedSummary" style="background:white;border-radius:8px;border:1px solid #dfe6e9;padding:10px;">
+                        <div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>
+                    </div>
+                    <div id="speedGapPanel" class="wikidata-gap-panel" hidden></div>
+                </div>
+
+                <div class="legend-section">
                     <div class="legend-title quality-section-header">
                         <span>Qualité OSM / Wikidata</span>
                         <button type="button" class="sidebar-quality-btn" id="qualityBtn" onclick="toggleQualityPanel()" title="Ouvrir le panneau détaillé Qualité OSM (Wikidata, relations)">
@@ -797,11 +805,6 @@
                         <div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>
                     </div>
                     <div id="wikidataGapPanel" class="wikidata-gap-panel" hidden></div>
-                    <div class="legend-title" style="margin-top:14px;">Complétude des vitesses</div>
-                    <div id="speedSummary" style="background:white;border-radius:8px;border:1px solid #dfe6e9;padding:10px;">
-                        <div style="font-size:0.8rem;color:#7f8c8d;">Calcul en cours…</div>
-                    </div>
-                    <div id="speedGapPanel" class="wikidata-gap-panel" hidden></div>
                 </div>
 
                 <div class="legend-section">
@@ -968,6 +971,9 @@
                     <button type="button" class="map-tool map-tool--compact map-tool--panoramax" onclick="window.togglePanoramaxCoverage && window.togglePanoramaxCoverage()" id="panoramaxBtn" title="Couverture photo Panoramax (traces)" aria-label="Couverture photo Panoramax">
                         <span class="map-tool-pnx" aria-hidden="true">P</span>
                     </button>
+                    <button type="button" class="map-tool map-tool--compact map-tool--fotoshi" onclick="window.toggleFotoshi && window.toggleFotoshi()" id="fotoshiBtn" title="Photos Fotoshi rattachées aux objets de la carte" aria-label="Photos Fotoshi">
+                        <span class="map-tool-foto" aria-hidden="true">F</span>
+                    </button>
                 </div>
 
                 <!-- Choix du fond : les boutons radio sont écrits par le script
@@ -989,6 +995,13 @@
                 </aside>
 
                 <!-- Panneau de qualité des données -->
+                <aside class="speed-quality-key" id="speedQualityKey" hidden aria-label="Lecture des vitesses">
+                    <div class="speed-quality-key-title">Vitesses</div>
+                    <div><span class="speed-quality-swatch is-explicit"></span>Explicite</div>
+                    <div><span class="speed-quality-swatch is-implicit"></span>Implicite</div>
+                    <div><span class="speed-quality-swatch is-missing"></span>Non renseigné</div>
+                </aside>
+
                 <div class="quality-panel" id="qualityPanel">
                     <div class="quality-header">
                         <h3>📊 Qualité des Données OSM</h3>
