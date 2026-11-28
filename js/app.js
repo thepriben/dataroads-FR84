@@ -1008,13 +1008,13 @@
         }
 
         // L'indice A marque un ancien tracé, recalé ailleurs dans la numérotation
-        // sans avoir disparu : un liseré bleu de part et d'autre le signale sans
-        // retirer à la voie la couleur de sa hiérarchie. Son volet, juste sous
-        // celui des tracés, le garde derrière toutes les voies. Le réseau local
-        // est déjà bleu : un filet blanc sépare le liseré du tracé pour qu'il
-        // reste lisible sur toutes les hiérarchies.
+        // sans avoir disparu. Au dézoom le liseré large noyait le réseau : à
+        // partir du zoom 14, le même trait que la voie, en bleu foncé, suffit
+        // (issue #41).
         const FORMER_INDEX_PANE = 'formerIndexCasing';
         const FORMER_INDEX_COLOR = '#1A3A8F';
+        const FORMER_INDEX_ZOOM = 14;
+        const formerIndexOverlays = [];
 
         function attachFormerIndexCasing(polyline, coords) {
             if (!window.map.getPane(FORMER_INDEX_PANE)) {
@@ -1022,13 +1022,29 @@
                 pane.style.zIndex = 395;
                 pane.style.pointerEvents = 'none';
             }
-            const weight = polyline.options.weight;
-            const casing = L.layerGroup([
-                L.polyline(coords, { pane: FORMER_INDEX_PANE, color: FORMER_INDEX_COLOR, weight: weight + 8, opacity: 0.95, interactive: false }),
-                L.polyline(coords, { pane: FORMER_INDEX_PANE, color: '#fff', weight: weight + 3, opacity: 1, interactive: false })
-            ]);
-            polyline.on('add', () => casing.addTo(window.map));
-            polyline.on('remove', () => casing.remove());
+            const overlay = L.polyline(coords, {
+                pane: FORMER_INDEX_PANE,
+                color: FORMER_INDEX_COLOR,
+                weight: polyline.options.weight,
+                opacity: 0.95,
+                interactive: false
+            });
+            formerIndexOverlays.push({ polyline, overlay });
+            polyline.on('remove', () => overlay.remove());
+        }
+
+        function syncFormerIndexOverlays() {
+            if (!window.map) return;
+            const close = window.map.getZoom() >= FORMER_INDEX_ZOOM;
+            formerIndexOverlays.forEach(({ polyline, overlay }) => {
+                const onMap = window.map.hasLayer(polyline);
+                overlay.setStyle({ weight: polyline.options.weight || overlay.options.weight });
+                if (close && onMap) {
+                    if (!window.map.hasLayer(overlay)) overlay.addTo(window.map);
+                } else if (window.map.hasLayer(overlay)) {
+                    overlay.remove();
+                }
+            });
         }
 
         function haversineKm(a, b) {
@@ -3580,6 +3596,15 @@
         let milestonesLoadPromise = null;
         const MILESTONES_SIGN_ZOOM = 14;
         const MILESTONES_MAX_MARKERS = 1500;
+        const milestoneFamilyOn = { road: true, cycle: true };
+
+        function milestoneFamily(props) {
+            return /^EV/i.test((props || {}).road || '') ? 'cycle' : 'road';
+        }
+
+        function milestoneFamilyPasses(props) {
+            return milestoneFamilyOn[milestoneFamily(props)] !== false;
+        }
         const MILESTONE_SIDES = { left: 'gauche', right: 'droite', both: 'des deux côtés' };
 
         function milestoneLabel(props) {
@@ -3717,6 +3742,7 @@
             return L.divIcon({
                 html: `<span class="milestone-cap"></span><span class="milestone-num">${escapeHtml(p.distance || '?')}</span>`,
                 className: 'milestone-wrapper' + (hierarchy ? ` is-${hierarchy}` : '')
+                    + (milestoneFamily(p) === 'cycle' ? ' is-cycle' : '')
                     + (milestoneMismatch(p) ? ' is-mismatch' : '') + (osmNodePhotos(p).length ? ' has-photo' : ''),
                 iconSize: null,
                 iconAnchor: [12, 26]
@@ -3784,7 +3810,7 @@
                     radius,
                     color: milestoneMismatch(sign.props) ? MILESTONE_MISMATCH_COLOR : '#1f2933',
                     weight: MILESTONE_DOT_WEIGHT[milestoneHierarchy(sign.props.road)] || 1,
-                    fillColor: '#F1C40F',
+                    fillColor: milestoneFamily(sign.props) === 'cycle' ? '#1E8449' : '#F1C40F',
                     fillOpacity: 1
                 });
                 dot.bindTooltip(milestoneLabel(sign.props), { direction: 'top' });
@@ -3806,7 +3832,9 @@
             for (const feature of milestonesFeatures) {
                 const coords = feature.geometry && feature.geometry.coordinates;
                 if (!coords || !bounds.contains([coords[1], coords[0]])) continue;
-                visible.push({ lat: coords[1], lng: coords[0], props: feature.properties || {} });
+                const props = feature.properties || {};
+                if (!milestoneFamilyPasses(props)) continue;
+                visible.push({ lat: coords[1], lng: coords[0], props });
             }
             if (zoom >= MILESTONES_SIGN_ZOOM) {
                 visible.slice(0, MILESTONES_MAX_MARKERS)
@@ -3818,9 +3846,25 @@
         }
 
         function setMilestonesLegendCounts(features) {
+            const list = features || [];
             const el = document.getElementById('count-milestones');
-            if (el) el.textContent = (features || []).length.toLocaleString('fr-FR');
+            if (el) el.textContent = list.length.toLocaleString('fr-FR');
+            const road = document.getElementById('count-milestones-road');
+            const cycle = document.getElementById('count-milestones-cycle');
+            if (road) road.textContent = list.filter(f => milestoneFamily(f.properties) === 'road').length.toLocaleString('fr-FR');
+            if (cycle) cycle.textContent = list.filter(f => milestoneFamily(f.properties) === 'cycle').length.toLocaleString('fr-FR');
+            document.querySelectorAll('[data-milestone-family]').forEach(item => {
+                const on = milestoneFamilyOn[item.dataset.milestoneFamily];
+                item.style.opacity = milestonesVisible && on ? '1' : '0.45';
+            });
         }
+
+        window.toggleMilestoneFamily = function(family) {
+            if (!milestoneFamilyOn.hasOwnProperty(family)) return;
+            milestoneFamilyOn[family] = !milestoneFamilyOn[family];
+            setMilestonesLegendCounts(milestonesFeatures);
+            renderMilestones();
+        };
 
         function applyMilestonesUi(visible) {
             const icon = document.getElementById('milestonesToggleIcon');
@@ -3901,6 +3945,127 @@
                 return;
             }
             syncMilestonesOnMap();
+        };
+
+        // Couverture Fotoshi (issue #42) : les photos déjà référencées sur les
+        // objets extraits (PR, mâts, agglomération, ponts, aires).
+        const fotoshiLayer = L.layerGroup();
+        let fotoshiVisible = false;
+        let fotoshiPoints = null;
+        const FOTOSHI_DATASETS = ['milestones', 'guideposts', 'city-limits', 'bridges', 'roadside-areas'];
+
+        function featureLatLng(feature) {
+            const g = feature.geometry;
+            if (!g) return null;
+            if (g.type === 'Point') return [g.coordinates[1], g.coordinates[0]];
+            const c = feature.properties && feature.properties.center;
+            if (Array.isArray(c) && c.length >= 2) return [c[1], c[0]];
+            return null;
+        }
+
+        async function loadFotoshiPoints() {
+            if (fotoshiPoints) return fotoshiPoints;
+            const points = [];
+            for (const name of FOTOSHI_DATASETS) {
+                try {
+                    const data = await window.InforouteApi.fetchGeoJson(name);
+                    (data.features || []).forEach(feature => {
+                        const photos = osmNodePhotos(feature.properties).filter(p => p.source === 'Fotoshi');
+                        const at = featureLatLng(feature);
+                        if (!photos.length || !at) return;
+                        points.push({ at, photos, props: feature.properties || {}, dataset: name });
+                    });
+                } catch (error) {
+                    console.warn('Fotoshi, jeu ignoré:', name, error);
+                }
+            }
+            fotoshiPoints = points;
+            const count = document.getElementById('count-fotoshi');
+            if (count) count.textContent = String(points.length);
+            return points;
+        }
+
+        function renderFotoshi() {
+            fotoshiLayer.clearLayers();
+            if (!fotoshiVisible || !fotoshiPoints || !window.map) return;
+            const bounds = window.map.getBounds();
+            fotoshiPoints.forEach(point => {
+                if (!bounds.contains(point.at)) return;
+                const dot = L.circleMarker(point.at, {
+                    radius: 6, color: '#fff', weight: 2, fillColor: '#8E44AD', fillOpacity: 1
+                });
+                dot.bindPopup(`<div class="route-popup"><h3>Fotoshi</h3><div class="speed-sign-photo">${osmNodePhotosHtml(point.photos)}</div></div>`,
+                    { minWidth: 200, maxWidth: 300 });
+                dot.addTo(fotoshiLayer);
+            });
+        }
+
+        window.toggleFotoshi = async function() {
+            fotoshiVisible = !fotoshiVisible;
+            const icon = document.getElementById('fotoshiToggleIcon');
+            setToggleIcon(icon, fotoshiVisible);
+            if (fotoshiVisible) {
+                if (!window.map.hasLayer(fotoshiLayer)) fotoshiLayer.addTo(window.map);
+                await loadFotoshiPoints();
+                renderFotoshi();
+                if (!window._fotoshiZoom) {
+                    window._fotoshiZoom = true;
+                    window.map.on('zoomend moveend', renderFotoshi);
+                }
+            } else if (window.map.hasLayer(fotoshiLayer)) {
+                window.map.removeLayer(fotoshiLayer);
+            }
+        };
+
+        // Ralentisseurs (issue #43). Le fichier est produit par l'extraction OSM.
+        const calmingLayer = L.layerGroup();
+        let calmingVisible = false;
+        let calmingFeatures = null;
+
+        function renderCalming() {
+            calmingLayer.clearLayers();
+            if (!calmingVisible || !calmingFeatures || !window.map) return;
+            const bounds = window.map.getBounds();
+            calmingFeatures.forEach(feature => {
+                const at = featureLatLng(feature);
+                if (!at || !bounds.contains(at)) return;
+                const label = (feature.properties || {}).calming_label || 'Ralentisseur';
+                const marker = L.marker(at, {
+                    icon: L.divIcon({ className: '', html: '<div class="calming-marker">R</div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+                    keyboard: false
+                });
+                marker.bindTooltip(label, { direction: 'top' });
+                marker.bindPopup(`<div class="route-popup"><h3>${escapeHtml(label)}</h3>${osmNodeLinkHtml(feature.properties || {})}</div>`);
+                marker.addTo(calmingLayer);
+            });
+        }
+
+        window.toggleCalming = async function() {
+            calmingVisible = !calmingVisible;
+            const icon = document.getElementById('calmingToggleIcon');
+            setToggleIcon(icon, calmingVisible);
+            if (!calmingVisible) {
+                calmingLayer.clearLayers();
+                if (window.map.hasLayer(calmingLayer)) window.map.removeLayer(calmingLayer);
+                return;
+            }
+            if (!window.map.hasLayer(calmingLayer)) calmingLayer.addTo(window.map);
+            if (!calmingFeatures) {
+                try {
+                    const data = await window.InforouteApi.fetchGeoJson('traffic-calming');
+                    calmingFeatures = data.features || [];
+                } catch (error) {
+                    console.warn('Ralentisseurs indisponibles:', error);
+                    calmingFeatures = [];
+                }
+                const count = document.getElementById('count-calming');
+                if (count) count.textContent = String(calmingFeatures.length);
+            }
+            renderCalming();
+            if (!window._calmingZoom) {
+                window._calmingZoom = true;
+                window.map.on('zoomend moveend', renderCalming);
+            }
         };
 
         // ========== PANNEAUX D'AGGLOMÉRATION (traffic_sign=city_limit) ==========
@@ -8599,6 +8764,7 @@
                                     wayId: way.id
                                 });
                                 if (way.tags.ref_index === 'A') attachFormerIndexCasing(polyline, coords);
+                                syncFormerIndexOverlays();
 
                                 if (hierarchyVisibility[hierarchy]
                                     && window.passesTerritorialFilter(polyline)) {
@@ -9407,6 +9573,7 @@
 
         map.on('zoom', scheduleRouteLabelRefresh);
         map.on('zoomend', scheduleRouteLabelRefresh);
+        map.on('zoomend', syncFormerIndexOverlays);
         map.on('moveend', scheduleRouteLabelRefresh);
 
         map.on('zoomend', renderLatestChangesRecap);
@@ -12749,6 +12916,7 @@
                 swatch.style.borderTopColor = window.highlightedRoute
                     ? declassifiedLinkedColor() : '';
             }
+            syncDeclassifiedLabels();
         }
         window.refreshDeclassifiedStyles = refreshDeclassifiedStyles;
 
@@ -12764,6 +12932,32 @@
             });
         }
 
+        const declassifiedLabels = L.layerGroup();
+        const DECLASSIFIED_LABEL_ZOOM = 14;
+
+        function syncDeclassifiedLabels() {
+            declassifiedLabels.clearLayers();
+            if (!declassifiedVisible || !window.map || window.map.getZoom() < DECLASSIFIED_LABEL_ZOOM) return;
+            if (!window.map.hasLayer(declassifiedLabels)) declassifiedLabels.addTo(window.map);
+            const bounds = window.map.getBounds();
+            const highlighted = window.highlightedRoute;
+            declassifiedPolylines.forEach(polyline => {
+                if (highlighted && !polyline.formerRefs.includes(highlighted)) return;
+                const latlngs = polyline.getLatLngs();
+                if (!latlngs.length) return;
+                const mid = latlngs[Math.floor(latlngs.length / 2)];
+                if (!bounds.contains(mid)) return;
+                const html = polyline.formerRefs.map(ref =>
+                    `<div class="route-label is-former">${escapeHtml(ref)}</div>`).join('');
+                const marker = L.marker(mid, {
+                    interactive: false,
+                    keyboard: false,
+                    icon: L.divIcon({ className: 'route-label-container', html, iconSize: null })
+                });
+                marker.addTo(declassifiedLabels);
+            });
+        }
+
         function syncDeclassifiedOnMap() {
             if (!window.map) return;
             declassifiedPolylines.forEach(polyline => {
@@ -12771,7 +12965,12 @@
                 if (declassifiedVisible && !onMap) polyline.addTo(window.map);
                 if (!declassifiedVisible && onMap) window.map.removeLayer(polyline);
             });
-            if (declassifiedVisible) refreshDeclassifiedStyles();
+            if (declassifiedVisible) {
+                refreshDeclassifiedStyles();
+                syncDeclassifiedLabels();
+            } else {
+                declassifiedLabels.clearLayers();
+            }
         }
 
         window.toggleDeclassified = function() {
@@ -12818,6 +13017,10 @@
                 });
 
                 declassifiedLoaded = true;
+                if (!window._declassifiedLabelZoom) {
+                    window._declassifiedLabelZoom = true;
+                    window.map.on('zoomend moveend', syncDeclassifiedLabels);
+                }
                 const count = document.getElementById('count-declassified');
                 if (count) count.textContent = `${declassifiedPolylines.length} · ${Math.round(meters / 1000)} km`;
                 syncDeclassifiedOnMap();

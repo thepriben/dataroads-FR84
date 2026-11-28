@@ -119,6 +119,7 @@
                 'road-signs': 'data/osm/road-signs.geojson',
                 guideposts: 'data/osm/guideposts.geojson',
                 milestones: 'data/osm/milestones.geojson',
+                'traffic-calming': 'data/osm/traffic-calming.geojson',
                 'milestones-reference': 'data/external/milestones-reference.geojson',
                 'city-limits': 'data/osm/city-limits.geojson',
                 'latest-changes': 'data/osm/latest-changes.geojson',

@@ -133,6 +133,17 @@ QUERIES = {
         );
         out geom;
     """,
+    # Dos d'âne, plateaux, coussins (issue #43). Nœuds surtout ; les ways
+    # (plateau dessiné) sont ramenés à leur milieu pour un pictogramme.
+    "traffic-calming": """
+        [out:json][timeout:90];
+        area["ISO3166-2"="FR-84"]->.dept;
+        (
+          node(area.dept)["traffic_calming"];
+          way(area.dept)["traffic_calming"];
+        );
+        out geom;
+    """,
     # Panneaux d'entrée / sortie d'agglomération (EB10 / EB20) : ils marquent le
     # basculement du régime de vitesse en traversée de village, donc utiles en
     # regard des limitations.
@@ -581,7 +592,7 @@ ROAD_SIGN_KEEP = ("highway", "direction", "traffic_sign", "name")
 # Les clés photo se déclinent en variantes suffixées qui portent le sens de la
 # prise de vue (panoramax:N, mapillary:2017, panoramax:context…) : un même mât en
 # aligne ainsi plusieurs, qu'on veut toutes conserver.
-PHOTO_KEY_PREFIXES = ("mapillary", "panoramax", "wikimedia_commons", "image")
+PHOTO_KEY_PREFIXES = ("mapillary", "panoramax", "wikimedia_commons", "image", "fotoshi")
 
 
 def keep_tag(key: str, keep: tuple[str, ...]) -> bool:
@@ -698,6 +709,62 @@ def milestones_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
             if road:
                 feature["properties"]["road"] = road
             features.append(feature)
+    return collection(features, len(data.get("elements", [])))
+
+
+CALMING_LABELS = {
+    "bump": "Dos d'âne",
+    "hump": "Dos d'âne",
+    "table": "Plateau traversant",
+    "cushion": "Coussin berlinois",
+    "chicane": "Chicane",
+    "choker": "Écluse",
+    "island": "Îlot",
+    "dip": "Creux",
+    "mini_bumps": "Bandes rugueuses",
+    "rumble_strip": "Bande rugueuse",
+    "yes": "Ralentisseur",
+}
+CALMING_KEEP = (
+    "traffic_calming", "direction", "maxspeed", "surface", "name", "highway",
+    "mapillary", "panoramax", "wikimedia_commons", "image", "fotoshi",
+)
+
+
+def _calming_point(element: dict[str, Any]) -> dict[str, Any] | None:
+    if element.get("type") == "node":
+        return node_to_point_feature(element, CALMING_KEEP)
+    geometry = element.get("geometry") or []
+    if len(geometry) < 2:
+        return None
+    mid = geometry[len(geometry) // 2]
+    lat, lon = mid.get("lat"), mid.get("lon")
+    if lat is None or lon is None:
+        return None
+    tags = element.get("tags") or {}
+    properties = {key: value for key, value in tags.items() if keep_tag(key, CALMING_KEEP)}
+    properties["osm_id"] = element.get("id")
+    properties["@id"] = f"way/{element.get('id')}"
+    return {
+        "type": "Feature",
+        "id": properties["@id"],
+        "geometry": {"type": "Point", "coordinates": [lon, lat]},
+        "properties": properties,
+    }
+
+
+def traffic_calming_to_geojson(data: dict[str, Any]) -> dict[str, Any]:
+    features: list[dict[str, Any]] = []
+    for element in data.get("elements", []):
+        tags = element.get("tags") or {}
+        if not tags.get("traffic_calming"):
+            continue
+        feature = _calming_point(element)
+        if not feature:
+            continue
+        kind = tags["traffic_calming"]
+        feature["properties"]["calming_label"] = CALMING_LABELS.get(kind, kind)
+        features.append(feature)
     return collection(features, len(data.get("elements", [])))
 
 
@@ -867,6 +934,7 @@ CONVERTERS = {
     "road-signs": road_signs_to_geojson,
     "guideposts": guideposts_to_geojson,
     "milestones": milestones_to_geojson,
+    "traffic-calming": traffic_calming_to_geojson,
     "city-limits": city_limits_to_geojson,
     "roadside-areas": roadside_areas_to_geojson,
 }

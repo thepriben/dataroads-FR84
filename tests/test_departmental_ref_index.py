@@ -17,7 +17,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 import osm_diff_selection as selection
-from update_osm_geojson import QUERIES, departmental_roads_to_geojson, split_ref_index
+from update_osm_geojson import QUERIES, departmental_roads_to_geojson, split_ref_index, traffic_calming_to_geojson
 
 BY_DATASET = selection.dataset_selectors(QUERIES)
 
@@ -57,6 +57,20 @@ class DepartmentalConversionTests(unittest.TestCase):
         self.assertTrue(indexed["has_relation"])
         self.assertEqual(indexed["relation_id"], 1)
         self.assertNotIn("ref_index", features[10])
+
+
+class TrafficCalmingTests(unittest.TestCase):
+    def test_node_and_way_midpoint(self):
+        data = {"elements": [
+            {"type": "node", "id": 1, "lat": 44.0, "lon": 5.0, "tags": {"traffic_calming": "cushion"}},
+            {"type": "way", "id": 2, "tags": {"traffic_calming": "table"}, "geometry": [
+                {"lat": 44.0, "lon": 5.0}, {"lat": 44.002, "lon": 5.002}, {"lat": 44.004, "lon": 5.004}
+            ]},
+        ]}
+        features = traffic_calming_to_geojson(data)["features"]
+        self.assertEqual([f["properties"]["calming_label"] for f in features], ["Coussin berlinois", "Plateau traversant"])
+        self.assertEqual(features[1]["geometry"]["type"], "Point")
+        self.assertIn("traffic-calming", QUERIES)
 
 
 class DiffSelectionTests(unittest.TestCase):

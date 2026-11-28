@@ -389,7 +389,41 @@
                         <div class="legend-label">PR du CD84 absents d'OSM</div>
                         <div class="legend-count" id="count-milestones-missing">-</div>
                     </div>
+                    <div class="legend-item" data-milestone-family="road" onclick="window.toggleMilestoneFamily && window.toggleMilestoneFamily('road');" style="cursor: pointer;">
+                        <div class="legend-color milestone-dot-swatch is-road" aria-hidden="true"></div>
+                        <div class="legend-label">PR routiers</div>
+                        <div class="legend-count" id="count-milestones-road">-</div>
+                    </div>
+                    <div class="legend-item" data-milestone-family="cycle" onclick="window.toggleMilestoneFamily && window.toggleMilestoneFamily('cycle');" style="cursor: pointer;">
+                        <div class="legend-color milestone-dot-swatch is-cycle" aria-hidden="true"></div>
+                        <div class="legend-label">PR cyclables (EuroVelo)</div>
+                        <div class="legend-count" id="count-milestones-cycle">-</div>
+                    </div>
                     <div class="sensitive-zones-hint"><code>highway=milestone</code> · import CRIGE PACA · comparé aux PLO du CD84 (DataSud)</div>
+                </div>
+
+<div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleFotoshi && window.toggleFotoshi();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Photos Fotoshi<small class="legend-title-sub">couverture</small></span>
+                        <span id="fotoshiToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background:#8E44AD;border-radius:50%;"></div>
+                        <div class="legend-label">Vues rattachées aux PR, mâts, ponts et aires</div>
+                        <div class="legend-count" id="count-fotoshi">-</div>
+                    </div>
+                </div>
+
+<div class="legend-section">
+                    <div class="legend-title" onclick="window.toggleCalming && window.toggleCalming();" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                        <span class="legend-title-stacked">Ralentisseurs<small class="legend-title-sub">traffic_calming</small></span>
+                        <span id="calmingToggleIcon" class="toggle-icon layer-toggle-icon is-hidden"></span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background:#6C3483;"></div>
+                        <div class="legend-label">Dos d'âne, plateaux, coussins</div>
+                        <div class="legend-count" id="count-calming">-</div>
+                    </div>
                 </div>
 
 <div class="legend-section">

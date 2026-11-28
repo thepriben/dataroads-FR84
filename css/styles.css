@@ -5597,6 +5597,38 @@
         /* En désaccord avec le référentiel CD84 : même trait, en rouge. */
         .milestone-wrapper.is-mismatch .milestone-cap,
         .milestone-wrapper.is-mismatch .milestone-num { border-color: #C0392B; }
+        .milestone-wrapper.is-cycle .milestone-cap { display: none; }
+        .milestone-wrapper.is-cycle .milestone-num {
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            line-height: 20px;
+            border-radius: 50%;
+            background: #1E8449;
+            color: #fff;
+            border: 2px solid #145A32;
+        }
+        .legend-color.milestone-dot-swatch.is-road { border-color: #1f2933; }
+        .legend-color.milestone-dot-swatch.is-cycle {
+            background: #1E8449;
+            border-color: #145A32;
+        }
+        .route-label.is-former {
+            background: #5c7700;
+            color: #fff;
+            border-color: #3d5100;
+        }
+        .calming-marker {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            background: #6C3483;
+            color: #fff;
+            font: 700 11px/18px 'DM Sans', sans-serif;
+            text-align: center;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,.35);
+        }
         .legend-color.milestone-dot-swatch {
             width: 10px;
             height: 10px;
